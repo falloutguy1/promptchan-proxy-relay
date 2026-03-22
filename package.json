@@ -1,0 +1,8 @@
+{
+  "name": "promptchan-netlify-proxy-cors-fixed",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@netlify/functions": "^3.1.6"
+  }
+}
