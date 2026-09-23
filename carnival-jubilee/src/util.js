@@ -82,4 +82,8 @@ export function tubeAlong(points, radius, radial = 8, closed = false, tension = 
   return new THREE.TubeGeometry(curve, Math.max(8, points.length * 12), radius, radial, closed);
 }
 
+// Safe mode: no float render targets (PMREM env maps, water mirror, post chain).
+// Enabled when the GPU cannot render to half-float buffers, or when a white/black frame is detected.
+export const SAFE = { on: false };
+
 export const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || Math.min(screen.width, screen.height) < 700;

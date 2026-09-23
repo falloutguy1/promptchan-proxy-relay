@@ -7,7 +7,7 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { buildShip } from './ship.js';
 import { buildEnvironment, PRESETS } from './environment.js';
 import { setAnisotropy } from './textures.js';
-import { isMobile, clamp, lerp } from './util.js';
+import { isMobile, clamp, lerp, SAFE } from './util.js';
 import { buildAtrium } from './interiors/atrium.js';
 import { buildStateroom } from './interiors/stateroom.js';
 import { buildDining } from './interiors/dining.js';
@@ -29,6 +29,9 @@ renderer.toneMappingExposure = 0.5;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
 setAnisotropy(Math.min(8, renderer.capabilities.getMaxAnisotropy()));
+// Many mobile GPUs cannot render into half-float targets; without that, PMREM, the water mirror and the
+// HDR post chain all produce garbage (a white screen), so fall back to direct rendering.
+SAFE.on = Q.has('safe') || !renderer.extensions.has('EXT_color_buffer_float');
 
 const camera = new THREE.PerspectiveCamera(36, window.innerWidth / window.innerHeight, 0.5, 80000);
 const controls = new OrbitControls(camera, canvas);
@@ -44,7 +47,7 @@ const world = new THREE.Scene();
 let env, ship;
 
 // ---------------------------------------------------------------- post
-const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: isMobile ? 2 : 4 });
+const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: isMobile ? 0 : 4 });
 const composer = new EffectComposer(renderer, target);
 const renderPass = new RenderPass(world, camera);
 const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.3, 0.55, 0.92);
@@ -169,6 +172,7 @@ async function go(name, { instant = false } = {}) {
       loader.classList.add('on');
       await new Promise((r) => setTimeout(r, 30));
       interiors[name] = v.build(renderer);
+      if (SAFE.on) safeMaterials(interiors[name].scene);
       // compile once so the first frame does not hitch
       renderer.compile(interiors[name].scene, camera);
       loader.classList.remove('on');
@@ -321,7 +325,9 @@ function tick() {
     } else if (camera.position.y < 4) camera.position.y = 4;
   }
 
-  composer.render(dt);
+  if (SAFE.on) renderer.render(renderPass.scene, camera);
+  else composer.render(dt);
+  if (checks < 3 && ++checkFrame % 4 === 0) healthCheck();
 
   // adaptive resolution keeps interaction smooth
   frames++; acc += dt;
@@ -337,12 +343,52 @@ function tick() {
 }
 
 // ---------------------------------------------------------------- boot
+// Without environment reflections, metals render black: soften them into lit paint.
+function safeMaterials(scene) {
+  scene.traverse((o) => {
+    const mats = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
+    for (const m of mats) if (m.isMeshStandardMaterial && !m.userData.safe) {
+      m.userData.safe = true;
+      m.metalness = Math.min(m.metalness, 0.25);
+      if (m.metalnessMap) { m.metalnessMap = null; m.metalness = 0.1; }
+      m.needsUpdate = true;
+    }
+  });
+}
+
+// Sample the finished frame; a uniformly white or black image means the GPU failed the render path.
+let checks = 0, checkFrame = 0, safeLevel = SAFE.on ? 1 : 0;
+const px = new Uint8Array(4);
+function healthCheck() {
+  checks++;
+  const gl = renderer.getContext();
+  renderer.setRenderTarget(null);
+  const w = gl.drawingBufferWidth, h = gl.drawingBufferHeight;
+  let white = 0, black = 0, first = null, same = 0;
+  for (let i = 1; i <= 3; i++) for (let j = 1; j <= 3; j++) {
+    gl.readPixels(Math.floor(w * i / 4), Math.floor(h * j / 4), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+    if (px[0] > 250 && px[1] > 250 && px[2] > 250) white++;
+    if (px[0] < 3 && px[1] < 3 && px[2] < 3) black++;
+    const key = px.join(',');
+    if (first === null) first = key; else if (key === first) same++;
+  }
+  const broken = white === 9 || black === 9 || same === 8;
+  if (!broken || VIEWS[current].kind === 'int') return;
+  safeLevel++;
+  SAFE.on = true;
+  env.enterSafe(safeLevel);
+  safeMaterials(world);
+  if (pixelRatio < maxPR) { pixelRatio = maxPR; resize(); }
+  checks = safeLevel >= 2 ? 3 : 0;
+}
+
 function boot() {
   document.body.dataset.time = timeName;
   ship = buildShip(renderer);
   world.add(ship.group);
   env = buildEnvironment(renderer, world);
   env.setPreset('day');
+  if (SAFE.on) { env.enterSafe(1); safeMaterials(world); }
   world.traverse((o) => {
     if (o.isMesh && o.material && o.material.isMeshStandardMaterial && o.material.envMapIntensity === 1) o.material.envMapIntensity = 0.9;
   });

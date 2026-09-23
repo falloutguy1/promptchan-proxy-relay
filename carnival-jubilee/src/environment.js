@@ -3,7 +3,7 @@ import { Sky } from 'three/examples/jsm/objects/Sky.js';
 import { Water } from 'three/examples/jsm/objects/Water.js';
 import * as TX from './textures.js';
 import { halfW, sternX, tipX } from './ship.js';
-import { rng, isMobile, smooth } from './util.js';
+import { rng, isMobile, smooth, SAFE } from './util.js';
 
 export const PRESETS = {
   day: {
@@ -55,6 +55,16 @@ export function buildEnvironment(renderer, scene) {
   water.material.uniforms.size.value = 0.55;
   water.receiveShadow = false;
   scene.add(water);
+  // Fallback ocean for GPUs without float render targets: no mirror pass, sun glint from Phong specular.
+  waterNormals.repeat.set(900, 900);
+  const simpleOcean = new THREE.Mesh(new THREE.PlaneGeometry(60000, 60000), new THREE.MeshPhongMaterial({
+    color: 0x0d3a58, specular: 0x9ab4c8, shininess: 90, normalMap: waterNormals, normalScale: new THREE.Vector2(0.7, 0.7),
+  }));
+  simpleOcean.rotation.x = -Math.PI / 2;
+  simpleOcean.visible = false;
+  scene.add(simpleOcean);
+  const safeAmbient = new THREE.AmbientLight(0xffffff, 0);
+  scene.add(safeAmbient);
 
   // foam collar along the hull & wake
   const foam = TX.foamTexture();
@@ -196,6 +206,7 @@ export function buildEnvironment(renderer, scene) {
   skyClone.scale.setScalar(1000);
   skyScene.add(skyClone);
   function envFor(name, P) {
+    if (SAFE.on) return null;
     if (envCache[name]) return envCache[name];
     const u = skyClone.material.uniforms;
     for (const k of ['turbidity', 'rayleigh', 'mieCoefficient', 'mieDirectionalG', 'sunPosition', 'cloudCoverage']) u[k].value = sky.material.uniforms[k].value;
@@ -258,6 +269,8 @@ export function buildEnvironment(renderer, scene) {
     const env = envFor(name, P);
     scene.environment = env;
     scene.environmentIntensity = P.envI;
+    safeAmbient.intensity = SAFE.on ? (name === 'night' ? 0.5 : 0.9) : 0;
+    simpleOcean.material.color.set(name === 'night' ? 0x040c18 : name === 'sunset' ? 0x1a2a3c : 0x0d3a58);
     if (onEnv) onEnv(P);
   }
 
@@ -272,7 +285,15 @@ export function buildEnvironment(renderer, scene) {
     sunLight.position.copy(center).addScaledVector(lightDirV, 500);
   }
 
+  function enterSafe(level = 1) {
+    water.visible = false;
+    simpleOcean.visible = true;
+    if (level >= 2) { sky.visible = false; scene.background = new THREE.Color(PRESETS[state.name].fog); }
+    setPreset(state.name);
+  }
+
   function update(t, dt) {
+    if (simpleOcean.visible) waterNormals.offset.set(t * 0.003, t * 0.002);
     water.material.uniforms.time.value = t * 0.55;
     sky.material.uniforms.time.value = t;
     wakeTex.offset.y = -t * 0.18;
@@ -288,5 +309,5 @@ export function buildEnvironment(renderer, scene) {
     }
   }
 
-  return { sky, water, sunLight, hemi, setPreset, focusShadow, update, state, PRESETS, birds };
+  return { sky, water, sunLight, hemi, setPreset, focusShadow, update, state, PRESETS, birds, enterSafe };
 }

@@ -3,12 +3,13 @@ import { Sky } from 'three/examples/jsm/objects/Sky.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import * as TX from '../textures.js';
-import { lathe, baked, mergeLoose, trs, instanced, rng } from '../util.js';
+import { lathe, baked, mergeLoose, trs, instanced, rng, SAFE } from '../util.js';
 
 export { RoundedBoxGeometry };
 
 let roomEnvCache = null;
 export function roomEnv(renderer) {
+  if (SAFE.on) return null;
   if (!roomEnvCache) {
     const pmrem = new THREE.PMREMGenerator(renderer);
     roomEnvCache = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
@@ -21,7 +22,7 @@ export function addVista(renderer, scene, { elev = 14, azim = 180, seaY = -14, t
   const sky = new Sky();
   // dim the view outside so windows read as sky and sea rather than a blown-out white
   sky.material.fragmentShader = 'uniform float skyGain;\n' + sky.material.fragmentShader.replace('gl_FragColor = vec4( texColor, 1.0 );', 'gl_FragColor = vec4( texColor * skyGain, 1.0 );');
-  sky.material.uniforms.skyGain = { value: gain };
+  sky.material.uniforms.skyGain = { value: SAFE.on ? Math.min(1, gain * 1.8) : gain };
   sky.scale.setScalar(8000);
   const u = sky.material.uniforms;
   u.turbidity.value = turbidity; u.rayleigh.value = rayleigh; u.mieCoefficient.value = 0.005; u.mieDirectionalG.value = 0.8;
@@ -36,11 +37,13 @@ export function addVista(renderer, scene, { elev = 14, azim = 180, seaY = -14, t
   }
   s2.material.uniforms.showSunDisc.value = 0;
   skyScene.add(s2);
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  const skyEnv = pmrem.fromScene(skyScene, 0).texture;
+  const skyEnv = SAFE.on ? null : new THREE.PMREMGenerator(renderer).fromScene(skyScene, 0).texture;
+  if (SAFE.on) scene.add(new THREE.AmbientLight(0xfff4e8, 0.9));
   const normals = TX.waterNormals();
   normals.repeat.set(260, 260);
-  const sea = new THREE.Mesh(new THREE.PlaneGeometry(16000, 16000), new THREE.MeshStandardMaterial({
+  const sea = new THREE.Mesh(new THREE.PlaneGeometry(16000, 16000), SAFE.on ? new THREE.MeshPhongMaterial({
+    color: 0x1f5a82, specular: 0xbfd4e4, shininess: 80, normalMap: normals, normalScale: new THREE.Vector2(0.6, 0.6),
+  }) : new THREE.MeshStandardMaterial({
     color: 0x0a2c44, roughness: 0.07, metalness: 0.0, normalMap: normals, normalScale: new THREE.Vector2(0.55, 0.55), envMap: skyEnv, envMapIntensity: gain * 1.6,
   }));
   sea.rotation.x = -Math.PI / 2;
