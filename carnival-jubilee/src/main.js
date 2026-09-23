@@ -339,7 +339,7 @@ function tick() {
     if (np !== pixelRatio) { pixelRatio = np; resize(); }
     frames = 0; acc = 0;
   }
-  requestAnimationFrame(tick);
+  requestAnimationFrame(loop);
 }
 
 // ---------------------------------------------------------------- boot
@@ -382,23 +382,82 @@ function healthCheck() {
   checks = safeLevel >= 2 ? 3 : 0;
 }
 
-function boot() {
+// ---------------------------------------------------------------- diagnostics (only visible with #debug)
+const DIAG = { t0: performance.now(), marks: [], errors: [] };
+const debugOn = location.hash === '#debug';
+let diagEl = null;
+function mark(m) { DIAG.marks.push(`${((performance.now() - DIAG.t0) / 1000).toFixed(2)}s ${m}`); drawDiag(); }
+function report(e) { if (DIAG.errors.length > 20) return; DIAG.errors.push(String(e && (e.stack || e.message) || e).slice(0, 400)); drawDiag(); }
+function drawDiag() {
+  if (!debugOn) return;
+  if (!diagEl) {
+    diagEl = document.createElement('pre');
+    diagEl.style.cssText = 'position:fixed;left:8px;top:8px;right:8px;max-height:60%;overflow:auto;z-index:20;margin:0;padding:8px;font:11px/1.35 ui-monospace,monospace;color:#cfe;background:rgba(0,0,0,.72);border-radius:8px;white-space:pre-wrap;pointer-events:auto';
+    document.body.appendChild(diagEl);
+  }
+  const gl = renderer.getContext();
+  const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+  const gpu = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+  diagEl.textContent = [`gpu: ${gpu}`, `safe: ${SAFE.on} level ${safeLevel}  floatRT: ${renderer.extensions.has('EXT_color_buffer_float')}  pr: ${pixelRatio}`,
+    `mobile: ${isMobile}  ${window.innerWidth}x${window.innerHeight}@${window.devicePixelRatio}`, ...DIAG.marks, ...DIAG.errors.map((e) => 'ERR ' + e)].join('\n');
+}
+window.addEventListener('error', (e) => report(e.error || e.message));
+window.addEventListener('unhandledrejection', (e) => report(e.reason));
+canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); report('webgl context lost'); });
+
+const nextFrame = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
+let started = false;
+function finishLoading() {
+  if (!started) { started = true; requestAnimationFrame(loop); }
+  loader.classList.remove('on');
+  document.body.classList.add('ready');
+  mark('ready');
+}
+function loop() {
+  try { tick(); } catch (e) { report(e); requestAnimationFrame(loop); }
+}
+
+async function bootOnce() {
   document.body.dataset.time = timeName;
+  mark('boot start');
+  await nextFrame();
   ship = buildShip(renderer);
   world.add(ship.group);
+  mark('ship built');
+  await nextFrame();
   env = buildEnvironment(renderer, world);
   env.setPreset('day');
   if (SAFE.on) { env.enterSafe(1); safeMaterials(world); }
   world.traverse((o) => {
     if (o.isMesh && o.material && o.material.isMeshStandardMaterial && o.material.envMapIntensity === 1) o.material.envMapIntensity = 0.9;
   });
+  mark('environment built');
   resize();
   const start = (location.hash || '').replace('#', '');
-  go(VIEWS[start] ? start : 'hero', { instant: true }).then(() => {
-    renderer.compile(world, camera);
-    requestAnimationFrame(tick);
-    setTimeout(() => { loader.classList.remove('on'); document.body.classList.add('ready'); }, 250);
-  });
+  current = null; busy = false;
+  await go(VIEWS[start] ? start : 'hero', { instant: true });
+  await nextFrame();
+  try {
+    if (renderer.compileAsync && renderer.extensions.has('KHR_parallel_shader_compile')) await Promise.race([renderer.compileAsync(world, camera), new Promise((r) => setTimeout(r, 8000))]);
+  } catch (e) { report(e); }
+  mark('shaders ready');
+}
+
+async function boot() {
   window.__jubilee = { go, VIEWS, renderer, camera, controls, get pr() { return pixelRatio; } };
+  // never leave the loader up forever
+  const watchdog = setTimeout(() => { report('boot watchdog fired'); finishLoading(); }, 30000);
+  try {
+    await bootOnce();
+  } catch (e) {
+    report(e);
+    if (!SAFE.on) {
+      SAFE.on = true; safeLevel = 1;
+      world.clear();
+      try { await bootOnce(); } catch (e2) { report(e2); }
+    }
+  }
+  clearTimeout(watchdog);
+  finishLoading();
 }
 requestAnimationFrame(() => setTimeout(boot, 40));

@@ -10,6 +10,12 @@ function canvas(w, h) {
   return [c, c.getContext('2d')];
 }
 
+const memo = new Map();
+function cached(key, make) {
+  if (!memo.has(key)) memo.set(key, make());
+  return memo.get(key);
+}
+
 function tex(c, { srgb = true, repeat = false, aniso = true } = {}) {
   const t = new THREE.CanvasTexture(c);
   if (srgb) t.colorSpace = THREE.SRGBColorSpace;
@@ -66,6 +72,9 @@ function pixels(w, h, fn) {
 
 // ---------- ocean ----------
 export function waterNormals() {
+  return tex(cached('water', waterCanvas), { srgb: false, repeat: true });
+}
+function waterCanvas() {
   const S = 512;
   const noise = makeNoise(11);
   const hgt = new Float32Array(S * S);
@@ -84,7 +93,7 @@ export function waterNormals() {
     const len = Math.hypot(nx, ny, nz);
     o[0] = (nx / len * 0.5 + 0.5) * 255; o[1] = (ny / len * 0.5 + 0.5) * 255; o[2] = (nz / len * 0.5 + 0.5) * 255; o[3] = 255;
   });
-  return tex(c, { srgb: false, repeat: true });
+  return c;
 }
 
 export function foamTexture() {
@@ -327,6 +336,9 @@ export function windowWallTextures(seed = 9, style = 'band') {
 
 // ---------- decks ----------
 export function teakTexture() {
+  return tex(cached('teak', teakCanvas), { repeat: true });
+}
+function teakCanvas() {
   const W = 1024, H = 1024;
   const r = rng(17);
   const noise = makeNoise(5);
@@ -345,7 +357,7 @@ export function teakTexture() {
     if (fx < 1.6 || segPos < 0.004) { R = 38; G = 30; B = 24; }
     o[0] = R; o[1] = G; o[2] = B; o[3] = 255;
   });
-  return tex(c, { repeat: true });
+  return c;
 }
 
 export function compositeDeck(base = [196, 204, 210]) {
