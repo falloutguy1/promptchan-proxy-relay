@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#050b18">
+<title>Carnival Jubilee 3D</title>
+<style>
+:root {
+  color-scheme: dark;
+  --ink: #050b18;
+  --glass: rgba(9, 18, 38, 0.52);
+  --glass-hi: rgba(255, 255, 255, 0.13);
+  --line: rgba(255, 255, 255, 0.11);
+  --icon: #e9edf4;
+  --icon-dim: rgba(233, 237, 244, 0.62);
+  --red: #e0263a;
+  --blue: #2c8fd6;
+  --radius: 20px;
+}
+html, body { height: 100%; margin: 0; background: var(--ink); overflow: hidden; overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
+body { touch-action: none; user-select: none; -webkit-user-select: none; }
+#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; outline: none; }
+#vignette { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(0, 4, 14, 0.42) 100%); }
+#fade { position: fixed; inset: 0; background: #02050c; opacity: 0; pointer-events: none; transition: opacity .42s cubic-bezier(.4, 0, .2, 1); }
+#fade.on { opacity: 1; }
+
+/* loader: a hull line drawing itself over deep water, no words */
+#loader { position: fixed; inset: 0; display: grid; place-items: center; background: radial-gradient(90% 70% at 50% 60%, #0d2a52 0%, #050b18 70%); opacity: 0; pointer-events: none; transition: opacity .6s ease; }
+#loader.on { opacity: 1; pointer-events: auto; }
+body:not(.ready) #loader { opacity: 1; }
+#loader svg { width: min(62vw, 360px); height: auto; overflow: visible; }
+#loader .hull { fill: none; stroke: #e9edf4; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 900; stroke-dashoffset: 900; animation: draw 2.6s cubic-bezier(.6, 0, .2, 1) infinite; }
+#loader .tail { fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-dasharray: 60; stroke-dashoffset: 60; animation: draw 2.6s .5s cubic-bezier(.6, 0, .2, 1) infinite; }
+#loader .sea { stroke: rgba(120, 180, 230, .35); stroke-width: 1; fill: none; stroke-dasharray: 6 10; animation: sea 1.4s linear infinite; }
+@keyframes draw { 0% { stroke-dashoffset: 900; opacity: .2 } 55% { stroke-dashoffset: 0; opacity: 1 } 85% { opacity: 1 } 100% { stroke-dashoffset: 0; opacity: 0 } }
+@keyframes sea { to { stroke-dashoffset: -32 } }
+
+/* dock */
+.bar { position: fixed; z-index: 5; display: flex; align-items: center; gap: 4px; padding: 6px; background: var(--glass); border: 1px solid var(--line); border-radius: var(--radius);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4); backdrop-filter: blur(18px) saturate(1.4); box-shadow: 0 10px 40px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .06);
+  transition: opacity .6s ease, transform .6s cubic-bezier(.2, .8, .2, 1); }
+body:not(.ready) .bar { opacity: 0; transform: translateY(12px); }
+#dock { left: 50%; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); max-width: calc(100vw - 32px); overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; }
+body:not(.ready) #dock { transform: translate(-50%, 12px); }
+#dock::-webkit-scrollbar { display: none; }
+#util { top: calc(14px + env(safe-area-inset-top, 0px)); right: calc(14px + env(safe-area-inset-right, 0px)); flex-direction: column; }
+.sep { flex: 0 0 1px; align-self: stretch; margin: 8px 4px; background: var(--line); }
+button { position: relative; flex: 0 0 auto; width: 46px; height: 46px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 14px; background: transparent; color: var(--icon-dim); cursor: pointer; scroll-snap-align: center;
+  transition: background .25s ease, color .25s ease, transform .15s ease; }
+button:hover { color: var(--icon); background: rgba(255, 255, 255, .07); }
+button:active { transform: scale(.94); }
+button:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+button:disabled { opacity: .3; cursor: default; }
+button svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+button.active { color: #fff; background: var(--glass-hi); }
+button.active::after { content: ""; position: absolute; left: 50%; bottom: 4px; width: 14px; height: 2px; margin-left: -7px; border-radius: 2px; background: linear-gradient(90deg, var(--red), #fff 50%, var(--blue)); }
+.t-day, .t-sunset, .t-night, .p-pause { display: none; }
+body[data-time="day"] .t-day, body[data-time="sunset"] .t-sunset, body[data-time="night"] .t-night { display: block; }
+body.touring .p-play { display: none; }
+body.touring .p-pause { display: block; }
+body.touring #tourBtn { color: #fff; background: var(--glass-hi); }
+@media (max-width: 520px) {
+  button { width: 42px; height: 42px; border-radius: 12px; }
+  button svg { width: 22px; height: 22px; }
+  .bar { padding: 5px; gap: 2px; border-radius: 18px; }
+}
+@media (prefers-reduced-motion: reduce) { #loader .hull, #loader .tail, #loader .sea { animation: none; stroke-dashoffset: 0; } }
+</style>
+</head>
+<body data-time="day">
+<canvas id="scene" tabindex="0" aria-label="Carnival Jubilee 3D model"></canvas>
+<div id="vignette"></div>
+<div id="fade"></div>
+<div id="loader" class="on" aria-hidden="true">
+  <svg viewBox="0 0 300 110">
+    <path class="hull" d="M8 78 L262 78 Q282 60 292 52 L24 52 Q12 64 8 78 Z M30 52 L34 40 L240 40 L262 52 M44 40 L48 30 L214 30 L230 40 M90 30 L94 22 L170 22 L178 30"/>
+    <path class="tail" stroke="#e0263a" d="M84 22 L66 6"/>
+    <path class="tail" stroke="#2c8fd6" d="M92 22 L78 8"/>
+    <path class="sea" d="M0 92 Q20 86 40 92 T80 92 T120 92 T160 92 T200 92 T240 92 T280 92 T320 92"/>
+  </svg>
+</div>
+
+<nav id="dock" class="bar" aria-label="Views">
+  <button data-view="hero" aria-label="Bow three-quarter view"><svg viewBox="0 0 24 24"><path d="M2 14h17.5l2.5-3"/><path d="M2 14l2.6 4.5h12.2L22 11"/><path d="M5 14v-3.2h11.5L19 14"/><path d="M8 10.8V8.3h6.2l1.4 2.5"/><path d="M9.6 8.3 8.7 4.6h2l1 3.7"/></svg></button>
+  <button data-view="profile" aria-label="Broadside profile"><svg viewBox="0 0 24 24"><path d="M1.5 14.5h21l-3.2 4H4.3z"/><path d="M4 14.5v-3h14.5l1.2 3"/><path d="M6.5 11.5v-2.6h10l1 2.6"/><path d="M8.5 8.9 7.6 5.5h2.2l.9 3.4"/></svg></button>
+  <button data-view="aerial" aria-label="Aerial view"><svg viewBox="0 0 24 24"><path d="M2.5 12c0-2.6 2.6-3.8 7-3.8h6.3c3 0 5.2 1.6 6.2 3.8-1 2.2-3.2 3.8-6.2 3.8H9.5c-4.4 0-7-1.2-7-3.8z"/><rect x="8" y="10.4" width="5.5" height="3.2" rx="1.2"/><circle cx="17" cy="12" r=".9"/></svg></button>
+  <button data-view="stern" aria-label="Stern view"><svg viewBox="0 0 24 24"><path d="M4 13.5h16l-2.4 5.5H6.4z"/><path d="M5.5 13.5V9.8h13v3.7"/><path d="M8 9.8V7.3h8v2.5"/><path d="M10.5 7.3 9.6 3.8h2.2l.7 3.5"/><path d="M3 21.5c2 0 2.5-.8 4.5-.8s2.5.8 4.5.8 2.5-.8 4.5-.8 2.5.8 4.5.8"/></svg></button>
+  <button data-view="lido" aria-label="Lido pool deck"><svg viewBox="0 0 24 24"><path d="M8 16V5.5a2 2 0 0 1 4 0"/><path d="M15 16V5.5a2 2 0 0 1 4 0"/><path d="M8 9h7M8 12.5h7"/><path d="M2.5 19.5c1.8 0 2.2-1 4-1s2.2 1 4 1 2.2-1 4-1 2.2 1 4 1 2.2-1 3-1"/></svg></button>
+  <button data-view="coaster" aria-label="Roller coaster deck"><svg viewBox="0 0 24 24"><path d="M2 17.5c2.5 0 3.5-9.5 7.5-9.5 3.2 0 3 6 6.2 6 2.3 0 3.3-4.2 6.3-5.5"/><path d="M4.4 13.2v8M9.5 8v13.2M15.7 14v7.2M21 9.2v12"/><path d="M2 21.2h20"/></svg></button>
+  <button data-view="ride" aria-label="Ride the coaster"><svg viewBox="0 0 24 24"><path d="M2 20c5 0 6.5-9 10-9s5 9 10 9"/><path d="M8.5 9.2h7l1.2-2.6a1 1 0 0 0-.9-1.4H8.2a1 1 0 0 0-.9 1.4z"/><circle cx="12" cy="4" r="1"/><path d="M4 8.5h2M3 11h2.5"/></svg></button>
+  <span class="sep" aria-hidden="true"></span>
+  <button data-view="atrium" aria-label="Grand atrium"><svg viewBox="0 0 24 24"><path d="M12 2v3.5"/><path d="M4.5 8.5h15"/><path d="M5.5 8.5c0 3.4 2.9 5.6 6.5 5.6s6.5-2.2 6.5-5.6"/><path d="M8 13.3v3M12 14.1v4.4M16 13.3v3"/><circle cx="12" cy="6.3" r="1"/><path d="M8 16.8l-.4 1M16 16.8l.4 1M12 19l0 1.5"/></svg></button>
+  <button data-view="stateroom" aria-label="Balcony stateroom"><svg viewBox="0 0 24 24"><path d="M3 19V7.5"/><path d="M3 14.5h18V19"/><path d="M21 14.5v-2a3 3 0 0 0-3-3h-7.5v5"/><circle cx="6.7" cy="11.8" r="1.7"/></svg></button>
+  <button data-view="dining" aria-label="Dining room"><svg viewBox="0 0 24 24"><path d="M7 3v18"/><path d="M4.5 3v4.5a2.5 2.5 0 0 0 5 0V3"/><path d="M17 21V3c-2.3 1.2-3.4 4.2-3.4 8.2H17"/></svg></button>
+  <button data-view="theater" aria-label="Main theatre"><svg viewBox="0 0 24 24"><path d="M2.5 3.5h19"/><path d="M3.5 3.5c0 6.5 1.5 11 4.8 13.5M20.5 3.5c0 6.5-1.5 11-4.8 13.5"/><path d="M3.5 3.5c1.8 2.2 4 3.3 8.5 3.3s6.7-1.1 8.5-3.3"/><path d="M2.5 20.5h19"/><path d="M9.5 20.5v-2.2M14.5 20.5v-2.2"/></svg></button>
+</nav>
+
+<div id="util" class="bar">
+  <button id="timeBtn" aria-label="Change time of day">
+    <svg class="t-day" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.5 1.5M17.2 17.2l1.5 1.5M5.3 18.7l1.5-1.5M17.2 6.8l1.5-1.5"/></svg>
+    <svg class="t-sunset" viewBox="0 0 24 24"><path d="M2.5 17.5h19"/><path d="M6.5 17.5a5.5 5.5 0 0 1 11 0"/><path d="M12 6.5v3M5.2 10l1.6 1.6M18.8 10l-1.6 1.6"/><path d="M5.5 21h13"/></svg>
+    <svg class="t-night" viewBox="0 0 24 24"><path d="M19.8 14.6A8 8 0 0 1 9.4 4.2a8 8 0 1 0 10.4 10.4z"/><path d="M17 3.5v2.4M15.8 4.7h2.4"/></svg>
+  </button>
+  <button id="tourBtn" aria-label="Auto tour" aria-pressed="false">
+    <svg class="p-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z"/></svg>
+    <svg class="p-pause" viewBox="0 0 24 24"><path d="M8.5 5.5v13M15.5 5.5v13"/></svg>
+  </button>
+  <button id="fsBtn" aria-label="Fullscreen"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+</div>
+<script>/*BUNDLE*/</script>
+</body>
+</html>
