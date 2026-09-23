@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Crash Site</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0d0f10; overflow: hidden; }
+  canvas { display: block; width: 100vw; height: 100vh; touch-action: none; cursor: grab; }
+  canvas:active { cursor: grabbing; }
+  #bar { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); display: flex; gap: 8px; padding: 8px;
+    background: rgba(14, 17, 19, .38); border: 1px solid rgba(255, 255, 255, .08); border-radius: 999px;
+    backdrop-filter: blur(14px) saturate(1.2); -webkit-backdrop-filter: blur(14px) saturate(1.2); z-index: 2;
+    opacity: .78; transition: opacity .4s; }
+  #bar:hover { opacity: 1; }
+  #bar button { width: 42px; height: 42px; border-radius: 50%; border: 0; padding: 10px; cursor: pointer;
+    background: rgba(255, 255, 255, .05); color: rgba(225, 232, 236, .7); transition: background .25s, color .25s, transform .25s; }
+  #bar button:hover { background: rgba(255, 255, 255, .14); color: #fff; transform: translateY(-1px); }
+  #bar button.on { background: rgba(214, 226, 232, .88); color: #111416; }
+  #bar button:nth-child(7) { margin-left: 6px; }
+  #bar svg { width: 100%; height: 100%; display: block; }
+  #fade { position: fixed; inset: 0; background: #0d0f10; z-index: 3; pointer-events: none; transition: opacity 1.6s ease; }
+  #fade.gone { opacity: 0; }
+  @media (max-width: 520px) { #bar { gap: 4px; padding: 6px; bottom: 14px; } #bar button { width: 36px; height: 36px; padding: 8px; } }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="bar"></div>
+<div id="fade"></div>
+<script>var m=location.search.match(/dbg=([^&]*)/);if(m)window.__dbg=decodeURIComponent(m[1]);</script>
+<script>/*BUNDLE*/</script>
+</body>
+</html>
