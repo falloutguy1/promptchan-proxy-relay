@@ -81,6 +81,7 @@ select{background:var(--panel-solid);}
 .chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;}
 .chip{border:1px solid var(--pip-dim);padding:0 6px;font-size:16px;}
 .chip.have{background:var(--pip);color:var(--ink-dark);}
+.chip.trait{border-style:dashed;cursor:help;}
 .inv{list-style:none;margin:0;padding:0;display:grid;gap:1px;}
 .inv li{display:flex;justify-content:space-between;gap:8px;padding:2px 4px;font-size:18px;}
 .inv li:nth-child(odd){background:rgba(var(--pip-rgb),.05);}
@@ -228,6 +229,7 @@ select{background:var(--panel-solid);}
             <span>RADS</span><div class="bar rads"><i id="bRads"></i></div><span class="v" id="vRads">0</span>
           </div>
           <div class="status">
+            <div><div class="k">PERSONALITY</div><div class="chips" id="sTraits"></div></div>
             <div><div class="k">DOING</div><div class="t" id="sTask">Waking up</div></div>
             <div><div class="k">GOAL</div><div class="t" id="sGoal">Leave the vault</div></div>
             <div><div class="k">THINKING</div><div class="t thought" id="sThought">"Door's opening. No turning back."</div></div>
@@ -239,6 +241,7 @@ select{background:var(--panel-solid);}
         <section data-panel="inv" hidden><ul class="inv" id="invList"></ul></section>
         <section data-panel="data" class="data" hidden>
           <h3>Objectives</h3><ul id="objList"></ul>
+          <h3>Memory</h3><ul id="memList"></ul>
           <h3>Locations</h3><ul id="locList"></ul>
           <h3>Record</h3><ul id="recList"></ul>
         </section>
@@ -774,10 +777,12 @@ const LAYOUT = {
   overpass:{ x: 70, z: 150, name: 'Broken Overpass' },
 };
 const SITES = [ // homestead candidates (flattened)
-  { id: 'clearing', x: 232, z: 300, r: 17, name: 'pine clearing by the lake' },
-  { id: 'ridge', x: 330, z: 168, r: 15, name: 'wooded ridge' },
-  { id: 'farm', x: -86, z: 268, r: 15, name: 'field behind Old Mill Farm' },
-  { id: 'townedge', x: 122, z: -12, r: 14, name: 'lot east of Redwater' },
+  { id: 'clearing', x: 232, z: 300, r: 17, name: 'pine clearing by the lake', kind: 'woods' },
+  { id: 'ridge', x: 330, z: 168, r: 15, name: 'quiet forest glade', kind: 'woods' },
+  { id: 'farm', x: -86, z: 268, r: 15, name: 'field behind Old Mill Farm', kind: 'farm' },
+  { id: 'townedge', x: 122, z: -12, r: 14, name: 'lot east of Redwater', kind: 'town' },
+  { id: 'overpass', x: -30, z: 122, r: 14, name: 'lot by the broken overpass', kind: 'town' },
+  { id: 'hilltop', x: 170, z: -262, r: 14, name: 'hilltop below the radio tower', kind: 'high' },
 ];
 const ROADS = [
   { w: 7, pts: [[0, -372], [6, -300], [9, -200], [10, -70], [26, 60], [40, 150], [58, 300], [44, 490]] },
@@ -839,7 +844,21 @@ function computeFlats() {
   add(LAYOUT.raiders.x, LAYOUT.raiders.z, 36, 22);
   add(LAYOUT.farm.x, LAYOUT.farm.z, 30, 22);
   add(LAYOUT.tower.x, LAYOUT.tower.z, 12, 10, baseHeight(LAYOUT.tower.x, LAYOUT.tower.z) - 1);
+  placeHighSite('hilltop', 60, 300, -330, -110, (x, z) => roadDist(x, z).d > 20 && dist2(x, z, LAYOUT.tower.x, LAYOUT.tower.z) > 34 && dist2(x, z, LAYOUT.gas.x, LAYOUT.gas.z) > 60 && dist2(x, z, LAYOUT.town.x, LAYOUT.town.z) > 115 && dist2(x, z, LAYOUT.vault.x, LAYOUT.vault.z) > 110);
   for (const s of SITES) add(s.x, s.z, s.r, 14);
+}
+/* move a site to the highest, least bumpy ground inside a box, so "high ground" means it on every map */
+function placeHighSite(id, x0, x1, z0, z1, ok) {
+  const site = SITES.find(q => q.id === id); if (!site) return;
+  let best = null, bs = -1e9;
+  for (let x = x0; x <= x1; x += 10) for (let z = z0; z <= z1; z += 10) {
+    if (!ok(x, z)) continue;
+    const h = baseHeight(x, z); let ring = 0, rough = 0;
+    for (let k = 0; k < 8; k++) { const a = k / 8 * TAU; ring += baseHeight(x + Math.cos(a) * 45, z + Math.sin(a) * 45); rough = Math.max(rough, Math.abs(baseHeight(x + Math.cos(a) * 12, z + Math.sin(a) * 12) - h)); }
+    const sc = h - ring / 8 - rough * 0.8;
+    if (sc > bs) { bs = sc; best = [x, z]; }
+  }
+  if (best) { site.x = best[0]; site.z = best[1]; }
 }
 function heightAt(x, z) {
   let h = baseHeight(x, z);
@@ -2282,8 +2301,9 @@ const LOOT = {
   register: [['caps', 12, 35, 1]],
   car: [['scrap', 1, 2, 0.6], ['ammo_10mm', 4, 10, 0.25], ['can_food', 1, 1, 0.25], ['fizz', 1, 1, 0.3], ['cloth', 1, 1, 0.3]],
   woodpile: [['wood', 3, 6, 1]],
+  supply: [['ammo_10mm', 20, 40, 0.9], ['ammo_308', 6, 14, 0.55], ['shells', 6, 12, 0.5], ['stim', 1, 3, 0.9], ['radpurge', 1, 2, 0.6], ['water', 2, 4, 0.9], ['can_food', 2, 3, 0.8], ['circuitry', 1, 1, 0.4], ['w_shotgun', 1, 1, 0.12], ['w_hunting', 1, 1, 0.1]],
 };
-const CONTAINER_NAMES = { crate: 'Wooden Crate', ammo: 'Ammo Box', locker: 'Locker', toolbox: 'Toolbox', firstaid: 'First Aid Box', cabinet: 'Medicine Cabinet', fridge: 'Fridge', vending: 'Fizz Cola Machine', body: 'Skeleton', safe: 'Wall Safe', mailbox: 'Mailbox', register: 'Cash Register', car: 'Car Trunk', woodpile: 'Wood Pile' };
+const CONTAINER_NAMES = { crate: 'Wooden Crate', ammo: 'Ammo Box', locker: 'Locker', toolbox: 'Toolbox', firstaid: 'First Aid Box', cabinet: 'Medicine Cabinet', fridge: 'Fridge', vending: 'Fizz Cola Machine', body: 'Skeleton', safe: 'Wall Safe', mailbox: 'Mailbox', register: 'Cash Register', car: 'Car Trunk', woodpile: 'Wood Pile', supply: 'Supply Drop' };
 function rollLoot(type, rng, fixed = []) {
   const out = {};
   for (const [id, a, b, p] of LOOT[type] || []) if (rng.chance(p)) out[id] = (out[id] || 0) + rng.int(a, b);
@@ -2368,6 +2388,14 @@ function containerModel(type) {
       pivot = new THREE.Group(); pivot.position.set(0, 0.92, 0.18); g.add(pivot); mesh(boxG(0.36, 0.07, 0.3, 1), 'chrome', 0, 0, -0.15, 0, 0, 0, pivot);
       mesh(boxG(0.6, 0.9, 0.5, 1), 'woodDark', 0, 0.45, 0); axis = 'z'; ang = 0.3; break;
     }
+    case 'supply': {
+      const olive = new THREE.MeshStandardMaterial({ color: 0x66744a, roughness: 0.6, metalness: 0.2 });
+      mesh(boxG(1.3, 0.74, 0.86, 1), olive, 0, 0.37, 0);
+      for (const s of [-1, 1]) mesh(boxG(0.07, 0.78, 0.9, 1), 'darkMetal', s * 0.45, 0.39, 0);
+      mesh(boxG(0.34, 0.34, 0.01, 1), new THREE.MeshStandardMaterial({ color: 0xe6e0c8, roughness: 0.8 }), 0, 0.4, 0.435, 0, 0, Math.PI / 4);
+      pivot = new THREE.Group(); pivot.position.set(0, 0.74, -0.43); g.add(pivot);
+      mesh(boxG(1.32, 0.08, 0.88, 1), olive, 0, 0.04, 0.43, 0, 0, 0, pivot); ang = -1.9; break;
+    }
     case 'car': break;
   }
   mergeRig(g);
@@ -2380,7 +2408,7 @@ function addContainer(type, x, z, rot = 0, opts = {}) {
   const m = containerModel(type);
   m.g.position.set(x, y, z); m.g.rotation.y = rot; scene.add(m.g);
   const c = { id: CID++, type, name: opts.name || CONTAINER_NAMES[type], x, z, y, obj: m.g, pivot: m.pivot, axis: m.axis, ang: m.ang, looted: false, open: 0,
-    loot: rollLoot(type, rng, opts.fixed || []), region: regionAt(x, z), known: false, danger: radAt(x, z) };
+    loot: rollLoot(type, rng, opts.fixed || []), region: regionAt(x, z), known: false, danger: radAt(x, z), poiKind: opts.poiKind || null };
   if (type === 'crate' || type === 'locker' || type === 'fridge' || type === 'vending' || type === 'safe' || type === 'cabinet') addCircle(x, z, type === 'crate' ? 0.45 : 0.4, false);
   CONTAINERS.push(c);
   return c;
@@ -2409,7 +2437,7 @@ function polyAt(pts, v, axis) { // interpolate polyline: given coordinate v on a
 function noScatter(x, z, pad = 0) { for (const n of NOSCATTER) if (dist2(x, z, n.x, n.z) < n.r + pad) return true; return false; }
 function containersFor(kind, spots, rng, extra = [], defY) {
   const list = [];
-  extra.forEach((e, i) => { if (spots[i]) list.push(addContainer(e.type, spots[i][0], spots[i][1], rng.range(0, TAU), { fixed: e.fixed || [], rng, y: e.y ?? defY })); });
+  extra.forEach((e, i) => { if (spots[i]) list.push(addContainer(e.type, spots[i][0], spots[i][1], rng.range(0, TAU), { fixed: e.fixed || [], rng, y: e.y ?? defY, poiKind: kind })); });
   return list;
 }
 function town() {
@@ -2436,9 +2464,9 @@ function town() {
       const signs = { hardware: ['signHardware', 4], clinic: null, police: null };
       res = ruinBuilding(sl.x, sl.z, sl.rot, w, d, floors, rng.chance(0.6) ? 'brick' : 'concrete', rng.int(1, 1e6), { sign: signs[kind]?.[0], signAspect: signs[kind]?.[1] });
       const fy = res.y + 0.15;
-      if (kind === 'hardware') { poi = addPOI('Redwater Hardware', sl.x, sl.z, 12, 'hardware', 1.5); containersFor(kind, res.spots, rng, [{ type: 'toolbox', fixed: ['saw'] }, { type: 'crate' }, { type: 'crate' }], fy); }
+      if (kind === 'hardware') { poi = addPOI('Redwater Hardware', sl.x, sl.z, 12, 'hardware', 1.5); containersFor(kind, res.spots, rng, [{ type: 'toolbox' }, { type: 'crate' }, { type: 'crate' }], fy); }
       else if (kind === 'clinic') { poi = addPOI('Junction Clinic', sl.x, sl.z, 12, 'clinic', 1.4); containersFor(kind, res.spots, rng, [{ type: 'cabinet' }, { type: 'cabinet' }, { type: 'firstaid' }], fy); }
-      else if (kind === 'police') { poi = addPOI('Police Station', sl.x, sl.z, 12, 'police', 1.6); containersFor(kind, res.spots, rng, [{ type: 'ammo' }, { type: 'locker', fixed: ['w_hunting'] }, { type: 'ammo' }, { type: 'safe' }], fy); }
+      else if (kind === 'police') { poi = addPOI('Police Station', sl.x, sl.z, 12, 'police', 1.6); containersFor(kind, res.spots, rng, [{ type: 'ammo' }, { type: 'locker' }, { type: 'ammo' }, { type: 'safe' }], fy); }
       else if (kind === 'church') {
         const k = new Kit(); k.box('brick', 3, 9, 3, 0, 4.5, 0, 0, 0, 0, 2.5); k.add('rust', new THREE.ConeGeometry(2.3, 5, 4), M4(0, 11.5, 0, 0, Math.PI / 4, 0)); k.box('woodDark', 0.15, 1.6, 0.15, 0, 14.6, 0); k.box('woodDark', 0.9, 0.15, 0.15, 0, 14.9, 0);
         const [cx, cz] = lw(sl.x, sl.z, sl.rot, 0, -d / 2 - 1.5); placeStatic(k, cx, cz, sl.rot, res.y); addCircle(cx, cz, 2);
@@ -2471,7 +2499,7 @@ function hunterCabin() {
   const x = 286, z = 238, rot = 2.4, rng = new RNG(S.seed + 17);
   const res = woodHouse(x, z, rot, 6.5, 5.5, S.seed + 18, 0.2);
   const p = addPOI("Hunter's Cabin", x, z, 10, 'cabin', 1.3); p.door = res.door;
-  containersFor('cabin', res.spots, rng, [{ type: 'crate', y: res.y }, { type: 'locker', y: res.y, fixed: rng.chance(0.35) ? ['w_hunting'] : [] }]);
+  containersFor('cabin', res.spots, rng, [{ type: 'crate', y: res.y }, { type: 'locker', y: res.y }]);
   const [wx, wz] = lw(x, z, rot, 4.5, 2); addContainer('woodpile', wx, wz, rot);
   NOSCATTER.push({ x, z, r: 10 });
 }
@@ -2613,6 +2641,25 @@ function scatterNature(progress) {
     else { dCol.setRGB(0.62 + rng.range(-0.06, 0.08), 0.52 + rng.range(-0.06, 0.06), 0.3 + rng.range(-0.05, 0.05)); instAdd('drygrass', M4(px, gy - 0.03, pz, 0, rng.range(0, TAU), 0, s * (field > 0.5 ? 1.5 : 1)), dCol.clone()); }
   }
 }
+/* the three tools and the good weapons turn up in different places in every world */
+function distributeKeyLoot() {
+  const r = new RNG(S.seed + 97), used = new Set();
+  const tools = TOOLS_NEEDED.slice(); for (let i = tools.length - 1; i > 0; i--) { const j = Math.floor(r.next() * (i + 1)); [tools[i], tools[j]] = [tools[j], tools[i]]; }
+  const slots = CONTAINERS.filter(c => c.poiKind && TOOL_PRIOR[c.poiKind] && (c.type === 'toolbox' || c.type === 'crate' || c.type === 'locker'));
+  S.flags.toolSpots = {};
+  for (const t of tools) {
+    const opts = slots.filter(c => !used.has(c) && !(t === 'hammer' && c.poiKind === 'raiders'))
+      .map(c => [c, TOOL_PRIOR[c.poiKind][t] * (c.type === 'toolbox' ? 2 : 1) * (c.poiKind === 'house' || c.poiKind === 'ruin' ? 0.25 : c.poiKind === 'raiders' ? 0.5 : 1)]);
+    if (!opts.length) continue;
+    const c = r.weighted(opts); used.add(c); c.loot[t] = 1; S.flags.toolSpots[t] = c.poiKind;
+  }
+  const of = (kind, types) => { const l = CONTAINERS.filter(c => c.poiKind === kind && !used.has(c) && (!types || types.includes(c.type))); return l.length ? l[Math.floor(r.next() * l.length)] : null; };
+  const place = (id, opts) => { const o = opts.filter(e => e[0]); if (!o.length) return; const c = r.weighted(o); used.add(c); c.loot[id] = 1; S.flags.toolSpots[id] = c.poiKind; };
+  place('w_machete', [[of('gas', ['crate']), 1], [of('farm', ['crate']), 0.8], [of('cabin'), 0.6], [of('ruin', ['crate', 'locker']), 0.5], [of('house', ['crate', 'locker']), 0.5]]);
+  place('w_hunting', [[of('police', ['locker']), 1], [of('cabin', ['locker', 'crate']), 0.8], [of('tower'), 0.4], [of('house', ['safe', 'locker']), 0.4]]);
+  place('w_shotgun', [[of('raiders', ['locker']), 1], [of('police', ['ammo', 'safe']), 0.6], [of('farm'), 0.4], [of('church'), 0.3]]);
+  place('wrench', [[of('raiders', ['toolbox']), 1], [of('hardware'), 0.5], [of('gas'), 0.5]]);
+}
 /* chunked instance handles: remember mesh + index after flush */
 function instHandleResolve() {
   for (const t of TREES) {
@@ -2634,20 +2681,20 @@ function populateWorld(progress) {
   town();
   const gas = gasStation(); const gp = addPOI(LAYOUT.gas.name, LAYOUT.gas.x, LAYOUT.gas.z, 16, 'gas', 1.4); gp.door = [LAYOUT.gas.x - 4, LAYOUT.gas.z];
   const grng = new RNG(S.seed + 7);
-  containersFor('gas', gas.spots, grng, [{ type: 'register' }, { type: 'crate', fixed: ['w_machete'] }, { type: 'toolbox', fixed: ['hammer'] }, { type: 'crate' }], gas.y + 0.15);
+  containersFor('gas', gas.spots, grng, [{ type: 'register' }, { type: 'crate' }, { type: 'toolbox' }, { type: 'crate' }], gas.y + 0.15);
   { const [vx, vz] = lw(LAYOUT.gas.x, LAYOUT.gas.z, -Math.PI / 2, -9, -2.4); addContainer('vending', vx, vz, -Math.PI / 2); }
   progress?.('Collapsing the overpass');
   overpass(); addPOI(LAYOUT.overpass.name, 80, HIGHWAY_Z, 20, 'overpass', 0.6);
   pylons();
   const rc = raiderCamp(); addPOI(LAYOUT.raiders.name, LAYOUT.raiders.x, LAYOUT.raiders.z, 30, 'raiders', 2.0);
   const rr = new RNG(S.seed + 9);
-  containersFor('raiders', rc.spots, rr, [{ type: 'ammo' }, { type: 'locker', fixed: ['w_shotgun'] }, { type: 'crate' }, { type: 'toolbox', fixed: ['wrench'] }]);
+  containersFor('raiders', rc.spots, rr, [{ type: 'ammo' }, { type: 'locker' }, { type: 'crate' }, { type: 'toolbox' }]);
   addContainer('ammo', RAIDER_TOWER.x + 0.5, RAIDER_TOWER.z, 0, { y: RAIDER_TOWER.y });
   const fm = farm(); addPOI(LAYOUT.farm.name, LAYOUT.farm.x, LAYOUT.farm.z, 26, 'farm', 1.3);
-  containersFor('farm', fm.spots, new RNG(S.seed + 11), [{ type: 'fridge', y: groundHeight(fm.spots[0][0], fm.spots[0][1]) + 0.35 }, { type: 'crate' }, { type: 'mailbox' }, { type: 'toolbox', fixed: ['axe'] }, { type: 'crate' }]);
+  containersFor('farm', fm.spots, new RNG(S.seed + 11), [{ type: 'fridge', y: groundHeight(fm.spots[0][0], fm.spots[0][1]) + 0.35 }, { type: 'crate' }, { type: 'mailbox' }, { type: 'toolbox' }, { type: 'crate' }]);
   const rt = radioTower(); addPOI(LAYOUT.tower.name, LAYOUT.tower.x, LAYOUT.tower.z, 14, 'tower', 1.0);
   containersFor('tower', rt.spots, new RNG(S.seed + 13), [{ type: 'toolbox' }]);
-  addContainer('crate', LAYOUT.tower.x + 7, LAYOUT.tower.z + 1, 0.3, { fixed: ['circuitry'] });
+  addContainer('crate', LAYOUT.tower.x + 7, LAYOUT.tower.z + 1, 0.3, { fixed: ['circuitry'], poiKind: 'tower' });
   hunterCabin(); craterExtras(); quarryExtras();
   addPOI(LAYOUT.lake.name, LAYOUT.lake.x - LAYOUT.lake.r * 0.95, LAYOUT.lake.z - 10, 20, 'lake', 0.5);
   addPOI(LAYOUT.woods.name, LAYOUT.woods.x, LAYOUT.woods.z, 60, 'woods', 0.6);
@@ -2656,6 +2703,7 @@ function populateWorld(progress) {
   defineInstKinds();
   scatterNature(progress);
   scatterJunk();
+  distributeKeyLoot();
   sbFlush(); instFlush(); instHandleResolve();
 }
 
@@ -2663,7 +2711,7 @@ function populateWorld(progress) {
    NAVIGATION GRID + A* + line of sight
    block: 0 free, 1 obstacle, 2 water, 3 wall (also blocks sight)
    ============================================================ */
-const NAV = { size: 1, N: WORLD, block: null, cost: null, g: null, came: null, stamp: null, closed: null, cur: 1, heapI: null, heapF: null };
+const NAV = { size: 1, N: WORLD, block: null, cost: null, g: null, came: null, stamp: null, closed: null, cur: 1, heapI: null, heapF: null, dangerW: 0 };
 function navInit() {
   const N = NAV.N, s = NAV.size;
   NAV.block = new Uint8Array(N * N); NAV.cost = new Uint8Array(N * N);
@@ -2734,7 +2782,7 @@ function findPath(sx, sz, tx, tz, maxIter = 60000) {
   if (!st || !en) return null;
   const start = st[1] * N + st[0], goal = en[1] * N + en[0];
   if (start === goal) return [{ x: tx, z: tz }];
-  if (walkClear(sx, sz, tx, tz)) return [{ x: tx, z: tz }];
+  if (walkClear(sx, sz, tx, tz) && segDangerOK(sx, sz, tx, tz)) return [{ x: tx, z: tz }];
   const cur = ++NAV.cur, g = NAV.g, came = NAV.came, stamp = NAV.stamp, closed = NAV.closed, hI = NAV.heapI, hF = NAV.heapF;
   let hn = 0;
   const push = (i, f) => { let k = hn++; while (k > 0) { const p = (k - 1) >> 1; if (hF[p] <= f) break; hI[k] = hI[p]; hF[k] = hF[p]; k = p; } hI[k] = i; hF[k] = f; };
@@ -2757,7 +2805,8 @@ function findPath(sx, sz, tx, tz, maxIter = 60000) {
       const nx = cx + DX[d], nz = cz + DZ[d]; if (!navInside(nx, nz)) continue;
       const ni = nz * N + nx; if (NAV.block[ni] !== 0 || closed[ni] === cur) continue;
       if (d >= 4 && (NAV.block[cz * N + nx] !== 0 || NAV.block[nz * N + cx] !== 0)) continue;
-      const ng = g[c] + DC[d] * (1 + NAV.cost[ni] * 0.05);
+      const dc = NAV.dangerW && Math.abs(nx - gx) + Math.abs(nz - gz) > 30 ? NAV.dangerW * Math.min(4, dangerCost(nx, nz)) : 0; // no detours on the final approach
+      const ng = g[c] + DC[d] * (1 + NAV.cost[ni] * 0.05 + dc);
       if (stamp[ni] !== cur || ng < g[ni]) { stamp[ni] = cur; g[ni] = ng; came[ni] = c; push(ni, ng + hfn(ni) * 1.05); }
     }
   }
@@ -2770,10 +2819,17 @@ function findPath(sx, sz, tx, tz, maxIter = 60000) {
   const out = []; let a = { x: sx, z: sz }, i = 0;
   while (i < pts.length) {
     let j = pts.length - 1;
-    while (j > i && !walkClear(a.x, a.z, pts[j].x, pts[j].z)) j--;
+    while (j > i && !(walkClear(a.x, a.z, pts[j].x, pts[j].z) && segDangerOK(a.x, a.z, pts[j].x, pts[j].z))) j--;
     out.push(pts[j]); a = pts[j]; i = j + 1;
   }
   return out;
+}
+/* with a danger weight set, a straight segment is only OK if it doesn't cut through remembered danger */
+function segDangerOK(ax, az, bx, bz) {
+  if (!NAV.dangerW) return true;
+  const lim = Math.max(dangerAt(ax, az), dangerAt(bx, bz)) + 0.6 / NAV.dangerW, n = Math.ceil(dist2(ax, az, bx, bz) / 8);
+  for (let k = 1; k < n; k++) { const t = k / n; if (dangerAt(lerp(ax, bx, t), lerp(az, bz, t)) > lim) return false; }
+  return true;
 }
 
 /* ============================================================
@@ -2856,6 +2912,7 @@ class Humanoid {
     this.kind = kind; const r = new RNG(seed);
     const P = kind === 'survivor' ? { top: CMAT.vault, legs: CMAT.vault, skin: CMAT.skin, boots: CMAT.leatherDark, gloves: CMAT.leatherDark }
       : kind === 'raider' ? { top: CMAT.raiderCloth, legs: CMAT.raiderCloth, skin: CMAT.raiderSkin, boots: CMAT.leatherDark, gloves: CMAT.leather }
+      : kind === 'trader' ? { top: CMAT.canvas, legs: CMAT.leatherDark, skin: CMAT.skin, boots: CMAT.leatherDark, gloves: CMAT.leather }
         : { top: CMAT.ghoulCloth, legs: CMAT.ghoulCloth, skin: CMAT.ghoulSkin, boots: CMAT.ghoulSkin, gloves: CMAT.ghoulSkin };
     const thin = kind === 'ghoul' ? 0.72 : 1, bulk = kind === 'raider' ? 1.08 : 1;
     const root = this.root = new THREE.Group();
@@ -2885,6 +2942,13 @@ class Humanoid {
         for (let i = 0; i < 3; i++) mesh(new THREE.ConeGeometry(0.02, 0.1, 6), CMAT.spike, chest, s * (0.22 + i * 0.03), 0.3, -0.04 + i * 0.04, 0, 0, -s * 0.4);
       }
       mesh(new THREE.TorusGeometry(0.19, 0.03, 8, 24), CMAT.leatherDark, hips, 0, 0.07, 0, Math.PI / 2);
+    } else if (kind === 'trader') {
+      mesh(new THREE.CylinderGeometry(0.2, 0.27, 0.5, 16, 1, true), CMAT.canvas, hips, 0, -0.18, 0); // duster skirt
+      mesh(new THREE.TorusGeometry(0.17, 0.025, 6, 20), CMAT.leather, chest, 0, 0.05, 0, Math.PI / 2 - 0.5, 0, 0.6);
+      const pack = joint(chest, 0, 0.02, -0.21);
+      mesh(new RoundedBoxGeometry(0.4, 0.55, 0.24, 3, 0.05), CMAT.leather, pack, 0, 0, -0.04);
+      mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.5, 14), CMAT.bedroll, pack, 0, 0.34, -0.05, 0, 0, Math.PI / 2);
+      for (let i = 0; i < 3; i++) mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.12, 10), MAT.rust, pack, -0.14 + i * 0.14, -0.3, -0.12);
     } else {
       mesh(new THREE.BoxGeometry(0.3, 0.2, 0.2), CMAT.ghoulCloth, chest, 0.02, -0.05, 0.02, 0.1, 0, 0.1);
       for (let i = 0; i < 4; i++) mesh(new THREE.TorusGeometry(0.1, 0.01, 4, 10, Math.PI), CMAT.ghoulSkin, chest, 0, 0.02 + i * 0.05, 0.08, 0, 0, 0);
@@ -2910,6 +2974,10 @@ class Humanoid {
     } else if (kind === 'raider') {
       mesh(new THREE.BoxGeometry(0.03, 0.07, 0.2), CMAT.mohawk, head, 0, 0.14, 0, 0, 0, 0);
       mesh(new THREE.BoxGeometry(0.2, 0.03, 0.02), new THREE.MeshStandardMaterial({ color: 0x111111 }), head, 0, 0.05, 0.105); // war paint band
+    } else if (kind === 'trader') {
+      mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.015, 24), CMAT.leather, head, 0, 0.11, -0.01, -0.08);
+      mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.12, 16), CMAT.leather, head, 0, 0.17, -0.015, -0.08);
+      mesh(new THREE.SphereGeometry(0.06, 10, 8), CMAT.hair, head, 0, -0.07, 0.07, 0, 0, 0, 1.3, 0.8, 0.7); // beard
     } else {
       mesh(new THREE.SphereGeometry(0.02, 8, 6), CMAT.ghoulSkin, head, 0.05, 0.1, 0.06);
     }
@@ -3435,17 +3503,19 @@ const EDEF = {
   burrower:{ name: 'Burrower', hp: 30, walk: 1.2, run: 4.8, dmg: [5, 9], range: 1.3, melee: true, rate: 0.9, sight: 16, xp: 14, faction: 'beast', radius: 0.35 },
   stalker: { name: 'Horned Stalker', hp: 420, walk: 1.8, run: 7.4, dmg: [26, 40], range: 2.8, melee: true, rate: 1.5, sight: 58, xp: 250, faction: 'beast', radius: 0.9 },
   cattle:  { name: 'Two-Headed Cow', hp: 55, walk: 0.9, run: 3.6, dmg: [0, 0], range: 0, melee: true, rate: 9, sight: 16, xp: 8, faction: 'neutral', radius: 0.8 },
+  trader:  { name: 'Wandering Trader', hp: 90, walk: 1.5, run: 4.2, dmg: [9, 14], range: 24, melee: false, rate: 1.2, acc: 0.5, sight: 30, xp: 0, faction: 'neutral', radius: 0.35 },
 };
 const ENEMIES = [];
 let EID = 1;
 class Enemy extends Agent {
   constructor(type, x, z, o = {}) {
     const D = EDEF[type];
-    const rig = type === 'raider' || type === 'ghoul' ? new Humanoid(type, EID * 13) : type === 'roach' ? new Radroach(EID) : type === 'stalker' ? new Stalker(EID) : new Quadruped(type, EID * 7);
-    super(rig, { hp: D.hp, radius: D.radius, maxIter: 9000 });
+    const rig = type === 'raider' || type === 'ghoul' || type === 'trader' ? new Humanoid(type, EID * 13) : type === 'roach' ? new Radroach(EID) : type === 'stalker' ? new Stalker(EID) : new Quadruped(type, EID * 7);
+    super(rig, { hp: D.hp, radius: D.radius, maxIter: type === 'trader' || o.state === 'follow' ? 40000 : 9000 });
     this.id = EID++; this.type = type; this.D = D; this.home = { x, z }; this.state = o.state || 'wander'; this.stateT = 0; this.atkT = 0; this.alertPos = null;
     this.wanderTarget = null; this.aware = false; this.fleeing = false; this.nameplate = null; this.corpseT = 0; this.group = o.group || null; this.lootable = null;
     if (type === 'raider') { const w = Math.random() < 0.6 ? 'pipe' : 'pistol'; rig.setWeapon(w); this.weapon = w; }
+    if (type === 'trader') { rig.setWeapon('pipe'); this.weapon = 'pipe'; }
     if (type === 'stalker') rig.root.scale.setScalar(1.05);
     this.place(x, z); this.yaw = Math.random() * TAU;
     if (this.state === 'dormant' && type === 'ghoul') { this.rig.deadT = 1; }
@@ -3466,7 +3536,7 @@ class Enemy extends Agent {
     if (this.type === 'hound' && this.hp < this.maxHp * 0.25 && Math.random() < 0.5) { this.setState('flee'); this.fleeFrom = src; return; }
     this.setState('chase');
   }
-  height() { return { raider: 1.8, ghoul: 1.6, hound: 0.8, roach: 0.35, burrower: 0.5, stalker: 3.0, cattle: 1.6 }[this.type]; }
+  height() { return { raider: 1.8, ghoul: 1.6, hound: 0.8, roach: 0.35, burrower: 0.5, stalker: 3.0, cattle: 1.6, trader: 1.8 }[this.type]; }
   wake() {
     if (this.state === 'dormant') { this.rig.deadT = 0; log('A "corpse" twitches... it\'s a feral ghoul!', 'danger'); AUDIO.growl(this.pos, 0.8); }
     if (this.state === 'buried') { FX.dust(this.pos.x, this.pos.y + 0.2, this.pos.z, 18, 1.2); log('Something bursts out of the ground!', 'danger'); AUDIO.growl(this.pos, 1.1); }
@@ -3499,7 +3569,7 @@ class Enemy extends Agent {
     const ds = s && !s.dead ? this.distTo(s) : 1e9;
     let sp = 0, action = 'idle';
     // perception
-    if (s && !s.dead && this.hostile && !this.aware && ds < D.sight * (isNight() ? 0.7 : 1) * (S.weather.kind === 'dust' ? 0.6 : 1)) {
+    if (s && !s.dead && this.hostile && !this.aware && ds < D.sight * (isNight() ? 0.7 : 1) * (S.weather.kind === 'dust' ? 0.6 : 1) * (s.stealthy ? 0.6 : 1)) {
       if (this.state === 'dormant' || this.state === 'buried') { if (ds < (this.type === 'burrower' ? 14 : 11)) this.wake(); }
       else if (losClear(this.pos.x, this.pos.z, s.pos.x, s.pos.z)) {
         this.aware = true; this.setState('chase'); s.noticeThreat(this);
@@ -3520,6 +3590,18 @@ class Enemy extends Agent {
         }
         if (this.wanderTarget && !this.navigate(this.wanderTarget.x, this.wanderTarget.z, D.walk, dt, 1.2, this.type !== 'raider')) sp = this.speedNow;
         else if (this.wanderTarget && this.stateT > 3) { this.wanderTarget = null; if (this.type === 'cattle') this.stateT = 0; }
+        break;
+      }
+      case 'caravan': { // traders walking the roads
+        if (this.dest && !this.navigate(this.dest.x, this.dest.z, D.walk, dt, 2.5)) sp = this.speedNow; else this.arrivedDest = true;
+        break;
+      }
+      case 'camp': { if (s && !s.dead && ds < 14) this.faceTo(s.pos.x, s.pos.z, dt, 3); break; }
+      case 'follow': { // pack animal trailing its owner
+        const L = this.leader; if (!L || L.dead) { this.setState('wander'); this.home = { x: this.pos.x, z: this.pos.z }; break; }
+        const dl = this.distTo(L);
+        if (dl > 4.5) { this.navigate(L.pos.x - Math.sin(L.yaw) * 3, L.pos.z - Math.cos(L.yaw) * 3, dl > 12 ? D.run * 0.7 : L.D.walk * 1.05, dt, 1.5); sp = this.speedNow; }
+        else if (L.state === 'camp') action = 'graze';
         break;
       }
       case 'investigate': {
@@ -3573,7 +3655,7 @@ class Enemy extends Agent {
   }
   shoot(s, ds) {
     const muzzle = this.rig.muzzleWorld(new THREE.Vector3()), tgt = _v2.copy(s.pos).setY(s.pos.y + 1.2);
-    const hitP = this.D.acc * (1 - ds / (this.D.range * 2.2)) * (s.speedNow > 3 ? 0.7 : 1) * (isNight() ? 0.75 : 1);
+    const hitP = this.D.acc * (1 - ds / (this.D.range * 2.2)) * (s.speedNow > 3 ? 0.7 : 1) * (isNight() ? 0.75 : 1) * (inCover(s, this.pos) ? 0.45 : 1);
     const hit = Math.random() < hitP;
     if (!hit) tgt.add(_v3.set((Math.random() - .5) * 3, (Math.random() - .5) * 1.5, (Math.random() - .5) * 3));
     FX.muzzle(muzzle, _v3.copy(tgt).sub(muzzle).normalize()); FX.tracer(muzzle, tgt); AUDIO.shot(this.pos, this.weapon === 'pistol' ? 'pistol' : 'rifle');
@@ -3586,17 +3668,35 @@ class Enemy extends Agent {
 /* ---------------- spawn director ---------------- */
 const DIRECTOR = { t: 0, encounterT: 240, nightRaidDone: -1 };
 function spawnInitialEnemies() {
-  const r = new RNG(S.seed + 61), R = LAYOUT.raiders;
-  for (let i = 0; i < 5; i++) { const a = r.range(0, TAU), d = r.range(4, 22); new Enemy('raider', R.x + Math.cos(a) * d, R.z + Math.sin(a) * d); }
-  const tower = new Enemy('raider', RAIDER_TOWER.x, RAIDER_TOWER.z); tower.pos.y = RAIDER_TOWER.y; tower.state = 'sentry'; tower.sentry = true; tower.syncRoot();
-  const T = LAYOUT.town;
-  for (let i = 0; i < 7; i++) { const a = r.range(0, TAU), d = r.range(10, 70), x = T.x + Math.cos(a) * d, z = T.z + Math.sin(a) * d; if (navFreeAt(x, z)) new Enemy('ghoul', x, z, { state: i < 4 ? 'dormant' : 'wander' }); }
-  for (let i = 0; i < 5; i++) { const x = T.x + r.range(-60, 60), z = T.z + r.range(-60, 60); if (navFreeAt(x, z)) new Enemy('roach', x, z); }
-  const F = LAYOUT.farm; for (let i = 0; i < 3; i++) new Enemy('cattle', F.x + 30 + r.range(-15, 15), F.z + 14 + r.range(-10, 10));
-  for (let i = 0; i < 3; i++) new Enemy('burrower', F.x + 30 + r.range(-25, 25), F.z + 30 + r.range(-15, 15), { state: 'buried' });
-  const Q = LAYOUT.quarry; new Enemy('stalker', Q.x, Q.z);
-  spawnPack('hound', -120, -250, 3); spawnPack('hound', 180, 20, 2);
-  for (let i = 0; i < 4; i++) { const c = LAYOUT.crater, a = r.range(0, TAU); new Enemy('ghoul', c.x + Math.cos(a) * 30, c.z + Math.sin(a) * 30, { state: 'wander' }); }
+  const r = new RNG(S.seed + 61), R = LAYOUT.raiders, T = LAYOUT.town;
+  const free = (x, z, rad = 10) => { const f = navNearestFree(navI(x), navI(z), rad); return f ? { x: -HALF + f[0] + 0.5, z: -HALF + f[1] + 0.5 } : null; };
+  for (let i = 0, n = r.int(3, 6); i < n; i++) { const a = r.range(0, TAU), d = r.range(4, 22); new Enemy('raider', R.x + Math.cos(a) * d, R.z + Math.sin(a) * d); }
+  if (r.chance(0.75)) { const tower = new Enemy('raider', RAIDER_TOWER.x, RAIDER_TOWER.z); tower.pos.y = RAIDER_TOWER.y; tower.state = 'sentry'; tower.sentry = true; tower.syncRoot(); }
+  // some worlds have a second raider outpost
+  if (r.chance(0.45)) {
+    const [ox, oz] = r.pick([[LAYOUT.overpass.x + 12, HIGHWAY_Z - 24], [LAYOUT.tower.x - 16, LAYOUT.tower.z + 14], [LAYOUT.gas.x + 34, LAYOUT.gas.z + 46], [LAYOUT.farm.x + 44, LAYOUT.farm.z - 34], [LAYOUT.lake.x - 90, LAYOUT.lake.z - 10]]);
+    for (let i = 0, n = r.int(2, 3); i < n; i++) { const p = free(ox + r.range(-8, 8), oz + r.range(-8, 8)); if (p) new Enemy('raider', p.x, p.z); }
+  }
+  // ghouls nest in one or two random buildings
+  const bld = POIS.filter(p => p.door && ['ruin', 'house', 'diner', 'clinic', 'church'].includes(p.kind));
+  for (let k = 0, n = r.int(1, 2); k < n && bld.length; k++) {
+    const p = bld.splice(Math.floor(r.next() * bld.length), 1)[0];
+    for (let i = 0, m = r.int(2, 4); i < m; i++) { const x = lerp(p.x, p.door[0], r.range(0.1, 0.8)) + r.range(-2, 2), z = lerp(p.z, p.door[1], r.range(0.1, 0.8)) + r.range(-2, 2); if (navFreeAt(x, z)) new Enemy('ghoul', x, z, { state: r.chance(0.7) ? 'dormant' : 'wander' }); }
+  }
+  for (let i = 0, n = r.int(2, 5); i < n; i++) { const a = r.range(0, TAU), d = r.range(10, 70), x = T.x + Math.cos(a) * d, z = T.z + Math.sin(a) * d; if (navFreeAt(x, z)) new Enemy('ghoul', x, z, { state: r.chance(0.35) ? 'dormant' : 'wander' }); }
+  for (let i = 0, n = r.int(3, 7); i < n; i++) { const x = T.x + r.range(-60, 60), z = T.z + r.range(-60, 60); if (navFreeAt(x, z)) new Enemy('roach', x, z); }
+  const F = LAYOUT.farm;
+  for (let i = 0, n = r.int(2, 4); i < n; i++) new Enemy('cattle', F.x + 30 + r.range(-15, 15), F.z + 14 + r.range(-10, 10));
+  const B = r.chance(0.6) ? [F.x + 30, F.z + 30] : r.pick([[150, 60], [-160, -120], [-60, 360]]);
+  for (let i = 0, n = r.int(2, 4); i < n; i++) { const x = B[0] + r.range(-25, 25), z = B[1] + r.range(-15, 15); if (navFreeAt(x, z)) new Enemy('burrower', x, z, { state: 'buried' }); }
+  // the Horned Stalker picks a lair
+  const lair = r.weighted([['quarry', 0.6], ['crater', 0.25], ['woods', 0.15]]);
+  const L = lair === 'quarry' ? LAYOUT.quarry : lair === 'crater' ? { x: LAYOUT.crater.x + 20, z: LAYOUT.crater.z + 30 } : { x: 110, z: 390 };
+  const lp = free(L.x, L.z, 14) || L; new Enemy('stalker', lp.x, lp.z); S.flags.stalkerLair = lair;
+  // hound packs claim territories
+  const terr = [[-120, -250], [180, 20], [-200, 120], [60, 300], [250, -150], [-330, -200], [360, 280], [-240, 300]];
+  for (let k = 0, n = r.int(2, 3); k < n; k++) { const [x, z] = terr.splice(Math.floor(r.next() * terr.length), 1)[0], p = free(x, z) || { x, z }; spawnPack('hound', p.x, p.z, r.int(2, 4)); }
+  for (let i = 0, n = r.int(3, 5); i < n; i++) { const c = LAYOUT.crater, a = r.range(0, TAU); new Enemy('ghoul', c.x + Math.cos(a) * 30, c.z + Math.sin(a) * 30, { state: 'wander' }); }
 }
 function spawnPack(type, x, z, n) { const g = 'g' + EID; for (let i = 0; i < n; i++) new Enemy(type, x + Math.random() * 6 - 3, z + Math.random() * 6 - 3, { group: g }); }
 function updateDirector(dt) {
@@ -3636,9 +3736,211 @@ function updateDirector(dt) {
   }
 }
 function alertNearby(x, z, radius) { for (const e of ENEMIES) if (!e.dead && e.hostile && dist2(e.pos.x, e.pos.z, x, z) < radius) e.alert(x, z); }
+/* ============================================================
+   EVENTS: supply drops, trader caravans, road ambushes, distress signals
+   ============================================================ */
+const EVENTS = {
+  trader: null, pack: null, drops: [], signal: null, nextT: 480, last: null, history: [],
+  reset() { this.trader = null; this.pack = null; this.drops.length = 0; this.signal = null; this.nextT = 420 + Math.random() * 240; this.last = null; this.history.length = 0; },
+  update(dt) {
+    for (const d of this.drops) this.updateDrop(d, dt);
+    this.updateTrader(dt);
+    this.updateSignal(dt);
+    const s = SURV; if (!s || s.dead || s.story === 'intro') return;
+    if ((this.nextT -= dt) > 0) return;
+    this.nextT = 380 + Math.random() * 420;
+    const nearBase = BASE.site && s.distTo(BASE.site) < 140, moving = s.task && (s.task.kind === 'travel' || s.task.kind === 'scout');
+    const type = S.rng.weighted([
+      ['drop', 1],
+      ['trader', this.trader ? 0 : (s.inv.caps || 0) >= 20 ? 1.3 : 0.6],
+      ['ambush', S.day >= 2 && !nearBase && moving ? 0.9 : 0],
+      ['signal', this.signal ? 0 : 0.8],
+    ].filter(e => e[1] > 0));
+    if (type === this.last && Math.random() < 0.6) { this.nextT = 60; return; }
+    const spawn = { drop: this.spawnDrop, trader: this.spawnTrader, ambush: this.spawnAmbush, signal: this.spawnSignal }[type];
+    if (spawn.call(this, s)) { this.last = type; this.history.push(type); }
+    else this.nextT = 90;
+  },
+  /* ---------- supply drop: a crate floats down under a parachute and pops green smoke ---------- */
+  spawnDrop(s) {
+    for (let k = 0; k < 30; k++) {
+      const a = Math.random() * TAU, d = 70 + Math.random() * 150, x = s.pos.x + Math.cos(a) * d, z = s.pos.z + Math.sin(a) * d;
+      if (Math.abs(x) > 420 || Math.abs(z) > 420 || !navFreeAt(x, z) || inWater(x, z)) continue;
+      if (dist2(x, z, LAYOUT.raiders.x, LAYOUT.raiders.z) < 60 || dist2(x, z, LAYOUT.quarry.x, LAYOUT.quarry.z) < 60) continue;
+      let open = true; for (let q = 0; q < 8 && open; q++) { const b = q / 8 * TAU; open = navFreeAt(x + Math.cos(b) * 2.5, z + Math.sin(b) * 2.5); }
+      if (!open) continue;
+      const c = addContainer('supply', x, z, Math.random() * TAU, { name: 'Supply Drop' }), gy = groundHeight(x, z);
+      const drop = { c, x, z, gy, h: 150, chute: makeChute(), landed: false, t: 0, landT: 0, smokeT: 0 };
+      c.obj.position.y = gy + drop.h; drop.chute.position.set(x, gy + drop.h + 3.3, z); scene.add(drop.chute);
+      this.drops.push(drop); AUDIO.plane();
+      showBanner('SUPPLY DROP', 'Parachute over ' + placeName(x, z)); log('An old supply drone drops a crate by parachute over ' + placeName(x, z) + '.', 'warn');
+      return true;
+    }
+    return false;
+  },
+  updateDrop(d, dt) {
+    if (!d.landed) {
+      d.t += dt; d.h = Math.max(0, d.h - dt * 6.5);
+      const sway = Math.sin(d.t * 0.9) * 0.12 * Math.min(1, d.h / 4);
+      d.c.obj.position.y = d.gy + d.h; d.c.obj.rotation.z = sway;
+      d.chute.position.set(d.x, d.gy + d.h + 3.3, d.z); d.chute.rotation.z = sway;
+      if (d.h <= 0) {
+        d.landed = true; d.c.obj.rotation.z = 0; d.c.known = true; addCircle(d.x, d.z, 0.75, false);
+        FX.dust(d.x, d.gy + 0.3, d.z, 22, 1.4); AUDIO.thud(d.c.obj.position);
+        log('The supply crate lands near ' + placeName(d.x, d.z) + '. Green smoke marks the spot.', 'warn');
+        if (Math.random() < 0.45) this.contest(d);
+      }
+      return;
+    }
+    d.landT += dt;
+    if (d.chute) { const k = clamp(1 - d.landT / 3, 0, 1); d.chute.scale.set(1 + (1 - k) * 0.4, Math.max(0.05, k), 1 + (1 - k) * 0.4); d.chute.position.y = d.gy + 0.3 + 3 * k; if (k <= 0) { scene.remove(d.chute); d.chute = null; } }
+    if (d.landT < 300 && !d.c.looted && (d.smokeT -= dt) <= 0) {
+      d.smokeT = 0.16; FX.burst('norm', d.x + 0.9, d.gy + 0.5, d.z + 0.3, 2, { speed: 0.4, life: 6, s0: 0.7, s1: 3.6, r: 0.42, g: 0.85, b: 0.45, a: 0.62, grav: -0.9, drag: 0.35, up: 1, minUp: 0.8, jit: 0.4, dx: 0.25 });
+    }
+  },
+  contest(d) {
+    const a = Math.random() * TAU, x = d.x + Math.cos(a) * 70, z = d.z + Math.sin(a) * 70;
+    if (!navFreeAt(x, z)) return;
+    const raiders = Math.random() < 0.55, n = raiders ? 2 + (Math.random() < 0.4 ? 1 : 0) : 3, g = raiders ? null : 'drop' + d.c.id;
+    for (let i = 0; i < n; i++) {
+      const e = new Enemy(raiders ? 'raider' : 'hound', x + Math.random() * 4, z + Math.random() * 4, { group: g });
+      e.home = { x: d.x + (Math.random() - .5) * 10, z: d.z + (Math.random() - .5) * 10 }; e.alertPos = { x: d.x, z: d.z }; e.setState('investigate');
+    }
+    log((raiders ? 'Raiders' : 'A pack of hounds') + ' heard the drop too.', 'danger');
+  },
+  /* ---------- trader caravan: walks in, camps by a road for a while, moves on ---------- */
+  spawnTrader(s) {
+    const pts = [];
+    for (const rd of ROADS) for (let i = 0; i < rd.pts.length - 1; i++) {
+      const [ax, az] = rd.pts[i], [bx, bz] = rd.pts[i + 1], L = Math.hypot(bx - ax, bz - az);
+      for (let t = 0; t < L; t += 12) pts.push([ax + (bx - ax) * t / L, az + (bz - az) * t / L]);
+    }
+    let camp = null;
+    if (BASE.site && Math.random() < 0.6) for (let k = 0; k < 16 && !camp; k++) { // pay the homestead a visit
+      const a = Math.random() * TAU, d = 24 + Math.random() * 16, x = BASE.site.x + Math.cos(a) * d, z = BASE.site.z + Math.sin(a) * d;
+      if (navFreeAt(x, z) && dangerAt(x, z) < 3) camp = { x, z };
+    }
+    if (!camp) {
+      const ok = pts.filter(([x, z]) => {
+        const d = dist2(x, z, s.pos.x, s.pos.z);
+        return d > 50 && d < 150 && dangerAt(x, z) < 3 && Math.abs(z - HIGHWAY_Z) > 12
+          && dist2(x, z, LAYOUT.raiders.x, LAYOUT.raiders.z) > 120 && dist2(x, z, LAYOUT.quarry.x, LAYOUT.quarry.z) > 120 && dist2(x, z, LAYOUT.town.x, LAYOUT.town.z) > 70 && dist2(x, z, LAYOUT.vault.x, LAYOUT.vault.z) > 50;
+      });
+      if (!ok.length) return false;
+      const [cx, cz] = ok[Math.floor(Math.random() * ok.length)];
+      for (let k = 0; k < 8 && !camp; k++) { const a = k / 8 * TAU, x = cx + Math.cos(a) * 7, z = cz + Math.sin(a) * 7; if (navFreeAt(x, z) && roadDist(x, z).d > 4.5) camp = { x, z }; }
+      if (!camp) return false;
+    }
+    let sp = null;
+    for (let k = 0; k < 24 && !sp; k++) { const a = Math.random() * TAU, x = camp.x + Math.cos(a) * 130, z = camp.z + Math.sin(a) * 130; if (Math.abs(x) < 440 && Math.abs(z) < 440 && navFreeAt(x, z) && dist2(x, z, s.pos.x, s.pos.z) > 110) sp = { x, z }; }
+    if (!sp) return false;
+    const tr = new Enemy('trader', sp.x, sp.z, { state: 'caravan' }); tr.dest = camp; tr.stock = {}; tr.campT = 0;
+    const missing = TOOLS_NEEDED.filter(t => !s.has(t));
+    if (missing.length && Math.random() < (S.day >= 3 ? 0.8 : 0.55)) tr.stock[missing[Math.floor(Math.random() * missing.length)]] = 40 + Math.floor(Math.random() * 30);
+    const cow = new Enemy('cattle', sp.x + 2, sp.z + 2, { state: 'follow' }); cow.leader = tr; cow.pack = true; cow.D = { ...EDEF.cattle, name: 'Pack Brahmin' }; addPackBags(cow);
+    this.trader = tr; this.pack = cow;
+    AUDIO.radio(); log('Radio chatter: a trader caravan is headed for ' + placeName(camp.x, camp.z) + '.', 'good');
+    return true;
+  },
+  updateTrader(dt) {
+    const tr = this.trader; if (!tr) return;
+    const drop = () => { tr.remove(); if (this.pack) this.pack.remove(); this.trader = null; this.pack = null; };
+    if (tr.dead) { if (this.pack && !this.pack.dead) { this.pack.leader = null; this.pack.setState('wander'); } this.trader = null; this.pack = null; return; }
+    if (tr.state === 'caravan' && tr.arrivedDest) {
+      tr.arrivedDest = false;
+      if (tr.leaving) { drop(); return; }
+      tr.setState('camp'); tr.campT = 0;
+      const tool = Object.keys(tr.stock)[0];
+      showBanner('TRADER', 'Caravan camped near ' + placeName(tr.pos.x, tr.pos.z));
+      log('A trader has set up camp near ' + placeName(tr.pos.x, tr.pos.z) + (tool ? '. Word is they have a ' + ITEMS[tool].name.toLowerCase() + ' for sale.' : '. Caps accepted.'), 'good');
+    }
+    if (tr.state === 'caravan' && tr.leaving && SURV && tr.distTo(SURV) > 170) { drop(); return; }
+    if (tr.state === 'caravan' && !tr.leaving && tr.stateT > 240) { tr.place(tr.dest.x, tr.dest.z); tr.arrivedDest = true; } // never got there: teleport off-screen
+    if (tr.state === 'camp' && (tr.campT += dt) > 420 && !(SURV && SURV.task && SURV.task.kind === 'trade')) {
+      tr.leaving = true; tr.setState('caravan'); tr.dest = this.exitPoint(); log('The trader packs up and moves on.', '');
+    }
+  },
+  exitPoint() {
+    const ends = [[44, 440], [-440, -50], [440, 8]]; let best = ends[0], bd = -1;
+    for (const e of ends) { const d = SURV ? dist2(e[0], e[1], SURV.pos.x, SURV.pos.z) : 0; if (d > bd) { bd = d; best = e; } }
+    const f = navNearestFree(navI(best[0]), navI(best[1]), 14); return f ? { x: -HALF + f[0] + 0.5, z: -HALF + f[1] + 0.5 } : { x: best[0], z: best[1] };
+  },
+  /* ---------- road ambush: raiders lie in wait on the survivor's route ---------- */
+  spawnAmbush(s) {
+    const path = s.path; if (!path || path.length < 2) return false;
+    let acc = 0, px = s.pos.x, pz = s.pos.z, spot = null;
+    for (let i = s.pathI; i < path.length; i++) { acc += dist2(px, pz, path[i].x, path[i].z); px = path[i].x; pz = path[i].z; if (acc > 50) { spot = path[i]; break; } }
+    if (!spot || acc > 110 || (BASE.site && dist2(spot.x, spot.z, BASE.site.x, BASE.site.z) < 120)) return false;
+    const n = 2 + (S.day > 3 ? 1 : 0) + (Math.random() < 0.3 ? 1 : 0); let made = 0;
+    for (let k = 0; k < 16 && made < n; k++) {
+      const a = Math.random() * TAU, r = 6 + Math.random() * 9, x = spot.x + Math.cos(a) * r, z = spot.z + Math.sin(a) * r;
+      if (!navFreeAt(x, z) || dist2(x, z, s.pos.x, s.pos.z) < 35) continue;
+      const e = new Enemy('raider', x, z); e.home = { x, z }; e.ambusher = true; made++;
+    }
+    if (!made) return false;
+    if ((s.hasTrait('cautious') || s.hasTrait('hunter')) && Math.random() < 0.6) s.say('Too quiet up ahead. I don\'t like it.', 'warn');
+    return true;
+  },
+  /* ---------- distress signal: a call for help that may be real, too late, or bait ---------- */
+  spawnSignal(s) {
+    for (let k = 0; k < 30; k++) {
+      const a = Math.random() * TAU, d = 120 + Math.random() * 170, x = s.pos.x + Math.cos(a) * d, z = s.pos.z + Math.sin(a) * d;
+      if (Math.abs(x) > 420 || Math.abs(z) > 420 || !navFreeAt(x, z) || inWater(x, z)) continue;
+      if (dist2(x, z, LAYOUT.raiders.x, LAYOUT.raiders.z) < 90 || dist2(x, z, LAYOUT.quarry.x, LAYOUT.quarry.z) < 90 || dist2(x, z, LAYOUT.town.x, LAYOUT.town.z) < 60 || (BASE.site && dist2(x, z, BASE.site.x, BASE.site.z) < 80)) continue;
+      const outcome = S.rng.weighted([['trap', 0.35], ['cache', 0.4], ['beasts', 0.25]]);
+      const poi = addPOI('Distress Signal', x, z, 10, 'signal', 1.5); poi.discovered = true;
+      const body = addContainer('body', x + 1, z, Math.random() * TAU, { name: 'Wanderer\'s Body' });
+      if (outcome === 'cache') {
+        body.loot = { stim: 2, water: 2, caps: 20 + Math.floor(Math.random() * 40), ammo_10mm: 15 + Math.floor(Math.random() * 20) };
+        const missing = TOOLS_NEEDED.filter(t => !s.has(t)); if (missing.length && Math.random() < 0.45) body.loot[missing[Math.floor(Math.random() * missing.length)]] = 1;
+        if (Math.random() < 0.3) body.loot.radpurge = 1;
+      }
+      if (outcome === 'trap') for (let i = 0, n = 2 + (Math.random() < 0.5 ? 1 : 0); i < n; i++) {
+        const b = Math.random() * TAU, r = 9 + Math.random() * 10, ex = x + Math.cos(b) * r, ez = z + Math.sin(b) * r;
+        if (navFreeAt(ex, ez)) { const e = new Enemy('raider', ex, ez); e.home = { x: ex, z: ez }; e.ambusher = true; }
+      }
+      if (outcome === 'beasts') { if (Math.random() < 0.6) spawnPack('hound', x + 7, z + 4, 2 + (Math.random() < 0.5 ? 1 : 0)); else for (let i = 0; i < 3; i++) { const ex = x + (Math.random() - .5) * 12, ez = z + (Math.random() - .5) * 12; if (navFreeAt(ex, ez)) new Enemy('ghoul', ex, ez); } }
+      this.signal = { x, z, poi, body, outcome, t: 0, resolved: false };
+      AUDIO.radio(); showBanner('DISTRESS SIGNAL', 'Near ' + placeName(x, z)); log('RADIO: "...anyone out there... near ' + placeName(x, z) + '... please..." Then static.', 'warn');
+      s.say(s.hasTrait('cautious') ? 'Could be someone in trouble. Could be bait.' : s.hasTrait('reckless') ? 'Someone needs help. On my way!' : s.hasTrait('scavenger') ? 'Whoever that is, they had supplies.' : 'Somebody\'s out there...', 'warn');
+      return true;
+    }
+    return false;
+  },
+  resolveSignal(s) {
+    const g = this.signal; if (!g || g.resolved) return; g.resolved = true; g.body.known = true;
+    s.say(g.outcome === 'trap' ? 'It was bait. Raiders!' : g.outcome === 'cache' ? 'Too late for them. Their pack is still here.' : 'Something got here first.', g.outcome === 'cache' ? 'good' : 'warn');
+    log('Distress signal: ' + (g.outcome === 'trap' ? 'a raider trap!' : g.outcome === 'cache' ? 'the caller didn\'t make it, but left supplies.' : 'beasts got to the caller first.'), g.outcome === 'cache' ? 'good' : 'danger');
+    if (g.outcome === 'trap') for (const e of ENEMIES) if (e.ambusher && !e.dead && dist2(e.pos.x, e.pos.z, g.x, g.z) < 40) { e.aware = true; e.setState('chase'); s.noticeThreat(e); }
+  },
+  updateSignal(dt) {
+    const g = this.signal; if (!g) return;
+    g.t += dt;
+    if (!g.resolved && g.t > 1300) { g.resolved = true; g.poi.visited = true; log('The distress signal has gone silent.', ''); }
+    if (g.resolved && g.t > 1500) this.signal = null;
+  },
+};
+function makeChute() {
+  const g = new THREE.Group(), cloth = new THREE.MeshStandardMaterial({ color: 0xd9cfb4, roughness: 0.95, side: THREE.DoubleSide });
+  const canopy = new THREE.Mesh(new THREE.SphereGeometry(2.6, 18, 8, 0, TAU, 0, Math.PI * 0.42), cloth); canopy.scale.y = 0.6; canopy.castShadow = true; g.add(canopy);
+  const band = new THREE.Mesh(new THREE.SphereGeometry(2.62, 18, 3, 0, TAU, Math.PI * 0.2, Math.PI * 0.08), new THREE.MeshStandardMaterial({ color: 0xc24a2c, roughness: 0.9, side: THREE.DoubleSide })); band.scale.y = 0.6; g.add(band);
+  const up = new THREE.Vector3(0, 1, 0);
+  for (let i = 0; i < 8; i++) {
+    const a = i / 8 * TAU, from = new THREE.Vector3(Math.cos(a) * 2.45, 0.35, Math.sin(a) * 2.45), to = new THREE.Vector3(0, -2.9, 0), dir = to.clone().sub(from), len = dir.length();
+    const l = new THREE.Mesh(cylG(0.012, 0.012, len, 3), MAT.darkMetal); l.position.copy(from).add(to).multiplyScalar(0.5); l.quaternion.setFromUnitVectors(up, dir.normalize()); g.add(l);
+  }
+  return g;
+}
+function addPackBags(cow) {
+  const g = new THREE.Group(); g.position.set(0, 1.2, -0.15);
+  for (const s of [-1, 1]) { const b = new THREE.Mesh(new RoundedBoxGeometry(0.2, 0.42, 0.62, 2, 0.05), CMAT.canvas); b.position.set(s * 0.44, -0.12, 0); b.castShadow = true; g.add(b); }
+  const roll = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.9, 12), CMAT.bedroll); roll.rotation.z = Math.PI / 2; roll.position.y = 0.36; g.add(roll);
+  const crate = new THREE.Mesh(boxG(0.5, 0.3, 0.4, 1), MAT.wood); crate.position.set(0, 0.34, -0.42); crate.castShadow = true; g.add(crate);
+  cow.root.add(g);
+}
 
 /* ============================================================
-   SURVIVOR: needs, perception, utility AI, tasks
+   SURVIVOR: needs, perception, personality-driven utility AI, tasks
    ============================================================ */
 let SURV = null;
 const FIRST = ['Mack', 'Rosa', 'Eli', 'Dot', 'Hank', 'June', 'Walt', 'Ada', 'Cal', 'Mae', 'Buck', 'Nora', 'Otis', 'Pearl', 'Gus', 'Ivy', 'Rex', 'Lou'];
@@ -3653,43 +3955,59 @@ const QUIPS = {
   build: ['Measure twice, cut once. Or just hit it harder.', 'Every nail is a promise: I\'m staying.', 'This will hold. It has to.'],
   hungry: ['Stomach\'s eating itself.', 'I\'d kill for a can of beans.'],
   thirsty: ['Mouth\'s full of dust.', 'Water. Need water.'],
-  tired: ['Eyes won\'t stay open.', 'Need to rest somewhere safe.'],
+  avoid: ['Not worth it. Going around.', 'Nope. Finding another way.', 'They haven\'t seen me. Let\'s keep it that way.'],
+  ambush: ['They haven\'t spotted me. Perfect.', 'One clean shot.', 'Surprise.'],
 };
 const quip = (k) => S.rng.pick(QUIPS[k]);
+const first = (s) => s.name.split(' ')[0];
 
 class Survivor extends Agent {
   constructor(spawn) {
     super(new Humanoid('survivor', S.seed + S.stats.dwellerNo), { hp: 100, radius: 0.34 });
     const r = new RNG(S.seed * 7 + S.stats.dwellerNo);
     this.name = r.pick(FIRST) + ' ' + r.pick(LAST); this.tag = 'Dweller #113-' + String(r.int(10, 99));
+    this.rng = new RNG(S.seed * 131 + S.stats.dwellerNo * 7919 + 17);
+    const P = rollPersonality(this.rng); this.traits = P.traits; this.p = P.p;
+    this.dangerW = 0.6 * this.p.dangerAversion;
     this.level = 1; this.xp = 0; this.food = 82; this.water = 76; this.rest = 88; this.rads = 0;
+    this.hp = this.maxHpNow;
     this.inv = { stim: 2, can_food: 1, water: 1, ammo_10mm: 48 };
     this.weapons = new Set(['fists', 'pistol']); this.weaponId = 'pistol'; this.rig.setWeapon('pistol');
     this.task = null; this.goal = 'Leave the vault'; this.thought = '"The door is opening. No turning back."';
     this.story = 'intro'; this.decideT = 0; this.perceiveT = 0; this.fireT = 0; this.barkT = 20; this.hurtCool = 0;
-    this.threat = null; this.sitesSeen = {}; this.searchT = 0; this.hiddenInBase = false; this.lastHitBy = null;
+    this.threat = null; this.sitesSeen = {}; this.searchT = 0; this.hiddenInBase = false; this.sheltered = false; this.lastHitBy = null;
+    this.visitedCount = 0; this.cover = null; this.noted = new Set(); this.settleNag = false; this.stealthT = 0; this.noShelterUntil = 0; this.lastTrade = 0;
     this.place(spawn.x, spawn.z); this.yaw = 0; this.syncRoot();
     this.flash = new THREE.SpotLight(0xfff2d8, 0, 34, 0.55, 0.5, 1.6); this.flash.position.set(0, 1.5, 0.3);
     this.flashTarget = new THREE.Object3D(); this.flashTarget.position.set(0, 0.6, 8); this.root.add(this.flash); this.root.add(this.flashTarget); this.flash.target = this.flashTarget;
     this.stats = { looted: 0, kills: 0, built: 0 };
+    initBeliefs(this);
+    log(first(this) + '\'s file: ' + this.traits.map(t => TRAITS[t].name).join(', ') + '.', 'good');
   }
-  get maxHpNow() { return Math.max(10, 100 + (this.level - 1) * 5 - this.rads / 10); }
+  get maxHpNow() { return Math.max(10, 100 + (this.p ? this.p.hpBonus : 0) + (this.level - 1) * 5 - this.rads / 10); }
+  hasTrait(t) { return this.traits.includes(t); }
+  get stealthy() { return this.stealthT > S.simTime && this.speedNow < 3.8; }
   has(id, n = 1) { return (this.inv[id] || 0) >= n; }
   add(id, n) { this.inv[id] = (this.inv[id] || 0) + n; if (this.inv[id] <= 0) delete this.inv[id]; }
   toolsHave() { return TOOLS_NEEDED.filter(t => this.has(t)); }
   say(text, cls = 'good') { this.thought = '"' + text + '"'; FX.label(text, _v1.copy(this.pos).setY(this.pos.y + 2.15), cls, 2.6, 0.15); }
+  once(key, fn) { if (this.noted.has(key)) return; this.noted.add(key); fn(); }
   gainXp(n) {
     this.xp += n; const need = Math.floor(80 * Math.pow(this.level, 1.4));
     if (this.xp >= need) { this.xp -= need; this.level++; this.hp = Math.min(this.maxHpNow, this.hp + 25); showBanner('LEVEL UP', this.name + ' reached level ' + this.level); log('LEVEL UP! ' + this.name + ' is now level ' + this.level + '.', 'good'); AUDIO.levelUp(); }
   }
+  navigate(tx, tz, speed, dt, arrive, direct) { NAV.dangerW = this.dangerW; const r = super.navigate(tx, tz, speed, dt, arrive, direct); NAV.dangerW = 0; return r; }
   /* ---------- weapons ---------- */
   ammoFor(w) { const d = WEAPONS[w]; return d.melee ? Infinity : (this.inv[d.ammo] || 0); }
   bestWeapon(dist, target) {
-    if (target && target.type === 'roach' && this.hp > this.maxHpNow * 0.5) return this.weapons.has('machete') ? 'machete' : 'fists';
+    const melee = this.weapons.has('machete') ? 'machete' : 'fists';
+    if (target && target.type === 'roach' && this.hp > this.maxHpNow * 0.5) return melee;
+    if (target && this.p.meleePref && this.weapons.has('machete') && target.D.melee && target.type !== 'stalker' && dist < 12 && this.hp > this.maxHpNow * 0.4) return 'machete';
     let best = 'fists', score = -1;
     for (const w of this.weapons) {
       const d = WEAPONS[w]; if (!d.melee && this.ammoFor(w) <= 0) continue;
       let sc = d.tier * 10; if (w === 'shotgun' && dist > 14) sc -= 25; if (w === 'hunting' && dist < 6) sc -= 18; if (d.melee && dist > 6) sc -= 5;
+      if (this.hasTrait('marksman') && (w === 'hunting' || w === 'pipe')) sc += 8;
       if (sc > score) { score = sc; best = w; }
     }
     return best;
@@ -3700,18 +4018,20 @@ class Survivor extends Agent {
     if (this.dead) return;
     const armor = BASE.site && this.distTo(BASE.site) < 8 && BASE.built.has('walls') ? 0.8 : 1;
     this.hp -= dmg * armor; this.rig.hurtT = 0.2; this.lastHitBy = src;
+    dangerAdd(this.pos.x, this.pos.z, 0.25 + dmg * 0.04, 1);
     FX.impact(_v1.copy(this.pos).setY(this.pos.y + 1.2), 'blood');
     FX.label('-' + Math.round(dmg), _v1.copy(this.pos).setY(this.pos.y + 2), 'dmg', 0.8, 1.4);
     HUD.hit();
     AUDIO.hurt();
-    if (src && src.D && !src.dead) this.noticeThreat(src);
+    if (src && src.D && !src.dead) { src.avoidUntil = 0; this.noticeThreat(src); }
     if (this.hurtCool <= 0 && this.hp < this.maxHpNow * 0.5) { this.say(quip('hurt'), 'warn'); this.hurtCool = 12; }
     if (this.hp <= 0) this.die(src);
   }
-  noticeThreat(e) { if (!e.dead && e.hostile && (!this.threat || this.threat.dead || this.distTo(e) < this.distTo(this.threat) - 3)) { if (!this.threat || this.threat.dead) log(this.name.split(' ')[0] + ' spots a ' + e.D.name + '!', 'danger'); this.threat = e; this.decideT = 0; } }
+  noticeThreat(e) { if (!e.dead && e.hostile && (!this.threat || this.threat.dead || this.distTo(e) < this.distTo(this.threat) - 3)) { if (!this.threat || this.threat.dead) log(first(this) + ' spots a ' + e.D.name + '!', 'danger'); this.threat = e; this.decideT = 0; } }
   die(src) {
     this.dead = true; this.hp = 0; this.task = null; this.rig.setTool(null);
     log(this.name + ' has died' + (src && src.D ? ', killed by a ' + src.D.name : '') + '.', 'danger');
+    dangerAdd(this.pos.x, this.pos.z, 8, 2); dangerNote(first(this) + ' died near ' + placeName(this.pos.x, this.pos.z), this.pos.x, this.pos.z);
     AUDIO.death(this.pos, 'human'); S.flags.deathAt = S.simTime;
   }
   onKill(e) { this.stats.kills++; this.gainXp(e.D.xp); log(e.D.name + ' killed. +' + e.D.xp + ' XP', 'good'); if (this.threat === e) this.threat = null; if (e.type === 'stalker') showBanner('LEGENDARY KILL', 'The Horned Stalker is dead'); }
@@ -3719,10 +4039,12 @@ class Survivor extends Agent {
   update(dt) {
     if (this.dead) { this.rig.animate(dt, { dead: true }); this.syncRoot(); return; }
     const gm = dt * GAME_MIN_PER_SEC, sleeping = this.task && this.task.kind === 'sleep' && this.task.asleep;
+    dangerDecay(gm);
     this.food = Math.max(0, this.food - gm * (4 / 60) * (sleeping ? 0.5 : 1));
     this.water = Math.max(0, this.water - gm * (6 / 60) * (sleeping ? 0.5 : 1));
     this.rest = clamp(this.rest + gm * (sleeping ? (BASE.built.has('bed') ? 16 : 11) / 60 : -4.2 / 60), 0, 100);
-    const rad = radAt(this.pos.x, this.pos.z) * (this.hiddenInBase && S.weather.kind === 'radstorm' ? 0.1 : 1);
+    const covered = (this.hiddenInBase || this.sheltered) && S.weather.kind === 'radstorm';
+    const rad = radAt(this.pos.x, this.pos.z) * (covered ? 0.1 : 1) * this.p.radRes;
     this.rads = clamp(this.rads + rad * gm, 0, 1000);
     if (rad > 0.6 && Math.random() < dt * 0.05) this.say(quip('rad'), 'rad');
     if (this.food <= 0 || this.water <= 0) this.hp -= gm * (2.5 / 60);
@@ -3730,10 +4052,8 @@ class Survivor extends Agent {
     this.hp = Math.min(this.hp, this.maxHpNow);
     if (this.hp <= 0) { this.die(null); return; }
     this.hurtCool -= dt; this.fireT -= dt; this.barkT -= dt;
-    // perception
     this.perceiveT -= dt;
     if (this.perceiveT <= 0) { this.perceiveT = 0.35; this.perceive(); }
-    // decisions
     this.decideT -= dt;
     if (this.decideT <= 0 || !this.task) { this.decideT = 0.6; this.decide(); }
     let st = { speed: 0, action: 'idle' };
@@ -3741,6 +4061,7 @@ class Survivor extends Agent {
       const r = this.task.update(dt, st);
       if (r === 'done' || r === 'fail') { this.task.end?.(r); this.task = null; this.decideT = 0; }
     }
+    if (!this.task || this.task.kind !== 'shelter') this.sheltered = false;
     if (st.action !== 'build' && st.action !== 'chop') this.rig.setTool(this.task?.tool || null);
     if (st.speed > 0.1) S.stats.distance += st.speed * dt;
     if (st.speed > 3.5 && Math.random() < dt * 4) FX.dust(this.pos.x, this.pos.y + 0.05, this.pos.z, 2, 0.4);
@@ -3750,65 +4071,117 @@ class Survivor extends Agent {
     if (this.barkT <= 0 && this.task && this.task.kind === 'travel') { this.barkT = 50 + Math.random() * 60; if (Math.random() < 0.5) this.say(isNight() ? quip('night') : quip('travel'), 'good'); }
   }
   perceive() {
-    // locations
     for (const p of POIS) if (!p.discovered && this.distTo(p) < Math.max(60, p.r + 30)) {
       p.discovered = true; if (p.kind !== 'vault' && p.kind !== 'ruin' && p.kind !== 'house') { showBanner('LOCATION DISCOVERED', p.name); log('Discovered: ' + p.name, 'good'); this.gainXp(10); }
     }
-    for (const c of CONTAINERS) if (!c.known && !c.looted && this.distTo(c) < 22) c.known = true;
-    // threats
+    for (const c of CONTAINERS) if (!c.known && !c.looted && this.distTo(c) < 22 * this.p.loot) c.known = true;
+    const night = isNight(), sightMul = this.p.sight * (night ? this.p.nightSight : 1) * (S.weather.kind === 'dust' ? 0.7 : 1);
     let best = null, bd = 1e9;
     for (const e of ENEMIES) {
       if (e.dead || !e.hostile || e.state === 'dormant' || e.state === 'buried') continue;
-      if (e.avoidUntil && e.avoidUntil > S.simTime && this.distTo(e) > 10) continue;
-      const d = this.distTo(e), sight = (e.type === 'stalker' ? 70 : 42) * (isNight() ? 0.65 : 1);
-      if ((d < sight && losClear(this.pos.x, this.pos.z, e.pos.x, e.pos.z)) || (e.aware && d < 30)) { if (d < bd) { bd = d; best = e; } }
+      const d = this.distTo(e);
+      if (e.avoidUntil && e.avoidUntil > S.simTime && d > 12 && !e.aware) continue;
+      const sight = (e.type === 'stalker' ? 70 : 44) * sightMul;
+      const visible = d < sight && losClear(this.pos.x, this.pos.z, e.pos.x, e.pos.z);
+      if (!visible && !(e.aware && d < 30)) continue;
+      if (visible && !e.seenOnce) { // remember where danger lives
+        e.seenOnce = true; dangerAdd(e.pos.x, e.pos.z, threatOf(e) * 0.8, e.type === 'stalker' ? 2 : 1);
+        if (e.type === 'raider' || e.type === 'stalker' || e.group) dangerNote((e.type === 'stalker' ? 'The Horned Stalker' : e.D.name + 's') + ' near ' + placeName(e.pos.x, e.pos.z), e.pos.x, e.pos.z);
+      }
+      if (!e.aware && visible && this.judgeUnaware(e, d)) continue; // chose to sneak around it
+      if (d < bd) { bd = d; best = e; }
     }
     if (best && best !== this.threat) this.noticeThreat(best);
-    if (this.threat && (this.threat.dead || this.distTo(this.threat) > 90 || (this.threat.avoidUntil > S.simTime && this.distTo(this.threat) > 10))) this.threat = null;
+    if (this.threat && (this.threat.dead || this.distTo(this.threat) > 90 || (this.threat.avoidUntil > S.simTime && !this.threat.aware && this.distTo(this.threat) > 12))) this.threat = null;
     this.lookYaw = this.threat ? clamp(this.relYaw(this.threat.pos.x, this.threat.pos.z), -1.2, 1.2) : damp(this.lookYaw, 0, 2, 0.35);
+  }
+  /* an enemy that has not noticed us: sneak around it, or line up an ambush */
+  judgeUnaware(e, d) {
+    if (e.judged && S.simTime - e.judged.t < 25) return e.judged.avoid;
+    const tn = threatsNear(this, 45), power = powerOf(this), danger = tn.sum + threatOf(e);
+    const w = this.bestWeapon(d, e), ranged = !WEAPONS[w].melee && this.ammoFor(w) >= 6;
+    let avoid = danger > power * 1.05 || (e.type === 'stalker' && power < 6) || (this.hasTrait('cautious') && e.type === 'raider' && power < 3);
+    if (e.type === 'roach' && this.hp > this.maxHpNow * 0.4) avoid = false;
+    if (!avoid && d > 18 && ranged && this.rng.next() < this.p.ambush) { e.ambushable = true; this.once('amb' + (e.group || e.id), () => { this.say(quip('ambush'), 'good'); if (S.simTime - (this.ambLogT || -99) > 45) { this.ambLogT = S.simTime; log(first(this) + ' lines up a shot on an unaware ' + e.D.name + '.', ''); } }); }
+    else if (!avoid && e.type !== 'roach' && d > 30 && this.task && this.task.prio < 30 && this.rng.next() < 0.35 * this.p.dangerAversion) avoid = true; // not worth the ammo
+    e.judged = { t: S.simTime, avoid };
+    if (avoid || e.ambushable) this.stealthT = S.simTime + 25;
+    if (avoid) {
+      e.avoidUntil = S.simTime + 80; dangerAdd(e.pos.x, e.pos.z, threatOf(e) * 1.4, 1);
+      if (this.path) this.repathT = 0;
+      this.once('avoid' + (e.group || e.id), () => { if (S.simTime - (this.avoidLogT || -999) < 90 && this.avoidLogType === e.type) return; this.avoidLogT = S.simTime; this.avoidLogType = e.type; this.say(quip('avoid'), 'warn'); log(first(this) + ' spots ' + (e.group ? 'a pack of ' + e.D.name + 's' : 'a ' + e.D.name) + ' and circles around.', 'warn'); });
+    }
+    return avoid;
   }
   /* ---------- decision making ---------- */
   candidate() {
-    const hpF = this.hp / this.maxHpNow, T = this.threat;
+    const P = this.p, hpF = this.hp / this.maxHpNow, T = this.threat;
     const food = ['steak', 'can_food', 'tato', 'corn', 'jerky'].find(i => this.has(i)) || (this.food < 15 && this.has('meat') ? 'meat' : null);
     const drink = ['water', 'fizz'].find(i => this.has(i)) || (this.water < 22 && this.has('water_dirty') ? 'water_dirty' : null);
     if (T && !T.dead) {
-      const dT = this.distTo(T), strongGun = [...this.weapons].some(w => (w === 'hunting' || w === 'shotgun') && this.ammoFor(w) >= 8);
-      if (hpF < 0.38 && this.has('stim')) return { p: 93, key: 'heal', make: () => new UseTask(this, 'stim', 'heal', 1.4) };
-      if (this.distTo(T) > 14) { if (this.water < 12 && drink) return { p: 92, key: 'drink', make: () => new UseTask(this, drink, 'eat', 1.4) }; if (this.food < 10 && food) return { p: 92, key: 'eat', make: () => new UseTask(this, food, 'eat', 1.6) }; }
-      const melee = WEAPONS[this.bestWeapon(dT)].melee;
-      const pack = ENEMIES.filter(e => !e.dead && e.hostile && e.aware && this.distTo(e) < 25).length;
-      const scary = T.type === 'stalker' && (!strongGun || hpF < 0.65 || this.level < 3);
-      const outgunned = melee && (T.type === 'raider' || T.type === 'stalker' || pack >= 3 || hpF < 0.45);
-      if (scary || outgunned || (hpF < 0.22 && !this.has('stim'))) return { p: 95, key: 'flee' + T.id, make: () => new FleeTask(this, T) };
+      const dT = this.distTo(T), los = losClear(this.pos.x, this.pos.z, T.pos.x, T.pos.z);
+      const tn = threatsNear(this, 40), power = powerOf(this), overwhelmed = tn.sum > power * 1.5;
+      if (this.has('stim') && (hpF < P.healHp * 0.7 || (hpF < P.healHp + (overwhelmed ? 0.12 : 0) && (dT > 6 || !los || inCover(this, T.pos))))) return { p: 93, key: 'heal', make: () => new UseTask(this, 'stim', 'heal', 1.4) };
+      if (dT > 14) { if (this.water < 12 && drink) return { p: 92, key: 'drink', make: () => new UseTask(this, drink, 'eat', 1.4) }; if (this.food < 10 && food) return { p: 92, key: 'eat', make: () => new UseTask(this, food, 'eat', 1.6) }; }
+      const stalker = T.type === 'stalker' && (power < 5 || hpF < 0.6);
+      const wantFlee = stalker ? dT > 9 : overwhelmed || (hpF < P.fleeHp && !this.has('stim'));
+      // only run from what can be outrun; hounds and ghouls get fought, cornered survivors fight back
+      if (wantFlee && !(this.corneredT > S.simTime) && (stalker || canOutrun(this, tn.list.length ? tn.list : [T]))) return { p: 95, key: 'flee' + T.id, make: () => new FleeTask(this, T, overwhelmed ? 'Too many of them' : null) };
       return { p: 90, key: 'fight' + T.id, make: () => new CombatTask(this, T) };
     }
-    if (hpF < 0.6 && this.has('stim')) return { p: 70, key: 'heal', make: () => new UseTask(this, 'stim', 'heal', 1.4) };
-    if (this.rads > 280 && this.has('radpurge')) return { p: 66, key: 'rad', make: () => new UseTask(this, 'radpurge', 'heal', 1.6) };
+    if (S.weather.kind === 'radstorm' && S.weather.intensity > (this.hasTrait('cautious') ? 0.4 : this.hasTrait('tough') ? 0.85 : this.hasTrait('reckless') ? 0.8 : 0.6) && !this.sheltered && !this.hiddenInBase && !(this.noShelterUntil > S.simTime)) return { p: 58, key: 'shelter', make: () => new ShelterTask(this) };
+    if (hpF < (this.hasTrait('medic') ? 0.7 : 0.6) && this.has('stim')) return { p: 70, key: 'heal', make: () => new UseTask(this, 'stim', 'heal', 1.4) };
+    if (this.rads > (this.hasTrait('tough') ? 420 : 280) && this.has('radpurge')) return { p: 66, key: 'rad', make: () => new UseTask(this, 'radpurge', 'heal', 1.6) };
     if (this.water < 38 && drink) return { p: 62, key: 'drink', make: () => new UseTask(this, drink, 'eat', 1.8) };
     if (this.food < 38 && food) return { p: 60, key: 'eat', make: () => new UseTask(this, food, 'eat', 2.2) };
     const fire = BASE.built.has('campfire') ? BASE.firePos() : null;
     if (fire && (this.has('meat') || this.has('water_dirty', 2)) && this.distTo(fire) < 120 && !isNight()) return { p: 44, key: 'cook', make: () => new CookTask(this) };
-    const wantSleep = (isNight() && this.rest < 72) || this.rest < 18;
+    const h = hourOfDay();
+    const wantSleep = (isNight() && this.rest < (this.hasTrait('nightowl') ? 40 : this.hasTrait('cautious') ? 88 : 72)) || this.rest < 18
+      || (this.hasTrait('cautious') && h > 19.2 && BASE.bedPos() && this.rest < 95);
     if (wantSleep) return { p: 56, key: 'sleep', make: () => new SleepTask(this) };
     if (this.water < 30 && !drink) return { p: 48, key: 'water', make: () => new WaterTask(this) };
-    if (this.food < 30 && !food) {
-      const cow = ENEMIES.find(e => e.type === 'cattle' && !e.dead && this.distTo(e) < 220);
+    const hungry = this.food < 30 && !food, hunterMood = P.hunt && this.food < 62 && !this.has('meat') && !this.has('steak');
+    if (hungry || hunterMood) {
       const meatC = CONTAINERS.find(c => c.corpse && !c.looted && c.loot.meat && this.distTo(c) < 150);
       if (meatC) return { p: 47, key: 'loot' + meatC.id, make: () => new LootTask(this, meatC) };
-      if (cow) return { p: 46, key: 'hunt' + cow.id, make: () => { log(this.name.split(' ')[0] + ' is hungry enough to hunt a two-headed cow.', 'warn'); return new CombatTask(this, cow); } };
+      const prey = ENEMIES.filter(e => !e.dead && ((e.type === 'cattle' && !e.pack) || (P.hunt && (e.type === 'hound' || e.type === 'burrower') && e.state !== 'buried')) && this.distTo(e) < (P.hunt ? 300 : 220)).sort((a, b) => this.distTo(a) - this.distTo(b))[0];
+      if (prey) return { p: hungry ? 46 : 32, key: 'hunt' + prey.id, make: () => { log(first(this) + (P.hunt ? ' goes hunting for ' : ' is hungry enough to hunt a ') + prey.D.name + (P.hunt ? 's.' : '.'), 'warn'); return new CombatTask(this, prey); } };
     }
-    // homestead maintenance
+    const trader = EVENTS.trader;
+    if (trader && !trader.dead && trader.state === 'camp' && this.distTo(trader) < 140 && (this.inv.caps || 0) >= 15 && this.tradeWants() && (!this.lastTrade || S.simTime - this.lastTrade > 300)) return { p: 40, key: 'trade', make: () => new TradeTask(this, trader) };
+    const drop = EVENTS.drops.find(d => d.landed && !d.c.looted && this.distTo(d.c) < 380 && dangerAt(d.c.x, d.c.z) * P.dangerAversion < 5);
+    if (drop && (!isNight() || this.hasTrait('nightowl') || this.hasTrait('reckless') || this.distTo(drop.c) < 110) && (this.story !== 'build' || this.hasTrait('scavenger') || this.hasTrait('reckless') || this.distTo(drop.c) < 180)) return { p: 38, key: 'loot' + drop.c.id, make: () => { drop.c.known = true; this.once('drop' + drop.c.id, () => { this.say('Supply drop! Worth a look.'); log(first(this) + ' heads for the supply drop.', 'good'); }); return new LootTask(this, drop.c); } };
+    const sg = EVENTS.signal;
+    if (sg && !sg.resolved && !sg.poi.visited && this.distTo(sg) < 340) {
+      if (!sg.verdict || (!sg.verdict.go && S.simTime - sg.verdict.t > 300)) { // decide once, reconsider later if stronger
+        const want = curiosity(this, 'signal') * (this.hasTrait('reckless') ? 1.5 : 1) * (this.hasTrait('cautious') ? 0.45 : 1) * (this.hasTrait('scavenger') || this.hasTrait('medic') ? 1.25 : 1) * (powerOf(this) > 1.6 ? 1 : 0.5);
+        const was = sg.verdict; sg.verdict = { go: want > 0.9, want, t: S.simTime };
+        if (sg.verdict.go) log(first(this) + ' decides to answer the distress call.', 'warn');
+        else if (!was) { this.say(this.hasTrait('cautious') ? 'Smells like a trap. Not biting.' : 'Can\'t save everyone. Not right now.', 'warn'); log(first(this) + ' ignores the distress call for now.', ''); }
+      }
+      if (sg.verdict.go) return { p: sg.verdict.want > 1.3 ? 36 : 30, key: 'signal', make: () => new ExploreTask(this, sg.poi) };
+    }
     if (BASE.site && BASE.harvestReady() && this.distTo(BASE.site) < 200) return { p: 36, key: 'harvest', make: () => new HarvestTask(this) };
-    // story
-    if (this.story === 'scavenge' && (this.toolsHave().length === 3 || (S.day >= 3 && this.toolsHave().length >= 2 && this.has('hammer')))) {
-      this.story = 'settle'; this.goal = 'Find a place to build a homestead'; this.say('I\'ve got the tools. Time to find somewhere to call home.');
-      showBanner('NEW OBJECTIVE', 'Find a homestead site'); log('Objective: find a safe place to build.', 'good');
+    // story progression
+    const tools = this.toolsHave().length;
+    if (this.story === 'scavenge') {
+      const ready = tools === 3 && this.visitedCount >= P.settleAfter;
+      const pressed = (S.day >= 3 && this.has('hammer') && tools >= 2) || (S.day >= 5 && tools >= 2);
+      if (tools === 3 && !ready && !this.settleNag) { this.settleNag = true; this.say(this.hasTrait('nomad') ? 'Got the tools. Not ready to put down roots yet.' : 'Tools in hand. A little more scavenging first.'); log(first(this) + ' has all three tools but keeps exploring for now.', ''); }
+      if (ready || pressed) {
+        const lacking = TOOLS_NEEDED.filter(t => !this.has(t)).map(t => ITEMS[t].name.toLowerCase());
+        this.story = 'settle'; this.goal = 'Find a place to build a homestead'; this.say(lacking.length ? 'Still no ' + lacking.join(' or ') + '. I\'ll make do.' : 'Time to find somewhere to call home.');
+        showBanner('NEW OBJECTIVE', 'Find a homestead site'); log('Objective: find a safe place to build.', 'good');
+        this.sitePlan = SITES.map(site => ({ site, guess: evaluateSite(this, site, true).score - this.distTo(site) / 900 })).sort((a, b) => b.guess - a.guess).slice(0, this.hasTrait('cautious') ? 4 : 3).map(q => q.site);
+      }
     }
     if (this.story === 'settle' && BASE.site) { this.story = 'build'; this.goal = 'Finish the homestead at the ' + BASE.site.name; log('Picking up where the last dweller left off.', 'good'); }
     if (this.story === 'settle') {
-      const next = SITES.filter(s => !this.sitesSeen[s.id]).sort((a, b) => this.distTo(a) - this.distTo(b))[0];
+      const plan = (this.sitePlan || SITES).filter(q => !this.sitesSeen[q.id]);
+      const next = plan[0];
       if (next) return { p: 34, key: 'scout' + next.id, make: () => new ScoutTask(this, next) };
+      this.chooseBestSite();
     }
     if (this.story === 'build' || this.story === 'homestead') {
       const piece = BASE.nextPiece();
@@ -3820,42 +4193,55 @@ class Survivor extends Agent {
         if (g) return g;
       }
     }
-    // opportunistic looting
-    const known = CONTAINERS.filter(c => c.known && !c.looted && !c.unreachable && c.danger < 1.2).map(c => [c, this.distTo(c)]).filter(([c, d]) => d < 90).sort((a, b) => a[1] - b[1])[0];
+    const lootR = 90 * P.loot;
+    const known = CONTAINERS.filter(c => c.known && !c.looted && !c.unreachable && c.danger < 1.2 && dangerAt(c.x, c.z) * P.dangerAversion < 6).map(c => [c, this.distTo(c)]).filter(([c, d]) => d < lootR).sort((a, b) => a[1] - b[1])[0];
     if (known) return { p: 28, key: 'loot' + known[0].id, make: () => new LootTask(this, known[0]) };
-    // explore
     const poi = this.pickPOI();
     if (poi) return { p: 20, key: 'poi' + POIS.indexOf(poi), make: () => new ExploreTask(this, poi) };
     return { p: 5, key: 'idle', make: () => new IdleTask(this, 6) };
   }
+  tradeWants() {
+    const tr = EVENTS.trader, caps = this.inv.caps || 0;
+    if (tr && TOOLS_NEEDED.some(t => !this.has(t) && tr.stock[t] && caps >= tr.stock[t])) return true;
+    const gun = [...this.weapons].filter(w => !WEAPONS[w].melee).sort((a, b) => WEAPONS[b].tier - WEAPONS[a].tier)[0];
+    return (gun && this.ammoFor(gun) < 24) || !this.has('stim', 2) || !this.has('water', 2) || (this.food < 50 && !this.has('can_food'));
+  }
+  chooseBestSite() {
+    const seen = Object.entries(this.sitesSeen).filter(([, v]) => v.score > -1);
+    const site = seen.length ? SITES.find(q => q.id === seen.sort((a, b) => b[1].score - a[1].score)[0][0]) : (SITES.find(q => !this.sitesSeen[q.id]) || SITES[0]);
+    BASE.chooseSite(site, this); this.story = 'build'; this.goal = 'Build the homestead';
+  }
   pickPOI() {
-    const missing = TOOLS_NEEDED.filter(t => !this.has(t));
-    const hint = { gas: 'hammer', hardware: 'saw', farm: 'axe', cabin: 'axe' };
+    const P = this.p, power = powerOf(this), searching = this.story === 'scavenge' || this.story === 'settle';
     let best = null, bs = 0;
     for (const p of POIS) {
       if (p.visited || (p.skipUntil && p.skipUntil > S.simTime)) continue;
-      let v = p.value;
-      if (hint[p.kind] && missing.includes(hint[p.kind]) && (this.story === 'scavenge' || this.story === 'settle')) v *= 3.5;
-      if (p.kind === 'raiders' && (this.level < 3 || !this.weapons.has('hunting') && !this.weapons.has('shotgun'))) v *= 0.05;
-      if (p.kind === 'quarry' && this.level < 6) v *= 0.02;
+      let v = p.value * curiosity(this, p.kind) * Math.sqrt(P.explore);
+      if (searching) v += toolValue(this, p) * 4.5;
+      if (p.kind === 'raiders' && power < (this.hasTrait('reckless') ? 2.6 : 4)) v *= 0.05;
+      if (p.kind === 'quarry' && (power < 7 || this.level < 5)) v *= 0.02;
       if (p.kind === 'crater' && !this.has('radpurge')) v *= 0.2;
+      if (p.kind === 'grave') v *= 2;
+      if (p.kind === 'signal') v *= this.hasTrait('cautious') ? 0.4 : 1.6;
+      v /= 1 + dangerAt(p.x, p.z) * 0.25 * P.dangerAversion;
+      if (isNight() && P.nightTravel < 1) v *= P.nightTravel;
       if (BASE.site && (this.story === 'build' || this.story === 'homestead') && isNight()) v *= 0.1;
-      const d = this.distTo(p), sc = v / (1 + d / 110);
+      const d = this.distTo(p), sc = v / (1 + d / (110 * P.explore));
       if (sc > bs) { bs = sc; best = p; }
     }
+    if (best && searching && toolValue(this, best) > 0.4) this.once('guess' + POIS.indexOf(best), () => { const t = TOOLS_NEEDED.filter(k => !this.has(k)).sort((a, b) => this.belief.get(best)[b] - this.belief.get(best)[a])[0]; if (t) this.say(`Bet there's a ${ITEMS[t].name.toLowerCase()} at ${best.name}.`); });
     return best;
   }
   gatherFor(miss) {
     const site = BASE.site;
     if (miss === 'wood') {
-      if (this.has('axe')) { const t = nearestTree(site.x, site.z, 90) || nearestTree(this.pos.x, this.pos.z, 200); if (t) return { p: 33, key: 'chop' + TREES.indexOf(t), make: () => new ChopTask(this, t) }; }
+      if (this.has('axe')) { const t = nearestTree(site.x, site.z, 90) || nearestTree(this.pos.x, this.pos.z, 220) || nearestTree(site.x, site.z, 480); if (t) return { p: 33, key: 'chop' + TREES.indexOf(t), make: () => new ChopTask(this, t) }; }
       const wp = CONTAINERS.find(c => c.type === 'woodpile' && !c.looted); if (wp) return { p: 33, key: 'loot' + wp.id, make: () => new LootTask(this, wp) };
     }
     if (miss === 'scrap') {
-      const car = CARS.filter(c => c.scrap > 0).map(c => [c, dist2(c.x, c.z, site.x, site.z) * 0.6 + this.distTo(c) * 0.4]).sort((a, b) => a[1] - b[1])[0];
+      const car = CARS.filter(c => c.scrap > 0 && dangerAt(c.x, c.z) * this.p.dangerAversion < 6).map(c => [c, dist2(c.x, c.z, site.x, site.z) * 0.6 + this.distTo(c) * 0.4]).sort((a, b) => a[1] - b[1])[0];
       if (car && car[1] < 380) return { p: 33, key: 'salvage' + CARS.indexOf(car[0]), make: () => new SalvageTask(this, car[0]) };
     }
-    // anything else: loot containers known or explore
     this.searchT += 0.6;
     if (this.searchT > 360 && !S.flags.substitute) { S.flags.substitute = true; log('Improvising: scrap and wood will have to stand in for missing parts.', 'warn'); }
     return null;
@@ -3872,11 +4258,11 @@ class Survivor extends Agent {
   }
   /* ---------- actions ---------- */
   fireAt(e, w) {
-    const D = WEAPONS[w], d = this.distTo(e);
+    const D = WEAPONS[w], d = this.distTo(e), sneak = !e.aware && e.hostile;
     this.fireT = D.rate * (0.9 + Math.random() * 0.25);
     if (!D.melee) { this.add(D.ammo, -1); S.stats.shots++; }
     const muzzle = this.rig.muzzleWorld(new THREE.Vector3()), tgt = new THREE.Vector3(e.pos.x, e.pos.y + e.height() * 0.6, e.pos.z);
-    const pHit = clamp(D.acc * (1 - d / (D.range * 1.7)) + this.level * 0.02 - (e.speedNow > 4 ? 0.12 : 0) - (isNight() ? 0.08 : 0), 0.12, 0.97);
+    const pHit = clamp(D.acc * (1 - d / (D.range * 1.7)) + this.level * 0.02 + this.p.aim + (sneak ? 0.2 : 0) - (e.speedNow > 4 ? 0.12 : 0) - (isNight() ? (this.hasTrait('nightowl') ? 0.02 : 0.08) : 0), 0.12, 0.97);
     const hit = D.melee ? Math.random() < 0.85 : Math.random() < pHit;
     if (!D.melee) {
       const aimAt = hit ? tgt : tgt.clone().add(_v3.set((Math.random() - .5) * 2.5, (Math.random() - .3) * 1.2, (Math.random() - .5) * 2.5));
@@ -3886,48 +4272,19 @@ class Survivor extends Agent {
     } else { this.rig.swing = 0; AUDIO.swipe(this.pos, 'human'); }
     if (hit) {
       let dmg = D.dmg[0] + Math.random() * (D.dmg[1] - D.dmg[0]); dmg *= 1 + (this.level - 1) * 0.04;
-      const crit = Math.random() < 0.08; if (crit) dmg *= 2;
+      if (D.melee) dmg *= this.p.meleeMul;
+      if (sneak) { dmg *= 1.6; S.stats.sneaks = (S.stats.sneaks || 0) + 1; FX.label('SNEAK ATTACK', _v1.copy(e.pos).setY(e.pos.y + e.height() + 0.5), 'warn', 1.2, 0.8); }
+      const crit = Math.random() < (this.hasTrait('marksman') && w === 'hunting' ? 0.18 : 0.08); if (crit) dmg *= 2;
       if (w === 'shotgun') dmg *= clamp(1.25 - d / 16, 0.3, 1.2);
       e.takeDamage(dmg, this, crit);
     }
   }
 }
-/* nearest walkable spot in a ring around an object, preferring spots close to the survivor */
-function approachSpot(s, x, z, rMin, rMax) {
-  let best = null, bd = 1e9;
-  for (let r = rMin; r <= rMax + 1e-3; r += 0.4) for (let k = 0; k < 16; k++) {
-    const a = k / 16 * TAU, px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r;
-    if (!navFreeAt(px, pz)) continue;
-    const d = dist2(px, pz, s.pos.x, s.pos.z) * 0.15 + r;
-    if (d < bd) { bd = d; best = { x: px, z: pz }; }
-  }
-  return best;
-}
-/* progress watchdog: returns true when the agent has made no headway toward (x,z) for `limit` seconds */
-function noProgress(task, s, x, z, dt, limit = 30) {
-  task.wt = (task.wt || 0) + dt; const d = dist2(s.pos.x, s.pos.z, x, z);
-  if (task.bestD === undefined || d < task.bestD - 1) { task.bestD = d; task.lastGain = task.wt; }
-  return task.wt - task.lastGain > limit;
-}
-/* if a container holding a tool or weapon can't be reached, move that loot to a reachable spot nearby */
-function relocateKeyLoot(c) {
-  const key = Object.keys(c.loot).filter(id => ITEMS[id] && (ITEMS[id].tool || ITEMS[id].weapon));
-  if (!key.length) return;
-  const poi = POIS.filter(p => p.door).sort((a, b) => dist2(a.x, a.z, c.x, c.z) - dist2(b.x, b.z, c.x, c.z))[0];
-  let x = poi && dist2(poi.x, poi.z, c.x, c.z) < 30 ? poi.door[0] : c.x, z = poi && dist2(poi.x, poi.z, c.x, c.z) < 30 ? poi.door[1] : c.z;
-  const f = navNearestFree(navI(x), navI(z), 6); if (f) { x = -HALF + f[0] + 0.5; z = -HALF + f[1] + 0.5; }
-  const n = addContainer('toolbox', x + 0.6, z + 0.6, Math.random() * TAU); n.loot = {}; for (const id of key) { n.loot[id] = c.loot[id]; delete c.loot[id]; } n.known = true;
-}
-function nearestTree(x, z, maxD) {
-  let best = null, bd = maxD;
-  for (const t of TREES) { if (!t.alive || t.claimed) continue; const d = dist2(t.x, t.z, x, z); if (d < bd && (!BASE.site || dist2(t.x, t.z, BASE.site.x, BASE.site.z) > BASE.site.r + 2)) { bd = d; best = t; } }
-  return best;
-}
 /* ---------------- tasks ---------------- */
 class Task {
   constructor(s, label, kind) { this.s = s; this.label = label; this.kind = kind; this.t = 0; this.finished = false; s.goalText = label; }
   go(x, z, st, dt, arrive = 1.2, run = false) {
-    const s = this.s, far = dist2(s.pos.x, s.pos.z, x, z) > 45, sp = run ? 4.6 : isNight() ? (far ? 2.6 : 1.7) : (far ? 3.4 : 2.1);
+    const s = this.s, far = dist2(s.pos.x, s.pos.z, x, z) > 45, sp = (run ? 4.6 : isNight() ? (far ? 2.6 : 1.7) : (far ? 3.4 : 2.1)) * s.p.speed;
     const arrived = s.navigate(x, z, sp, dt, arrive); st.speed = s.speedNow; st.action = 'walk'; return arrived;
   }
 }
@@ -3935,9 +4292,9 @@ class IntroTask extends Task {
   constructor(s) { super(s, 'Waiting for the vault door', 'intro'); this.stage = 0; }
   update(dt, st) {
     const s = this.s; this.t += dt; st.action = 'idle';
-    if (this.stage === 0 && VAULT.openT >= 1) { this.stage = 2; this.label = s.goalText = 'Stepping outside'; s.say('My turn. Let\'s see what\'s left out there.'); }
+    if (this.stage === 0 && VAULT.openT >= 1) { this.stage = 2; this.label = s.goalText = 'Stepping outside'; s.say(INTRO_LINES[s.traits[0]] || 'My turn. Let\'s see what\'s left out there.'); }
     if (this.stage === 0 && this.t > 1.5) { this.stage = 1; VAULT.openT = 0; log('Vault door override accepted. Opening...', 'warn'); AUDIO.siren(); }
-    if (this.stage === 1) { st.action = 'idleLook'; if (VAULT.openT >= 1) { this.stage = 2; this.label = s.goalText = 'Stepping outside'; VAULT.doorColl.hw = 0; VAULT.doorColl.hd = 0; s.say('So that\'s what the sun looks like.'); } }
+    if (this.stage === 1) { st.action = 'idleLook'; if (VAULT.openT >= 1) { this.stage = 2; this.label = s.goalText = 'Stepping outside'; VAULT.doorColl.hw = 0; VAULT.doorColl.hd = 0; s.say(INTRO_LINES[s.traits[0]] || 'So that\'s what the sun looks like.'); } }
     if (this.stage === 2) { if (this.go(VAULT.spawn.x + 1, VAULT.front + 9, st, dt, 1)) { this.stage = 3; this.t = 0; this.label = 'Taking in the view'; } }
     if (this.stage === 3) { st.action = 'idleLook'; if (this.t > 3.5) { for (let z = VAULT.front - 22; z < VAULT.front - 0.5; z++) for (let x = -4; x <= 4; x++) { const i = navI(VAULT.spawn.x + x), j = navI(z); if (navInside(i, j)) NAV.block[j * NAV.N + i] = 1; } s.story = 'scavenge'; s.goal = 'Scavenge supplies and find tools (hammer, saw, axe)'; showBanner('OBJECTIVE', 'Survive. Find tools to build a home.'); log('Objective: find a hammer, a saw and an axe.', 'good'); return 'done'; } }
   }
@@ -3953,8 +4310,10 @@ class ExploreTask extends Task {
     const d = this.s.distTo({ x: tx, z: tz }); if (this.best === undefined || d < this.best - 1) { this.best = d; this.lastProgress = this.t; }
     if (this.t - this.lastProgress > 25) { p.visited = d < 30; p.skipUntil = S.simTime + 120; return 'fail'; }
     if (this.go(tx, tz, st, dt, p.door ? 1.8 : Math.min(8, p.r * 0.5))) {
-      p.visited = true;
+      p.visited = true; this.s.visitedCount++;
       for (const c of CONTAINERS) if (!c.looted && dist2(c.x, c.z, p.x, p.z) < p.r + 12) c.known = true;
+      searchedPlace(this.s, p, false);
+      if (p.kind === 'signal') EVENTS.resolveSignal(this.s);
       if (p.kind === 'lake') this.s.say('Glowing water. I\'ll boil it first. Twice.');
       return 'done';
     }
@@ -3965,20 +4324,25 @@ class LootTask extends Task {
   update(dt, st) {
     const s = this.s, c = this.c;
     if (c.looted) return 'done';
-    if (this.stage === 0) { this.t += dt; if (this.go(c.x, c.z, st, dt, c.type === 'car' && !c.corpse ? 1.3 : 1.1)) { this.stage = 1; this.t = 0; } else if (this.t > 45 || (this.t > 12 && s.stuckT >= 2 && s.distTo(c) < 4)) { c.unreachable = true; log(c.name + ' is out of reach.', ''); relocateKeyLoot(c); return 'fail'; } return; }
+    if (this.stage === 0) { this.t += dt; if (this.go(c.x, c.z, st, dt, c.type === 'car' && !c.corpse ? 1.3 : 1.1)) { this.stage = 1; this.t = 0; } else if (noProgress(this, s, c.x, c.z, dt, 25) || (this.t > 12 && s.stuckT >= 2 && s.distTo(c) < 4)) { c.unreachable = true; log(c.name + ' is out of reach.', ''); relocateKeyLoot(c); return 'fail'; } return; }
     st.action = 'loot'; s.faceTo(c.x, c.z, dt); this.t += dt;
     if (this.t > (c.type === 'safe' ? 4 : 2.4)) {
       c.looted = true; S.stats.looted++; s.stats.looted++; AUDIO.loot();
+      if (s.hasTrait('scavenger') && !c.corpse && LOOT[c.type] && Math.random() < 0.4) { // a scavenger checks the false bottoms
+        for (const [id, n] of Object.entries(rollLoot(c.type, S.rng))) if (ITEMS[id] && !ITEMS[id].weapon && !ITEMS[id].tool) c.loot[id] = (c.loot[id] || 0) + n;
+      }
       const got = Object.entries(c.loot); const parts = [];
       got.forEach(([id, n], i) => {
-        const it = ITEMS[id]; if (!it) return;
+        const it = ITEMS[id]; if (!it) return; const had = s.has(id);
         if (it.weapon) { if (!s.weapons.has(it.weapon)) { s.weapons.add(it.weapon); log('Picked up a ' + it.name + '!', 'good'); s.say(it.weapon === 'hunting' ? 'A hunting rifle. Now we\'re talking.' : it.weapon === 'shotgun' ? 'Boomstick. Perfect.' : 'This will do.'); } else s.add(WEAPONS[it.weapon].ammo || 'scrap', 3); }
         else s.add(id, n);
-        if (it.tool) { showBanner('FOUND', it.name.toUpperCase()); log('Found a ' + it.name + '! Tools: ' + s.toolsHave().length + '/3', 'good'); s.say(id === 'axe' ? 'An axe. Now I can cut timber.' : id === 'saw' ? 'A saw! Proper building tool.' : id === 'hammer' ? 'A hammer. First real tool.' : 'Handy.'); s.gainXp(25); }
+        if (it.tool && TOOLS_NEEDED.includes(id) && !had) { showBanner('FOUND', it.name.toUpperCase()); log('Found a ' + it.name + '! Tools: ' + s.toolsHave().length + '/3', 'good'); s.say(id === 'axe' ? 'An axe. Now I can cut timber.' : id === 'saw' ? 'A saw! Proper building tool.' : id === 'hammer' ? 'A hammer. First real tool.' : 'Handy.'); s.gainXp(25); }
         parts.push((n > 1 ? n + ' ' : '') + it.name);
         setTimeout(() => FX.label('+' + (n > 1 ? n + ' ' : '') + it.name, _v1.copy(s.pos).setY(s.pos.y + 1.9), it.tool || it.weapon ? 'warn' : 'good', 2.0, 0.8), i * 260);
       });
       log(parts.length ? c.name + ': ' + parts.join(', ') : c.name + ' was empty.', parts.length ? '' : '');
+      const poi = POIS.find(q => s.belief.has(q) && dist2(c.x, c.z, q.x, q.z) < q.r + 12);
+      if (poi && !CONTAINERS.some(q => !q.looted && !q.unreachable && dist2(q.x, q.z, poi.x, poi.z) < poi.r + 12)) searchedPlace(s, poi, true);
       s.gainXp(3);
       return 'done';
     }
@@ -3991,7 +4355,7 @@ class UseTask extends Task {
     if (!s.has(this.item)) return 'fail';
     if (this.t > this.dur) {
       const it = ITEMS[this.item]; s.add(this.item, -1);
-      if (it.hp) s.hp = Math.min(s.maxHpNow, s.hp + it.hp);
+      if (it.hp) s.hp = Math.min(s.maxHpNow, s.hp + it.hp * (this.item === 'stim' ? s.p.stimHeal : 1));
       if (it.food) s.food = Math.min(100, s.food + it.food);
       if (it.water) s.water = Math.min(100, s.water + it.water);
       if (it.rads) s.rads = clamp(s.rads + it.rads, 0, 1000);
@@ -4004,58 +4368,115 @@ class UseTask extends Task {
   }
 }
 class CombatTask extends Task {
-  constructor(s, e) { super(s, (e.hostile ? 'Fighting ' : 'Hunting ') + e.D.name, 'combat'); this.e = e; if (e.hostile && Math.random() < 0.5) s.say(quip('combat'), 'warn'); }
+  constructor(s, e) {
+    super(s, (e.hostile ? 'Fighting ' : 'Hunting ') + e.D.name, 'combat'); this.e = e; this.retargetT = 1; this.coverT = 0;
+    if (e.hostile && !e.aware && e.ambushable) this.label = s.goalText = 'Stalking a ' + e.D.name;
+    else if (e.hostile && Math.random() < 0.5) s.say(quip('combat'), 'warn');
+  }
+  /* lower is more urgent: the biter at our heels, the wounded, anything shooting at us */
+  score(e) {
+    const s = this.s, d = s.distTo(e);
+    return d + (e.D.melee ? (d < 7 ? -12 : 0) : -6) - (1 - e.hp / e.maxHp) * 10 + (losClear(s.pos.x, s.pos.z, e.pos.x, e.pos.z) ? 0 : 15) + (e.type === 'stalker' ? 20 : 0);
+  }
+  pickTarget() {
+    const s = this.s, list = threatsNear(s, 45).list; if (list.length < 2) return;
+    let best = this.e, bs = this.e.dead ? 1e9 : this.score(this.e) - 4;
+    for (const e of list) { const sc = this.score(e); if (sc < bs) { bs = sc; best = e; } }
+    if (best !== this.e && !best.dead) { this.e = best; s.threat = best; this.label = s.goalText = 'Fighting ' + best.D.name; this.lastGain = this.t; }
+  }
   update(dt, st) {
-    const s = this.s, e = this.e;
+    const s = this.s; this.t += dt;
+    if (this.e.hostile && (this.retargetT -= dt) <= 0) { this.retargetT = 1.2; this.pickTarget(); }
+    const e = this.e;
     if (e.dead) return 'done';
-    if (!e.hostile && s.food > 60) return 'done';
+    if (!e.hostile && s.food > 70 && !s.p.hunt) return 'done';
     const d = s.distTo(e), w = s.bestWeapon(d, e), D = WEAPONS[w]; s.equip(w);
     const los = losClear(s.pos.x, s.pos.z, e.pos.x, e.pos.z);
     s.aimYaw = s.relYaw(e.pos.x, e.pos.z);
+    // give up on fights that go nowhere (enemy unreachable / out of sight)
+    if (los) this.lastLos = this.t;
+    if (e.hp < (this.lastHp ?? 1e9) || (los && d < (D.melee ? 3 : D.range))) { this.lastHp = e.hp; this.lastGain = this.t; }
+    if (this.t - (this.lastGain ?? 0) > 25 && this.t - (this.lastLos ?? 0) > 10) { e.avoidUntil = S.simTime + 60; if (s.threat === e) s.threat = null; return 'fail'; }
+    const stalking = e.hostile && !e.aware;
+    if (stalking) s.stealthT = S.simTime + 1.5;
     if (D.melee) {
-      if (d > D.range) { s.navigate(e.pos.x, e.pos.z, 4.6, dt, D.range * 0.8); st.speed = s.speedNow; }
+      s.cover = null;
+      if (d > D.range) { s.navigate(e.pos.x, e.pos.z, (stalking && d > 6 ? 1.8 : 4.6) * s.p.speed, dt, D.range * 0.8); st.speed = s.speedNow; }
       else { s.stop(dt); s.faceTo(e.pos.x, e.pos.z, dt, 12); st.action = 'melee'; s.rig.swing = Math.min(1, s.rig.swing + dt * 3); if (s.fireT <= 0 && Math.abs(s.aimYaw) < 0.5) s.fireAt(e, w); }
       return;
     }
-    const want = w === 'shotgun' ? 9 : w === 'pistol' ? 15 : w === 'hunting' ? 32 : 20;
+    const want = Math.min(D.range * 0.85, (w === 'shotgun' ? 9 : w === 'pistol' ? 15 : w === 'hunting' ? 32 : 20) * s.p.rangeMul);
     st.action = 'aim';
-    // give up on fights that go nowhere (enemy unreachable / out of sight)
-    this.t += dt; if (los) this.lastLos = this.t; if (e.hp < (this.lastHp ?? 1e9) || los && d < D.range) { this.lastHp = e.hp; this.lastGain = this.t; }
-    if (this.t - (this.lastGain ?? 0) > 25 && this.t - (this.lastLos ?? 0) > 10) { e.avoidUntil = S.simTime + 60; if (s.threat === e) s.threat = null; return 'fail'; }
-    if (!los) { s.navigate(e.pos.x, e.pos.z, d > 30 ? 4.2 : 2.6, dt, 1.5); st.speed = s.speedNow; }
-    else if (d > Math.min(D.range * 0.95, want + 8)) { s.navigate(e.pos.x, e.pos.z, d > 30 ? 4.2 : 2.2, dt, want * 0.8); st.speed = s.speedNow; }
+    // against shooters, fight from behind a rock or a wreck
+    const shooter = e.hostile && !e.D.melee && e.aware;
+    if (!shooter) s.cover = null;
+    else if ((this.coverT -= dt) <= 0) {
+      this.coverT = 3.5;
+      if (!s.cover || !coverValid(s.cover, e.pos, 0.45) || dist2(s.cover.x, s.cover.z, e.pos.x, e.pos.z) < 7) {
+        const cv = findCover(s, e, true);
+        if (cv && !s.cover) { S.stats.covers = (S.stats.covers || 0) + 1; s.once('cover' + e.id, () => s.say(S.rng.pick(['Taking cover!', 'Get behind something!', 'Need cover. Now.']), 'warn')); }
+        s.cover = cv;
+      }
+    }
+    if (s.cover) {
+      if (s.navigate(s.cover.x, s.cover.z, 4.4 * s.p.speed, dt, 0.6)) s.stop(dt);
+      st.speed = s.speedNow;
+    } else if (!los) { s.navigate(e.pos.x, e.pos.z, stalking ? 1.8 : d > 30 ? 4.2 : 2.6, dt, 1.5); st.speed = s.speedNow; }
+    else if (d > Math.min(D.range * (stalking ? 0.8 : 0.95), want + 8)) { s.navigate(e.pos.x, e.pos.z, stalking ? 1.7 : d > 30 ? 4.2 : 2.2, dt, want * 0.8); st.speed = s.speedNow; }
     else if (e.D.melee && d < Math.max(5, want * 0.4) && e.hostile) { // backpedal
       const dx = s.pos.x - e.pos.x, dz = s.pos.z - e.pos.z, l = Math.hypot(dx, dz) || 1;
       const bx = s.pos.x + dx / l * 4, bz = s.pos.z + dz / l * 4;
       if (navFreeAt(bx, bz)) { s.pos.x += dx / l * 2.6 * dt; s.pos.z += dz / l * 2.6 * dt; resolveCollisions(s.pos, s.radius); s.pos.y = groundHeight(s.pos.x, s.pos.z); st.speed = 1.6; }
     } else s.stop(dt);
     if (Math.abs(s.aimYaw) > 0.15 || st.speed < 0.5) s.faceTo(e.pos.x, e.pos.z, dt, 10);
-    if (los && d < D.range && s.fireT <= 0 && Math.abs(s.relYaw(e.pos.x, e.pos.z)) < 0.3) s.fireAt(e, w);
+    // stalking: hold fire until the first shot is likely to land
+    const hold = stalking && d > D.range * 0.8;
+    if (los && d < D.range && s.fireT <= 0 && !hold && Math.abs(s.relYaw(e.pos.x, e.pos.z)) < 0.3 && st.speed < 3) s.fireAt(e, w);
   }
+  end() { this.s.cover = null; }
 }
 class FleeTask extends Task {
-  constructor(s, e) { super(s, 'Running from ' + e.D.name, 'flee'); this.e = e; s.say(e.type === 'stalker' ? 'Nope. Nope. NOPE.' : 'Too many. Fall back!', 'warn'); this.dest = null; if (e.type === 'stalker') log(s.name.split(' ')[0] + ' flees from the Horned Stalker!', 'danger'); }
+  constructor(s, e, reason) {
+    super(s, 'Running from ' + (e.type === 'stalker' ? 'the Horned Stalker' : e.D.name), 'flee'); this.e = e; this.dest = null; this.retarget = 0;
+    s.cover = null;
+    s.say(e.type === 'stalker' ? 'Nope. Nope. NOPE.' : reason ? reason + '. Fall back!' : S.rng.pick(['I need to get out of here!', 'Can\'t win this one. Run!', 'Fall back, fall back!']), 'warn');
+    if (e.type === 'stalker') log(first(s) + ' flees from the Horned Stalker!', 'danger');
+    else if (!s.lastFleeLog || S.simTime - s.lastFleeLog > 60) { s.lastFleeLog = S.simTime; log(first(s) + (reason ? ' is outnumbered and falls back.' : ' is badly hurt and runs for it.'), 'warn'); }
+    dangerAdd(e.pos.x, e.pos.z, 1.5 + threatOf(e), 1);
+  }
   update(dt, st) {
     const s = this.s, e = this.e; this.t += dt;
-    if (e.dead || s.distTo(e) > 55 || this.t > 25) { if (!e.dead) { e.avoidUntil = S.simTime + 45; if (s.threat === e) s.threat = null; if (s.distTo(e) > 40) { e.aware = false; e.setState('wander'); } } return 'done'; }
-    if (!this.dest || this.retarget <= 0) {
-      this.retarget = 3;
-      const safe = BASE.site && BASE.built.has('fence') && dist2(BASE.site.x, BASE.site.z, e.pos.x, e.pos.z) > 40 ? BASE.site : null;
-      if (safe) this.dest = { x: safe.x, z: safe.z };
-      else {
-        const away = Math.atan2(s.pos.x - e.pos.x, s.pos.z - e.pos.z); let best = null, bs = -1e9;
-        for (let k = -3; k <= 3; k++) {
-          const a = away + k * 0.45, x = clamp(s.pos.x + Math.sin(a) * 35, -440, 440), z = clamp(s.pos.z + Math.cos(a) * 35, -440, 440);
-          if (!navFreeAt(x, z)) continue;
-          const sc = dist2(x, z, e.pos.x, e.pos.z) - Math.abs(k) * 4 + (walkClear(s.pos.x, s.pos.z, x, z) ? 15 : 0);
-          if (sc > bs) { bs = sc; best = { x, z }; }
-        }
-        this.dest = best || { x: s.pos.x + Math.sin(away) * 20, z: s.pos.z + Math.cos(away) * 20 };
-      }
+    const list = threatsNear(s, 60).list; let near = 1e9; for (const q of list) near = Math.min(near, s.distTo(q));
+    if ((e.dead && !list.length) || near > 50 || this.t > 25) { this.finish(); return 'done'; }
+    const biter = list.find(q => q.D.melee && s.distTo(q) < 2.6);
+    if (biter) { this.bitT = (this.bitT || 0) + dt; if (this.bitT > 1.5) { s.corneredT = S.simTime + 10; s.threat = biter; s.say('Can\'t shake it. Fight!', 'warn'); return 'done'; } } else this.bitT = 0;
+    if (!this.dest || (this.retarget -= dt) <= 0) { this.retarget = 3; this.dest = this.pickDest(list.length ? list : [e]); }
+    s.navigate(this.dest.x, this.dest.z, 5.0 * s.p.speed, dt, 2); st.speed = s.speedNow; st.action = 'run';
+    if (s.has('stim') && s.hp < s.maxHpNow * 0.3 && near > 15) return 'done';
+  }
+  pickDest(list) {
+    const s = this.s;
+    if (BASE.site && BASE.built.has('fence') && s.distTo(BASE.site) < 250 && list.every(q => dist2(BASE.site.x, BASE.site.z, q.pos.x, q.pos.z) > 40)) return { x: BASE.site.x, z: BASE.site.z };
+    let ax = 0, az = 0;
+    for (const q of list) { const dx = s.pos.x - q.pos.x, dz = s.pos.z - q.pos.z, l = Math.hypot(dx, dz) || 1, w = 1 / (l + 2); ax += dx / l * w; az += dz / l * w; }
+    const away = Math.atan2(ax, az); let best = null, bs = -1e9;
+    for (let k = -4; k <= 4; k++) {
+      const a = away + k * 0.4, x = clamp(s.pos.x + Math.sin(a) * 35, -440, 440), z = clamp(s.pos.z + Math.cos(a) * 35, -440, 440);
+      if (!navFreeAt(x, z)) continue;
+      let dmin = 1e9; for (const q of list) dmin = Math.min(dmin, dist2(x, z, q.pos.x, q.pos.z));
+      const sc = dmin - Math.abs(k) * 3 + (walkClear(s.pos.x, s.pos.z, x, z) ? 15 : 0) - dangerAt(x, z) * 3 * s.p.dangerAversion;
+      if (sc > bs) { bs = sc; best = { x, z }; }
     }
-    this.retarget -= dt;
-    s.navigate(this.dest.x, this.dest.z, 5.0, dt, 2); st.speed = s.speedNow; st.action = 'run';
-    if (s.has('stim') && s.hp < s.maxHpNow * 0.3 && s.distTo(e) > 15) { return 'done'; }
+    return best || { x: s.pos.x + Math.sin(away) * 20, z: s.pos.z + Math.cos(away) * 20 };
+  }
+  finish() {
+    const s = this.s;
+    for (const q of ENEMIES) {
+      if (q.dead || !q.hostile || (q !== this.e && !q.aware) || s.distTo(q) > 70) continue;
+      q.avoidUntil = S.simTime + (s.hasTrait('cautious') ? 90 : 45);
+      if (s.distTo(q) > 40) { q.aware = false; q.setState('wander'); }
+    }
+    if (s.threat && s.threat.avoidUntil > S.simTime) s.threat = null;
   }
 }
 class SleepTask extends Task {
@@ -4108,7 +4529,7 @@ class HarvestTask extends Task {
   update(dt, st) {
     const s = this.s, g = BASE.gardenPos();
     if (!this.arrived) { if (this.go(g.x, g.z, st, dt, 1.4)) { this.arrived = true; this.t = 0; } return; }
-    st.action = 'loot'; this.t += dt; if (this.t > 3) { const n = BASE.harvest(); s.add(n % 2 ? 'corn' : 'tato', n); log('Harvested ' + n + ' vegetables from the garden.', 'good'); return 'done'; }
+    st.action = 'loot'; this.t += dt; if (this.t > 3) { const n = BASE.harvest(s); s.add(n % 2 ? 'corn' : 'tato', n); log('Harvested ' + n + ' vegetables from the garden.', 'good'); return 'done'; }
   }
 }
 class ChopTask extends Task {
@@ -4145,36 +4566,307 @@ class SalvageTask extends Task {
 }
 class ScoutTask extends Task {
   constructor(s, site) { super(s, 'Scouting the ' + site.name, 'scout'); this.site = site; }
+  threshold() { const s = this.s; return (s.hasTrait('cautious') ? 0.78 : s.hasTrait('nomad') ? 0.82 : s.hasTrait('reckless') ? 0.62 : 0.7) - 0.03 * Math.max(0, S.day - 3); }
   update(dt, st) {
     const s = this.s, site = this.site;
-    if (!this.arrived) { if (this.go(site.x, site.z, st, dt, 3)) { this.arrived = true; this.t = 0; } return; }
+    if (!this.arrived) {
+      if (noProgress(this, s, site.x, site.z, dt, 40)) { s.sitesSeen[site.id] = { score: -1, text: 'Could not get there.' }; return 'fail'; }
+      if (this.go(site.x, site.z, st, dt, 3)) { this.arrived = true; this.t = 0; } return;
+    }
     st.action = 'idleLook'; this.t += dt;
     if (this.t > 4) {
-      const sc = evaluateSite(site); s.sitesSeen[site.id] = sc;
-      s.say(sc.text, sc.score > 0.7 ? 'good' : 'warn'); log('Site check - ' + site.name + ': ' + sc.text, sc.score > 0.7 ? 'good' : '');
-      const seen = Object.entries(s.sitesSeen);
-      if (sc.score >= 0.78 || seen.length === SITES.length) {
-        const bestId = seen.sort((a, b) => b[1].score - a[1].score)[0][0];
-        BASE.chooseSite(SITES.find(q => q.id === bestId)); s.story = 'build'; s.goal = 'Build the homestead';
-      }
+      const sc = evaluateSite(s, site); s.sitesSeen[site.id] = sc;
+      const good = sc.score >= this.threshold();
+      s.say(sc.text, good ? 'good' : 'warn'); log('Site check - ' + site.name + ': ' + sc.text, good ? 'good' : '');
+      const left = (s.sitePlan || SITES).filter(q => !s.sitesSeen[q.id]);
+      if (good || !left.length) s.chooseBestSite();
       return 'done';
     }
   }
 }
-function evaluateSite(site) {
-  const trees = TREES.filter(t => t.alive && dist2(t.x, t.z, site.x, site.z) < 60).length;
+class ShelterTask extends Task {
+  constructor(s) {
+    super(s, 'Taking shelter from the rad storm', 'shelter');
+    if (BASE.site && BASE.built.has('roof') && s.distTo(BASE.site) < 220) { this.spot = BASE.local(0, -0.6); this.where = 'the cabin'; }
+    else {
+      const b = POIS.filter(p => p.door && p.kind !== 'raiders' && p.kind !== 'vault' && dangerAt(p.x, p.z) * s.p.dangerAversion < 5).map(p => [p, s.distTo(p)]).sort((a, c) => a[1] - c[1])[0];
+      if (b && b[1] < 260) { const p = b[0]; this.spot = { x: (p.x + p.door[0]) / 2, z: (p.z + p.door[1]) / 2 }; this.where = p.kind === 'ruin' || p.kind === 'house' ? 'an old ruin' : p.name; }
+    }
+    if (this.spot) s.once('shelter' + S.day, () => s.say(S.rng.pick(['Storm\'s coming. Get indoors.', 'Sky\'s turning green. Inside, now.', 'Not getting cooked out here.']), 'rad'));
+  }
+  update(dt, st) {
+    const s = this.s, W = S.weather;
+    if (!this.spot) { s.noShelterUntil = S.simTime + 120; return 'fail'; }
+    if (W.kind !== 'radstorm' || W.intensity < 0.3) return 'done';
+    if (!this.arrived) {
+      if (noProgress(this, s, this.spot.x, this.spot.z, dt, 30)) { s.noShelterUntil = S.simTime + 120; return 'fail'; }
+      if (this.go(this.spot.x, this.spot.z, st, dt, 1.2, true)) { this.arrived = true; this.t = 0; if (S.simTime - (s.shelterLogT || -999) > 240) { s.shelterLogT = S.simTime; log(first(s) + ' waits out the rad storm in ' + this.where + '.', 'rad'); } }
+      return;
+    }
+    s.sheltered = true; st.action = 'sit'; this.t += dt;
+  }
+}
+const PRICES = { ammo_10mm: 1, ammo_308: 3, shells: 3, stim: 20, water: 6, can_food: 5, radpurge: 22 };
+class TradeTask extends Task {
+  constructor(s, tr) { super(s, 'Trading with a caravan', 'trade'); this.tr = tr; }
+  update(dt, st) {
+    const s = this.s, tr = this.tr;
+    if (tr.dead || EVENTS.trader !== tr || tr.state !== 'camp') return 'fail';
+    if (!this.arrived) {
+      if (noProgress(this, s, tr.pos.x, tr.pos.z, dt, 30)) { s.lastTrade = S.simTime - 150; return 'fail'; }
+      if (this.go(tr.pos.x, tr.pos.z, st, dt, 2.2)) { this.arrived = true; this.t = 0; FX.label(S.rng.pick(['Caps first, questions later.', 'Browse all you like, friend.', 'Best prices this side of the Pit.']), _v1.copy(tr.pos).setY(tr.pos.y + 2.2), 'good', 2.6, 0.2); }
+      return;
+    }
+    s.faceTo(tr.pos.x, tr.pos.z, dt); tr.faceTo(s.pos.x, s.pos.z, dt); st.action = 'idleLook'; this.t += dt;
+    if (this.t > 4) { this.deal(); s.lastTrade = S.simTime; return 'done'; }
+  }
+  deal() {
+    const s = this.s, tr = this.tr, got = [], start = s.inv.caps || 0; let caps = start;
+    const buy = (id, n, price) => { const k = Math.min(n, Math.floor(caps / price)); if (k <= 0) return; caps -= k * price; s.add(id, k); got.push((k > 1 ? k + ' ' : '') + ITEMS[id].name); };
+    for (const t of TOOLS_NEEDED) if (!s.has(t) && tr.stock[t] && caps >= tr.stock[t]) {
+      caps -= tr.stock[t]; s.add(t, 1); delete tr.stock[t]; got.push(ITEMS[t].name); s.gainXp(25);
+      showBanner('BOUGHT', ITEMS[t].name.toUpperCase()); log('Bought a ' + ITEMS[t].name + ' from the trader! Tools: ' + s.toolsHave().length + '/3', 'good');
+    }
+    const gun = [...s.weapons].filter(w => !WEAPONS[w].melee).sort((a, b) => WEAPONS[b].tier - WEAPONS[a].tier)[0];
+    if (gun && s.ammoFor(gun) < 30) { const am = WEAPONS[gun].ammo; buy(am, am === 'ammo_10mm' ? 30 : 12, PRICES[am]); }
+    if (!s.has('stim', 2)) buy('stim', 2 - (s.inv.stim || 0), PRICES.stim);
+    if (!s.has('water', 2)) buy('water', 2, PRICES.water);
+    if (!s.has('can_food')) buy('can_food', 2, PRICES.can_food);
+    if (s.rads > 200 && !s.has('radpurge')) buy('radpurge', 1, PRICES.radpurge);
+    const spent = start - caps; if (spent > 0) s.add('caps', -spent);
+    if (got.length) { log('Traded ' + spent + ' caps for ' + got.join(', ') + '.', 'good'); s.say(S.rng.pick(['Pleasure doing business.', 'Worth every cap.', 'Caps well spent.'])); AUDIO.loot(); }
+    else { log(first(s) + ' haggles with the trader but can\'t afford anything.', ''); s.say('Too rich for my blood.', 'warn'); }
+  }
+}
+/* nearest walkable spot in a ring around an object, preferring spots close to the survivor */
+function approachSpot(s, x, z, rMin, rMax) {
+  let best = null, bd = 1e9;
+  for (let r = rMin; r <= rMax + 1e-3; r += 0.4) for (let k = 0; k < 16; k++) {
+    const a = k / 16 * TAU, px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r;
+    if (!navFreeAt(px, pz)) continue;
+    const d = dist2(px, pz, s.pos.x, s.pos.z) * 0.15 + r;
+    if (d < bd) { bd = d; best = { x: px, z: pz }; }
+  }
+  return best;
+}
+/* progress watchdog: returns true when the agent has made no headway toward (x,z) for `limit` seconds */
+function noProgress(task, s, x, z, dt, limit = 30) {
+  task.wt = (task.wt || 0) + dt; const d = dist2(s.pos.x, s.pos.z, x, z);
+  if (task.bestD === undefined || d < task.bestD - 1) { task.bestD = d; task.lastGain = task.wt; }
+  return task.wt - task.lastGain > limit;
+}
+/* if a container holding a tool or weapon can't be reached, move that loot to a reachable spot nearby */
+function relocateKeyLoot(c) {
+  const key = Object.keys(c.loot).filter(id => ITEMS[id] && (ITEMS[id].tool || ITEMS[id].weapon));
+  if (!key.length) return;
+  const poi = POIS.filter(p => p.door).sort((a, b) => dist2(a.x, a.z, c.x, c.z) - dist2(b.x, b.z, c.x, c.z))[0];
+  let x = poi && dist2(poi.x, poi.z, c.x, c.z) < 30 ? poi.door[0] : c.x, z = poi && dist2(poi.x, poi.z, c.x, c.z) < 30 ? poi.door[1] : c.z;
+  const f = navNearestFree(navI(x), navI(z), 6); if (f) { x = -HALF + f[0] + 0.5; z = -HALF + f[1] + 0.5; }
+  const n = addContainer('toolbox', x + 0.6, z + 0.6, Math.random() * TAU); n.loot = {}; for (const id of key) { n.loot[id] = c.loot[id]; delete c.loot[id]; } n.known = true;
+}
+function nearestTree(x, z, maxD) {
+  let best = null, bd = maxD;
+  for (const t of TREES) { if (!t.alive || t.claimed) continue; const d = dist2(t.x, t.z, x, z); if (d < bd && (!BASE.site || dist2(t.x, t.z, BASE.site.x, BASE.site.z) > BASE.site.r + 2)) { bd = d; best = t; } }
+  return best;
+}
+
+/* ============================================================
+   MIND: personality traits, danger memory, tool beliefs, tactics helpers
+   ============================================================ */
+const TRAITS = {
+  cautious:  { name: 'Cautious',    desc: 'Backs off early, avoids known danger and night travel', excl: 'reckless' },
+  reckless:  { name: 'Reckless',    desc: 'Picks fights and raids dangerous places early', excl: 'cautious' },
+  scavenger: { name: 'Scavenger',   desc: 'Loots everything and turns up extra supplies' },
+  marksman:  { name: 'Marksman',    desc: 'Deadly with rifles, fights from long range', excl: 'brawler' },
+  brawler:   { name: 'Brawler',     desc: 'Prefers melee and hits hard up close', excl: 'marksman' },
+  handy:     { name: 'Handy',       desc: 'Builds fast and wants a bigger homestead', excl: 'nomad' },
+  farmer:    { name: 'Green Thumb', desc: 'Drawn to farmland, grows more food' },
+  nightowl:  { name: 'Night Owl',   desc: 'Sees well in the dark and travels at night' },
+  tough:     { name: 'Tough',       desc: 'Extra health, shrugs off radiation' },
+  medic:     { name: 'Medic',       desc: 'Stims heal more, heals at the right moment' },
+  nomad:     { name: 'Nomad',       desc: 'Roams far and wide before settling down', excl: 'handy' },
+  hunter:    { name: 'Hunter',      desc: 'Hunts game for food and loves the woods' },
+};
+const INTRO_LINES = {
+  cautious: 'Slow and careful. Slow and careful.', reckless: 'Finally. Let\'s go break something.', scavenger: 'Two hundred years of junk out there. Let\'s go shopping.',
+  marksman: 'Clear sightlines for miles. I like it.', brawler: 'If anything bites, I bite back.', handy: 'Somewhere out there is a spot for a real home.',
+  farmer: 'Wonder if anything still grows out here.', nightowl: 'Too bright. I\'ll get used to it.', tough: 'Rads, raiders, whatever. Bring it.',
+  medic: 'Two stims and a steady hand. That\'ll do.', nomad: 'So much world. Where first?', hunter: 'Fresh air. And game, I hope.',
+};
+function rollPersonality(r) {
+  const keys = Object.keys(TRAITS), picked = [];
+  const n = r.chance(0.4) ? 3 : 2;
+  for (let guard = 0; picked.length < n && guard < 60; guard++) {
+    const k = r.pick(keys);
+    if (picked.includes(k) || picked.some(p => TRAITS[p].excl === k || TRAITS[k].excl === p)) continue;
+    picked.push(k);
+  }
+  const has = (k) => picked.includes(k);
+  const p = {
+    fleeHp: has('cautious') ? 0.42 : has('reckless') ? 0.14 : 0.24,
+    healHp: has('medic') ? 0.46 : has('reckless') ? 0.3 : 0.38,
+    courage: (has('cautious') ? 0.72 : has('reckless') ? 1.6 : 1) * r.range(0.88, 1.12),
+    dangerAversion: has('cautious') ? 1.8 : has('reckless') ? 0.35 : 1,
+    nightTravel: has('nightowl') ? 1.3 : has('cautious') ? 0.25 : 0.7,
+    loot: has('scavenger') ? 1.6 : 1,
+    explore: (has('nomad') ? 1.6 : has('scavenger') ? 1.3 : 1) * r.range(0.9, 1.1),
+    settleAfter: has('nomad') ? 11 : has('scavenger') ? 7 : (has('handy') || has('cautious')) ? 2 : r.int(3, 5),
+    aim: (has('marksman') ? 0.12 : has('hunter') ? 0.05 : 0) + r.range(-0.03, 0.03),
+    rangeMul: has('marksman') ? 1.35 : has('brawler') ? 0.8 : 1,
+    meleeMul: has('brawler') ? 1.5 : 1,
+    meleePref: has('brawler') ? 1 : 0,
+    build: (has('handy') ? 1.5 : 1) * r.range(0.95, 1.05),
+    crops: has('farmer') ? 1.7 : 1,
+    hunt: has('hunter') ? 1 : 0,
+    hpBonus: has('tough') ? 25 : 0, radRes: has('tough') ? 0.55 : 1,
+    stimHeal: has('medic') ? 1.4 : 1,
+    nightSight: has('nightowl') ? 0.95 : 0.65,
+    sight: (has('cautious') || has('marksman')) ? 1.25 : 1,
+    speed: r.range(0.94, 1.08),
+    ambush: has('marksman') || has('hunter') ? 1 : has('reckless') ? 0.7 : 0.25,
+    taste: {
+      woods: r.range(-0.15, 0.25) + (has('hunter') ? 0.3 : 0),
+      farm: r.range(-0.15, 0.25) + (has('farmer') ? 0.45 : 0),
+      town: r.range(-0.2, 0.2) + (has('scavenger') ? 0.15 : 0) + (has('reckless') ? 0.1 : 0),
+      high: r.range(-0.1, 0.2) + ((has('cautious') || has('marksman')) ? 0.22 : 0),
+    },
+    curiosity: {}, // per POI kind, filled lazily
+  };
+  return { traits: picked, p };
+}
+function curiosity(s, kind) { if (s.p.curiosity[kind] === undefined) s.p.curiosity[kind] = s.rng.range(0.7, 1.35); return s.p.curiosity[kind]; }
+
+/* ---------- danger memory: 20m cells over the map, fading over roughly a day ---------- */
+const DANGER = { N: 50, C: 20, v: new Float32Array(2500), notes: [] };
+function dangerIdx(x, z) { const i = clamp(Math.floor((x + HALF) / DANGER.C), 0, DANGER.N - 1), j = clamp(Math.floor((z + HALF) / DANGER.C), 0, DANGER.N - 1); return j * DANGER.N + i; }
+function dangerAt(x, z) { return DANGER.v[dangerIdx(x, z)]; }
+function dangerAdd(x, z, amt, rad = 1) {
+  const ci = Math.floor((x + HALF) / DANGER.C), cj = Math.floor((z + HALF) / DANGER.C);
+  for (let dj = -rad; dj <= rad; dj++) for (let di = -rad; di <= rad; di++) {
+    const i = ci + di, j = cj + dj; if (i < 0 || j < 0 || i >= DANGER.N || j >= DANGER.N) continue;
+    const k = j * DANGER.N + i; DANGER.v[k] = Math.min(12, DANGER.v[k] + amt / (1 + di * di + dj * dj));
+  }
+}
+function dangerNote(text, x, z) {
+  const n = DANGER.notes.find(q => q.text === text);
+  if (n) { n.t = S.simTime; return false; }
+  DANGER.notes.unshift({ text, x, z, t: S.simTime }); if (DANGER.notes.length > 6) DANGER.notes.pop(); return true;
+}
+function dangerDecay(gm) { const k = Math.pow(0.99935, gm); const v = DANGER.v; for (let i = 0; i < v.length; i++) v[i] *= k; }
+/* extra A* cost for a 1m nav cell (i,j); weight set by the survivor before path queries */
+function dangerCost(i, j) { return DANGER.v[((j / DANGER.C) | 0) * DANGER.N + ((i / DANGER.C) | 0)]; }
+function resetMind() { DANGER.v.fill(0); DANGER.notes.length = 0; }
+function placeName(x, z) {
+  let best = null, bd = 1e9;
+  for (const p of POIS) { if (p.kind === 'ruin' || p.kind === 'house' || p.kind === 'signal' || p.kind === 'grave') continue; const d = dist2(p.x, p.z, x, z); if (d < bd) { bd = d; best = p; } }
+  return best && bd < 120 ? best.name : regionAt(x, z);
+}
+
+/* ---------- beliefs about where tools might be ---------- */
+const TOOL_PRIOR = {
+  hardware: { hammer: 0.6, saw: 0.7, axe: 0.35 }, gas: { hammer: 0.55, saw: 0.2, axe: 0.15 }, farm: { hammer: 0.35, saw: 0.35, axe: 0.6 },
+  cabin: { hammer: 0.25, saw: 0.35, axe: 0.55 }, tower: { hammer: 0.35, saw: 0.15, axe: 0.1 }, raiders: { hammer: 0.3, saw: 0.25, axe: 0.3 },
+  police: { hammer: 0.12, saw: 0.06, axe: 0.25 }, house: { hammer: 0.1, saw: 0.06, axe: 0.06 }, ruin: { hammer: 0.07, saw: 0.05, axe: 0.04 },
+  diner: { hammer: 0.05, saw: 0.03, axe: 0.03 }, church: { hammer: 0.08, saw: 0.05, axe: 0.05 }, clinic: { hammer: 0.04, saw: 0.06, axe: 0.02 },
+};
+function initBeliefs(s) {
+  s.belief = new Map();
+  for (const p of POIS) {
+    const pr = TOOL_PRIOR[p.kind]; if (!pr) continue;
+    const b = {}; for (const t of TOOLS_NEEDED) b[t] = clamp(pr[t] * s.rng.range(0.55, 1.45), 0.01, 0.95);
+    s.belief.set(p, b);
+  }
+}
+function toolValue(s, p) {
+  const b = s.belief && s.belief.get(p); if (!b) return 0;
+  let v = 0; for (const t of TOOLS_NEEDED) if (!s.has(t)) v += b[t]; return v;
+}
+/* after a place has been searched, the chance a missing tool is still hiding there drops */
+function searchedPlace(s, p, thorough) { const b = s.belief && s.belief.get(p); if (!b) return; for (const t of TOOLS_NEEDED) b[t] *= thorough ? 0.05 : 0.45; }
+function bestToolGuess(s) {
+  let best = null, bv = 0;
+  for (const [p, b] of s.belief || []) { if (p.visited && toolValue(s, p) < 0.05) continue; const v = toolValue(s, p); if (v > bv) { bv = v; best = p; } }
+  return best ? { p: best, v: bv } : null;
+}
+
+/* ---------- threat assessment ---------- */
+const THREAT = { roach: 0.15, burrower: 0.5, hound: 0.55, ghoul: 0.6, raider: 1.2, stalker: 9, cattle: 0, trader: 0 };
+function threatOf(e) { return (THREAT[e.type] ?? 1) * (0.4 + 0.6 * e.hp / e.maxHp); }
+function powerOf(s) {
+  const w = s.bestWeapon(15), D = WEAPONS[w];
+  const weapon = D.melee ? (w === 'machete' ? 1.1 : 0.5) * s.p.meleeMul : ({ pistol: 1.4, pipe: 1.7, shotgun: 2.4, hunting: 2.8 }[w] || 1.2) * Math.min(1, s.ammoFor(w) / 12 + 0.3);
+  return weapon * (0.35 + 0.65 * s.hp / s.maxHpNow) * (1 + (s.level - 1) * 0.12) * (s.has('stim') ? 1.25 : 1) * s.p.courage;
+}
+/* running only helps against things slower than us, or far enough away to lose */
+function canOutrun(s, list) { const my = 5.0 * s.p.speed; return list.every(e => !e.D.melee || e.D.run < my * 0.97 || s.distTo(e) > 28); }
+function threatsNear(s, r = 38) {
+  let sum = 0; const list = [];
+  for (const e of ENEMIES) {
+    if (e.dead || !e.hostile || e.state === 'dormant' || e.state === 'buried') continue;
+    const d = s.distTo(e); if (d > r) continue;
+    if (!(e.aware || d < 18)) continue;
+    sum += threatOf(e); list.push(e);
+  }
+  return { sum, list };
+}
+
+/* ---------- cover: the far side of a rock, wreck or wall relative to the shooter ----------
+   low cover (rocks, cars) can be shot over; with needShot, tall walls that block sight are skipped */
+function findCover(s, e, needShot = true) {
+  const seen = new Set(), sz = COLL.size, range = needShot ? (WEAPONS[s.weaponId].range || 20) * 0.92 : 60; let best = null, bs = 1e9;
+  for (let gx = Math.floor((s.pos.x - 16) / sz); gx <= Math.floor((s.pos.x + 16) / sz); gx++)
+    for (let gz = Math.floor((s.pos.z - 16) / sz); gz <= Math.floor((s.pos.z + 16) / sz); gz++) {
+      const list = COLL.cells.get(gx + ',' + gz); if (!list) continue;
+      for (const c of list) {
+        if (seen.has(c)) continue; seen.add(c);
+        if (c.t === 'c' && (c.r < 0.65 || c.r > 4)) continue;
+        if (c.t === 'b' && (c.hw + c.hd < 1.1 || (needShot && c.h >= 2.4))) continue;
+        const dx = c.x - e.pos.x, dz = c.z - e.pos.z, l = Math.hypot(dx, dz) || 1, ux = dx / l, uz = dz / l;
+        const ext = c.t === 'c' ? c.r : Math.abs(ux * c.cos - uz * c.sin) * c.hw + Math.abs(ux * c.sin + uz * c.cos) * c.hd;
+        const px = c.x + ux * (ext + 0.85), pz = c.z + uz * (ext + 0.85);
+        if (!navFreeAt(px, pz)) continue;
+        const dS = dist2(px, pz, s.pos.x, s.pos.z), dE = dist2(px, pz, e.pos.x, e.pos.z);
+        if (dS > 16 || dE < 7 || dE > range) continue;
+        const sc = dS + (dE < 12 ? 8 : 0) + (dE > 40 ? 6 : 0);
+        if (sc >= bs || (needShot && !losClear(px, pz, e.pos.x, e.pos.z))) continue;
+        bs = sc; best = { x: px, z: pz, c };
+      }
+    }
+  return best;
+}
+function coverValid(cv, from, minCos = 0.3) {
+  const ax = from.x - cv.x, az = from.z - cv.z, bx = cv.c.x - cv.x, bz = cv.c.z - cv.z;
+  return (ax * bx + az * bz) / ((Math.hypot(ax, az) * Math.hypot(bx, bz)) || 1) > minCos; // obstacle lies toward the shooter
+}
+function inCover(s, from) { const cv = s.cover; return !!cv && dist2(s.pos.x, s.pos.z, cv.x, cv.z) < 1.6 && coverValid(cv, from); }
+
+/* ---------- homestead sites ---------- */
+function siteFeatures(s, site) {
+  let trees = 0; for (const t of TREES) if (t.alive && dist2(t.x, t.z, site.x, site.z) < 60) trees++;
+  let scrap = 0; for (const c of CARS) if (c.scrap > 0 && dist2(c.x, c.z, site.x, site.z) < 160) scrap += c.scrap;
   const water = dist2(site.x, site.z, LAYOUT.lake.x, LAYOUT.lake.z);
-  const raid = dist2(site.x, site.z, LAYOUT.raiders.x, LAYOUT.raiders.z), stalk = dist2(site.x, site.z, LAYOUT.quarry.x, LAYOUT.quarry.z);
-  let score = 0.35 + clamp(trees / 40, 0, 0.3) + (water < 150 ? 0.25 : water < 260 ? 0.1 : 0) - (raid < 200 ? 0.25 : 0) - (stalk < 170 ? 0.3 : 0) + S.rng.range(-0.08, 0.08);
-  if (site.id === 'townedge') score -= 0.1;
-  let text;
-  if (stalk < 170) text = 'Good soil, but something big hunts near here. Claw marks everywhere.';
-  else if (raid < 200) text = 'Too close to raider country.';
-  else if (site.id === 'townedge') text = 'Too exposed. Ghouls would smell me from the ruins.';
-  else if (trees > 25 && water < 150) text = 'Fresh water, timber everywhere, good cover. This is the place.';
-  else if (trees > 15) text = 'Plenty of timber. Water\'s a hike though.';
-  else text = 'Flat and quiet. Could work.';
-  return { score, text };
+  let ring = 0; for (let k = 0; k < 8; k++) { const a = k / 8 * TAU; ring += groundHeight(site.x + Math.cos(a) * 45, site.z + Math.sin(a) * 45); }
+  const elev = groundHeight(site.x, site.z) - ring / 8;
+  let danger = 0; for (let k = -1; k <= 1; k++) for (let q = -1; q <= 1; q++) danger += dangerAt(site.x + k * 25, site.z + q * 25); danger /= 9;
+  const raid = dist2(site.x, site.z, LAYOUT.raiders.x, LAYOUT.raiders.z);
+  return { trees, scrap, water, elev, danger, raid };
+}
+function evaluateSite(s, site, guess = false) {
+  const f = siteFeatures(s, site), P = s.p;
+  let score = 0.3 + clamp(f.trees / 40, 0, 0.22) + (f.water < 150 ? 0.18 : f.water < 260 ? 0.07 : 0) + clamp(f.scrap / 70, 0, 0.14)
+    + (P.taste[site.kind] || 0) + (f.elev > 2.5 ? 0.05 + P.taste.high * 0.5 : 0)
+    - clamp(f.danger * 0.06 * P.dangerAversion, 0, 0.45) - (f.raid < 210 ? 0.18 * P.dangerAversion : 0);
+  score += guess ? s.rng.range(-0.12, 0.12) : s.rng.range(-0.04, 0.04);
+  const reasons = [];
+  if (f.danger > 2.5) reasons.push([f.danger * 0.06 * P.dangerAversion, 'Too much trouble around here lately.']);
+  if (f.raid < 210) reasons.push([0.18 * P.dangerAversion, 'Raiders are way too close.']);
+  if (site.kind === 'farm' && P.taste.farm > 0.2) reasons.push([P.taste.farm, 'Good soil. I could grow real food here.']);
+  if (site.kind === 'woods' && f.trees > 20) reasons.push([0.2 + P.taste.woods, 'Timber everywhere and good cover.']);
+  if (f.water < 150) reasons.push([0.18, 'Fresh water close by.']);
+  if (site.kind === 'town' && f.scrap > 25) reasons.push([0.14 + P.taste.town, 'Plenty of wrecks to strip for scrap.']);
+  if (site.kind === 'high' || f.elev > 2.5) reasons.push([0.1 + P.taste.high, 'High ground. I\'d see anything coming.']);
+  reasons.sort((a, b) => b[0] - a[0]);
+  return { score, text: reasons.length ? reasons[0][1] + (reasons[1] && reasons[1][0] > 0.1 ? ' ' + reasons[1][1] : '') : 'Flat and quiet. Could work.' };
 }
 
 /* ============================================================
@@ -4195,13 +4887,51 @@ const PIECES = [
   { id: 'turret', name: 'Scrap turret', cost: { scrap: 6, circuitry: 1 }, time: 16, spot: [6.8, 8.2], stand: [5.6, 9.6] },
   { id: 'tower', name: 'Watchtower', cost: { wood: 10, scrap: 3 }, time: 22, spot: [-8, 7], stand: [-6.4, 8.8] },
   { id: 'lights', name: 'Generator & lights', cost: { scrap: 3, circuitry: 1, wood: 1 }, time: 14, spot: [3.4, -4.6], stand: [2.6, -2.8] },
+  { id: 'garden2', name: 'Second garden plot', cost: { wood: 4 }, time: 12, spot: [-6.2, -6], stand: [-4.4, -6], opt: true },
+  { id: 'shed', name: 'Tool shed', cost: { wood: 6, scrap: 2 }, time: 14, spot: [7.4, 0.6], stand: [5.8, 0.6], opt: true },
+  { id: 'rack', name: 'Meat drying rack', cost: { wood: 3, cloth: 1 }, time: 8, spot: [-2.8, 8.8], stand: [-2.8, 7.4], opt: true },
 ];
+const PIECE = Object.fromEntries(PIECES.map(p => [p.id, p]));
+/* building style follows the site: timber in the woods, sawn planks on the farm, scrap near town */
+const STYLE = {
+  log: { name: 'log cabin', walls: 'Log walls', fence: 'Palisade fence', wallCost: { wood: 10, scrap: 2 }, fenceCost: { wood: 14 } },
+  plank: { name: 'plank farmhouse', walls: 'Plank walls', fence: 'Rail fence', wallCost: { wood: 9, scrap: 1, screws: 1 }, fenceCost: { wood: 12, screws: 1 } },
+  scrap: { name: 'scrap-metal shack', walls: 'Sheet-metal walls', fence: 'Scrap-metal wall', wallCost: { scrap: 9, wood: 3 }, fenceCost: { scrap: 10, wood: 5 } },
+};
+const PIECE_DEPS = { walls: ['foundation'], roof: ['walls'], door: ['walls'], bed: ['roof', 'door'], lights: ['roof'], garden2: ['garden'], shed: ['workbench'] };
 const SUBST = { cloth: 'wood', screws: 'scrap', circuitry: 'scrap' };
 const FALLING = [];
 const BASE = {
-  site: null, rot: 0, group: null, built: new Set(), models: {}, progressT: 0, crops: 0, fire: null, turret: null, bulbs: [], flag: null, colls: [],
-  chooseSite(site) {
-    this.site = site; this.rot = Math.atan2(LAYOUT.lake.x - site.x, LAYOUT.lake.z - site.z);
+  site: null, rot: 0, group: null, built: new Set(), models: {}, progressT: 0, crops: 0, fire: null, turret: null, bulbs: [], flag: null, colls: [], style: 'log', plan: null, planNote: '',
+  /* build order shaped by personality: the cautious fence in first, farmers dig gardens, hunters want a lookout */
+  makePlan(s) {
+    let plan = ['campfire', 'bedroll', 'workbench', 'foundation', 'walls', 'roof', 'door', 'bed', 'water', 'garden', 'fence', 'turret', 'tower', 'lights'];
+    const has = (t) => !!s && s.hasTrait(t), r = s ? s.rng : S.rng, notes = [];
+    const moveAfter = (id, after) => { const i = plan.indexOf(id); if (i < 0) return; plan.splice(i, 1); const j = plan.indexOf(after); plan.splice(j < 0 ? plan.length : j + 1, 0, id); };
+    const addAfter = (id, after) => { if (plan.includes(id)) return; const j = plan.indexOf(after); plan.splice(j < 0 ? plan.length : j + 1, 0, id); };
+    for (let k = 0; k < 2; k++) { const i = r.int(1, plan.length - 2); [plan[i], plan[i + 1]] = [plan[i + 1], plan[i]]; }
+    if (has('cautious')) { moveAfter('fence', 'bedroll'); moveAfter('turret', 'door'); notes.push('defenses first'); }
+    if (has('reckless')) { moveAfter('fence', plan[plan.length - 1]); notes.push('fence can wait'); }
+    if (has('farmer')) { moveAfter('garden', 'campfire'); addAfter('garden2', 'water'); notes.push('two garden plots'); }
+    if (has('hunter')) { addAfter('rack', 'campfire'); moveAfter('tower', 'roof'); notes.push('a meat rack and a lookout'); }
+    if (has('marksman')) { moveAfter('tower', 'door'); notes.push('a watchtower early'); }
+    if (has('medic')) moveAfter('water', 'campfire');
+    if (has('nightowl')) moveAfter('lights', 'roof');
+    if (has('handy') || has('scavenger')) { addAfter('shed', 'workbench'); notes.push('a tool shed'); }
+    if (has('handy')) addAfter('garden2', 'garden');
+    if (has('nomad')) { plan = plan.filter(id => id !== 'tower' && id !== 'lights' && id !== 'garden2'); notes.push('nothing fancy'); }
+    for (let pass = 0; pass < 6; pass++) for (const [id, deps] of Object.entries(PIECE_DEPS)) { if (!plan.includes(id)) continue; for (const d of deps) if (plan.includes(d) && plan.indexOf(d) > plan.indexOf(id)) moveAfter(id, d); }
+    moveAfter('campfire', null); plan.unshift(plan.pop());
+    this.planNote = notes.join(', ');
+    return plan;
+  },
+  total() { return this.plan ? this.plan.length : PIECES.filter(p => !p.opt).length; },
+  chooseSite(site, s) {
+    this.site = site; this.style = site.kind === 'woods' ? 'log' : site.kind === 'farm' ? 'plank' : 'scrap';
+    if (s && s.hasTrait('handy') && this.style === 'scrap') this.style = 'plank';
+    const st = STYLE[this.style]; PIECE.walls.name = st.walls; PIECE.fence.name = st.fence;
+    this.plan = this.makePlan(s);
+    this.rot = Math.atan2(LAYOUT.lake.x - site.x, LAYOUT.lake.z - site.z);
     if (dist2(site.x, site.z, LAYOUT.lake.x, LAYOUT.lake.z) > 260) this.rot = S.rng.range(0, TAU);
     this.group = new THREE.Group(); this.group.position.set(site.x, groundHeight(site.x, site.z), site.z); this.group.rotation.y = this.rot; scene.add(this.group);
     for (const p of PIECES) { const m = buildPieceModel(p.id); m.visible = false; this.group.add(m); this.models[p.id] = m; }
@@ -4212,10 +4942,11 @@ const BASE = {
     this.stake = fl; this.stake.position.set(0, 0, 2.5); this.group.add(fl);
     this.fire.g.position.copy(this.local(0, 6.4)); this.fire.x = this.fire.g.position.x; this.fire.z = this.fire.g.position.z; this.fire.lit = false;
     showBanner('HOMESTEAD SITE CHOSEN', site.name); log('Planted a stake at the ' + site.name + '. Home starts here.', 'good');
+    log((s ? first(s) : 'The dweller') + ' sketches plans for a ' + st.name + (this.planNote ? ': ' + this.planNote : '') + '.', '');
   },
   local(lx, lz, y = null) { const [x, z] = lw(this.site.x, this.site.z, this.rot, lx, lz); return new THREE.Vector3(x, y ?? groundHeight(x, z), z); },
-  nextPiece() { if (!this.site) return null; return PIECES.find(p => !this.built.has(p.id)) || null; },
-  costOf(p) { const c = {}; for (const [k, v] of Object.entries(p.cost)) { const kk = S.flags.substitute && SUBST[k] ? SUBST[k] : k; c[kk] = (c[kk] || 0) + (kk !== k ? v * 2 : v); } return c; },
+  nextPiece() { if (!this.site || !this.plan) return null; for (const id of this.plan) if (!this.built.has(id)) return PIECE[id]; return null; },
+  costOf(p) { const c = {}, base = p.id === 'walls' ? STYLE[this.style].wallCost : p.id === 'fence' ? STYLE[this.style].fenceCost : p.cost; for (const [k, v] of Object.entries(base)) { const kk = S.flags.substitute && SUBST[k] ? SUBST[k] : k; c[kk] = (c[kk] || 0) + (kk !== k ? v * 2 : v); } return c; },
   paid: new Set(),
   missing(p, s) {
     if (this.paid.has(p.id)) return null;
@@ -4236,12 +4967,12 @@ const BASE = {
   waterPos() { return this.local(4.8, -1.2); },
   gardenPos() { return this.local(-4.6, -2); },
   harvestReady() { return this.built.has('garden') && this.crops >= 1; },
-  harvest() { this.crops = 0; return 3 + Math.floor(Math.random() * 3); },
+  harvest(s) { this.crops = 0; return Math.round((3 + Math.floor(Math.random() * 3)) * (this.built.has('garden2') ? 1.8 : 1) * (s ? s.p.crops : 1)); },
   complete(p, s) {
     this.built.add(p.id); S.stats.built++; s.stats.built++; s.gainXp(18);
-    const m = this.models[p.id]; m.userData.parts.forEach(q => { q.visible = true; q.position.copy(q.userData.fp); q.scale.copy(q.userData.fs); });
+    const m = this.models[p.id]; m.visible = true; m.userData.parts.forEach(q => { q.visible = true; q.position.copy(q.userData.fp); q.scale.copy(q.userData.fs); });
     log('Built: ' + p.name + '.', 'good');
-    const lines = { campfire: 'Fire. The oldest kind of safety.', foundation: 'Solid ground. Nobody can take this.', walls: 'Four walls. First time since the vault.', roof: 'A roof. Rain can do what it likes now.', fence: 'Let them come.', turret: 'Say hello to my little friend.', lights: 'Lights on. Anyone out there, this is home.' };
+    const lines = { campfire: 'Fire. The oldest kind of safety.', foundation: 'Solid ground. Nobody can take this.', walls: 'Four walls. First time since the vault.', roof: 'A roof. Rain can do what it likes now.', fence: 'Let them come.', turret: 'Say hello to my little friend.', lights: 'Lights on. Anyone out there, this is home.', garden2: 'More greens. Might even have some to trade.', shed: 'A place for everything.', rack: 'Jerky for the lean days.' };
     if (lines[p.id]) s.say(lines[p.id]);
     if (['foundation', 'walls', 'roof', 'fence', 'turret', 'lights'].includes(p.id)) showBanner('HOMESTEAD', p.name + ' built');
     const L = (lx, lz) => lw(this.site.x, this.site.z, this.rot, lx, lz);
@@ -4255,6 +4986,7 @@ const BASE = {
       const [gx, gz] = L(0, 12.5); navClearCircle(gx, gz, 1.8); const [gx2, gz2] = L(0, 10.5); navClearCircle(gx2, gz2, 1.2); const [gx3, gz3] = L(0, 14.5); navClearCircle(gx3, gz3, 1.2);
     }
     if (p.id === 'tower') { for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const [x, z] = L(-8 + a * 1.1, 7 + b * 1.1); addCircle(x, z, 0.2, false); } }
+    if (p.id === 'shed') box(7.4, 0.6, 0.85, 0.85, 2.2);
     if (p.id === 'lights') { this.bulbs.forEach(b => b.visible = true); }
   },
   progress(p, dt, s) {
@@ -4282,7 +5014,10 @@ const BASE = {
       if (f.t > 7) { f.pivot.position.y -= dt * 0.6; if (f.t > 10) { scene.remove(f.pivot); FALLING.splice(i, 1); } }
     }
     if (!this.site) return;
-    if (this.built.has('garden')) { this.crops = Math.min(1, this.crops + dt * GAME_MIN_PER_SEC / 1100); const c = this.models.garden.userData.crops; if (c) c.forEach(q => q.scale.setScalar(0.15 + this.crops * 0.85)); }
+    if (this.built.has('garden')) {
+      this.crops = Math.min(1, this.crops + dt * GAME_MIN_PER_SEC / 1100 * (SURV && SURV.p && SURV.hasTrait('farmer') ? 1.3 : 1));
+      for (const id of ['garden', 'garden2']) { const c = this.built.has(id) && this.models[id].userData.crops; if (c) c.forEach(q => q.scale.setScalar(0.15 + this.crops * 0.85)); }
+    }
     const night = ENV.dayLight < 0.35;
     if (this.built.has('lights')) { for (const b of this.bulbs) b.material.emissiveIntensity = night ? 2.4 : 0.05; if (this.antenna) this.antenna.material.emissiveIntensity = (S.simTime % 1.6) < 0.8 ? 3 : 0.1; }
     if (this.flag) this.flag.rotation.y = Math.sin(S.simTime * 2.2) * 0.25;
@@ -4304,7 +5039,7 @@ const BASE = {
       if (e.state === 'wander') { e.aware = true; e.setState('chase'); }
     }
   },
-  reset() { if (this.group) scene.remove(this.group); this.site = null; this.group = null; this.built.clear(); this.paid.clear(); this.models = {}; this.crops = 0; this.bulbs = []; this.flag = null; this.colls.forEach(c => { c.r = 0; c.hw = 0; c.hd = 0; }); this.colls = []; if (this.fire) this.fire.lit = false; },
+  reset() { if (this.group) scene.remove(this.group); this.site = null; this.group = null; this.plan = null; this.style = 'log'; this.planNote = ''; this.built.clear(); this.paid.clear(); this.models = {}; this.crops = 0; this.bulbs = []; this.flag = null; this.colls.forEach(c => { c.r = 0; c.hw = 0; c.hd = 0; }); this.colls = []; if (this.fire) this.fire.lit = false; },
 };
 /* build piece geometry; each piece's direct children listed in userData.parts get revealed one by one */
 function buildPieceModel(id) {
@@ -4337,6 +5072,27 @@ function buildPieceModel(id) {
       P(plank(1.4, 0.1, 0.8), 'woodDark', 0, 0.35, 2.95, 0.2, 0, 0); break;
     }
     case 'walls': {
+      if (BASE.style === 'plank') {
+        for (const [a, b] of [[-3, -2.5], [3, -2.5], [-3, 2.5], [3, 2.5]]) P(boxG(0.16, 2.7, 0.16, 1), 'woodDark', a, 2.0, b);
+        for (let layer = 0; layer < 10; layer++) {
+          const y = 0.8 + layer * 0.245;
+          P(plank(6, 0.23, 0.05), 'wood', 0, y, -2.5);
+          for (const s of [-1, 1]) { if (layer >= 4 && layer <= 6 && s > 0) { P(plank(0.05, 0.23, 1.6), 'wood', s * 3, y, -1.7); P(plank(0.05, 0.23, 1.6), 'wood', s * 3, y, 1.7); } else P(plank(0.05, 0.23, 5), 'wood', s * 3, y, 0); }
+          if (layer < 9) { P(plank(2.2, 0.23, 0.05), 'wood', -1.9, y, 2.5); P(plank(2.2, 0.23, 0.05), 'wood', 1.9, y, 2.5); } else P(plank(6, 0.23, 0.05), 'wood', 0, y, 2.5);
+        }
+        P(boxG(0.06, 0.8, 1.5, 1), 'glass', 3.02, 1.95, 0); P(boxG(1.2, 0.9, 0.04, 1.5), 'rust', -1.2, 1.5, -2.56, 0, 0, 0.06);
+        break;
+      }
+      if (BASE.style === 'scrap') {
+        for (const [a, b] of [[-3, -2.5], [3, -2.5], [-3, 2.5], [3, 2.5]]) P(boxG(0.12, 2.8, 0.12, 1), 'darkMetal', a, 2.0, b);
+        const mats = ['corrugated', 'rust', 'corrugated', 'metalTeal', 'rust']; let k = 0;
+        const sheet = (w, x, z, ry) => { k++; P(boxG(w, 2.5, 0.05, 1.5), mats[k % mats.length], x, 1.95 + (k * 7 % 3) * 0.04, z, 0, ry, (k * 13 % 5 - 2) * 0.012); };
+        for (let i = 0; i < 5; i++) sheet(1.25, -2.4 + i * 1.2, -2.5, 0);
+        for (const s of [-1, 1]) for (let i = 0; i < 4; i++) { if (s > 0 && i === 2) continue; sheet(1.3, s * 3, -1.9 + i * 1.25, Math.PI / 2); }
+        sheet(2.2, -1.9, 2.5, 0); sheet(2.2, 1.9, 2.5, 0); P(boxG(1.6, 0.4, 0.05, 1.5), 'rust', 0, 3.05, 2.5);
+        P(boxG(0.06, 0.8, 1.2, 1), 'glass', 3.0, 1.95, 0.6);
+        break;
+      }
       for (const [a, b] of [[-3, -2.5], [3, -2.5], [-3, 2.5], [3, 2.5]]) P(cylG(0.11, 0.11, 2.6, 8), 'bark', a, 1.95, b);
       for (let layer = 0; layer < 8; layer++) {
         const y = 0.82 + layer * 0.3;
@@ -4368,17 +5124,34 @@ function buildPieceModel(id) {
       P(barrelGeo(), 'metalTeal', 4.8, 0.7, -2.6); P(new THREE.ConeGeometry(0.7, 0.5, 18, 1, true), 'cloth', 4.8, 1.9, -2.6, Math.PI, 0, 0);
       P(cylG(0.03, 0.03, 0.5, 6), 'darkMetal', 4.8, 1.75, -2.6); P(cylG(0.02, 0.02, 0.2, 6), 'chrome', 4.8, 0.9, -2.28, Math.PI / 2, 0, 0); break;
     }
-    case 'garden': {
-      const crops = [];
+    case 'garden': case 'garden2': {
+      const crops = [], oz = id === 'garden' ? -2 : -6, leaf = new THREE.MeshStandardMaterial({ color: id === 'garden' ? 0x5f8a2e : 0x7a9a34, roughness: 0.8 });
       for (const dz of [-1.1, 1.1]) {
-        P(boxG(3.2, 0.3, 0.1, 1), 'woodDark', -6.2, 0.15, -2 + dz - 0.6); P(boxG(3.2, 0.3, 0.1, 1), 'woodDark', -6.2, 0.15, -2 + dz + 0.6);
-        P(boxG(0.1, 0.3, 1.2, 1), 'woodDark', -7.8, 0.15, -2 + dz); P(boxG(0.1, 0.3, 1.2, 1), 'woodDark', -4.6, 0.15, -2 + dz);
-        P(boxG(3.1, 0.22, 1.1, 1), 'dirtPile', -6.2, 0.13, -2 + dz);
-        for (let i = 0; i < 6; i++) { const c = P(new THREE.ConeGeometry(0.12, 0.5, 7), new THREE.MeshStandardMaterial({ color: 0x5f8a2e, roughness: 0.8 }), -7.5 + i * 0.52, 0.45, -2 + dz); c.userData.fs = new THREE.Vector3(1, 1, 1); crops.push(c); }
+        P(boxG(3.2, 0.3, 0.1, 1), 'woodDark', -6.2, 0.15, oz + dz - 0.6); P(boxG(3.2, 0.3, 0.1, 1), 'woodDark', -6.2, 0.15, oz + dz + 0.6);
+        P(boxG(0.1, 0.3, 1.2, 1), 'woodDark', -7.8, 0.15, oz + dz); P(boxG(0.1, 0.3, 1.2, 1), 'woodDark', -4.6, 0.15, oz + dz);
+        P(boxG(3.1, 0.22, 1.1, 1), 'dirtPile', -6.2, 0.13, oz + dz);
+        for (let i = 0; i < 6; i++) { const c = P(id === 'garden' ? new THREE.ConeGeometry(0.12, 0.5, 7) : new THREE.SphereGeometry(0.16, 8, 6), leaf, -7.5 + i * 0.52, id === 'garden' ? 0.45 : 0.36, oz + dz); c.userData.fs = new THREE.Vector3(1, 1, 1); crops.push(c); }
       }
       g.userData.crops = crops; break;
     }
     case 'fence': {
+      if (BASE.style !== 'log') {
+        const plankF = BASE.style === 'plank', step = plankF ? 0.24 : 0.2;
+        for (let a = 0; a < TAU - 1e-3; a += step) {
+          if (Math.abs(wrapAngle(a - Math.PI / 2)) < 0.26) continue;
+          const x = Math.cos(a) * 12.5, z = Math.sin(a) * 12.5, a2 = a + step, x2 = Math.cos(a2) * 12.5, z2 = Math.sin(a2) * 12.5, gap = Math.abs(wrapAngle(a2 - Math.PI / 2)) < 0.26;
+          const seg = new THREE.Group(); seg.position.set(x, 0, z); seg.userData.fp = seg.position.clone(); seg.userData.fs = new THREE.Vector3(1, 1, 1); seg.visible = false;
+          const post = new THREE.Mesh(plankF ? boxG(0.14, 1.8, 0.14, 1) : cylG(0.05, 0.05, 2.2, 6), plankF ? MAT.woodDark : MAT.darkMetal); post.position.y = plankF ? 0.75 : 0.95; post.castShadow = true; seg.add(post);
+          if (!gap) {
+            const len = Math.hypot(x2 - x, z2 - z), ry = Math.atan2(-(z2 - z), x2 - x);
+            if (plankF) for (const y of [0.45, 0.95, 1.4]) { const rail = new THREE.Mesh(boxG(len, 0.12, 0.05, 1), MAT.wood); rail.position.set((x2 - x) / 2, y, (z2 - z) / 2); rail.rotation.y = ry; rail.castShadow = true; seg.add(rail); }
+            else { const sh = new THREE.Mesh(boxG(len + 0.12, 1.9, 0.04, 1.5), MAT[['corrugated', 'rust', 'metalTeal'][Math.floor(a * 7) % 3]]); sh.position.set((x2 - x) / 2, 0.95, (z2 - z) / 2); sh.rotation.set(0, ry, Math.sin(a * 11) * 0.03); sh.castShadow = true; seg.add(sh); }
+          }
+          g.add(seg); parts.push(seg);
+        }
+        for (const s of [-1, 1]) P(boxG(1.4, plankF ? 1.4 : 1.9, 0.08, 1.2), plankF ? 'wood' : 'rust', s * 0.8, plankF ? 0.8 : 1.0, 12.6, 0, s * 0.35, 0);
+        break;
+      }
       for (let a = 0; a < TAU; a += 0.12) {
         if (Math.abs(wrapAngle(a - Math.PI / 2)) < 0.26) continue;
         const h = 2.2 + Math.sin(a * 13) * 0.25, x = Math.cos(a) * 12.5, z = Math.sin(a) * 12.5;
@@ -4388,6 +5161,22 @@ function buildPieceModel(id) {
         g.add(stake); parts.push(stake);
       }
       for (const s of [-1, 1]) P(boxG(1.4, 1.9, 0.12, 1.2), 'wood', s * 0.8, 1.0, 12.6, 0, s * 0.35, 0);
+      break;
+    }
+    case 'shed': {
+      const cx = 7.4, cz = 0.6;
+      for (const [a, b] of [[-0.8, -0.8], [0.8, -0.8], [-0.8, 0.8], [0.8, 0.8]]) P(boxG(0.1, 2.2, 0.1, 1), 'woodDark', cx + a, 1.1, cz + b);
+      for (let i = 0; i < 7; i++) { const y = 0.2 + i * 0.28; P(plank(0.04, 0.26, 1.7), 'wood', cx + 0.82, y, cz); P(plank(1.7, 0.26, 0.04), 'wood', cx, y, cz - 0.82); P(plank(1.7, 0.26, 0.04), 'wood', cx, y, cz + 0.82); }
+      P(plank(0.05, 1.9, 0.8), 'woodDark', cx - 0.95, 1.0, cz - 0.3, 0, 0.6, 0);
+      P(boxG(2.0, 0.05, 2.0, 1.5), 'corrugated', cx, 2.25, cz, 0, 0, -0.14);
+      P(boxG(0.3, 0.25, 0.25, 1), 'metalRed', cx + 0.5, 0.15, cz + 0.4);
+      break;
+    }
+    case 'rack': {
+      const cx = -2.8, cz = 8.8, meat = new THREE.MeshStandardMaterial({ color: 0x7a2e22, roughness: 0.6 });
+      for (const s of [-1, 1]) { P(cylG(0.04, 0.05, 1.9, 6), 'bark', cx + s * 0.8, 0.9, cz - 0.25, 0.25, 0, 0); P(cylG(0.04, 0.05, 1.9, 6), 'bark', cx + s * 0.8, 0.9, cz + 0.25, -0.25, 0, 0); }
+      P(cylG(0.035, 0.035, 1.9, 6), 'bark', cx, 1.75, cz, 0, 0, Math.PI / 2);
+      for (let i = 0; i < 6; i++) P(boxG(0.1, 0.45, 0.03, 1), meat, cx - 0.6 + i * 0.24, 1.45, cz, 0, i * 0.4, 0);
       break;
     }
     case 'turret': {
@@ -4660,6 +5449,10 @@ const HUD = {
       if (big) { g.fillStyle = pip; g.fillText(p.name.toUpperCase(), a + 6, b + 4); }
     }
     if (BASE.site) { const [a, b] = toS(BASE.site.x, BASE.site.z); g.fillStyle = pip; g.beginPath(); g.moveTo(a, b - 7); g.lineTo(a + 6, b - 1); g.lineTo(a + 4, b - 1); g.lineTo(a + 4, b + 5); g.lineTo(a - 4, b + 5); g.lineTo(a - 4, b - 1); g.lineTo(a - 6, b - 1); g.closePath(); g.fill(); if (big) g.fillText('HOME', a + 8, b + 4); }
+    const ev = (x, z, col, label) => { const [a, b] = toS(x, z); g.fillStyle = col; g.beginPath(); g.moveTo(a, b - 5); g.lineTo(a + 5, b); g.lineTo(a, b + 5); g.lineTo(a - 5, b); g.closePath(); g.fill(); if (big) g.fillText(label, a + 7, b + 4); };
+    if (EVENTS.trader && !EVENTS.trader.dead) ev(EVENTS.trader.pos.x, EVENTS.trader.pos.z, '#ffd166', 'TRADER');
+    for (const d of EVENTS.drops) if (!d.c.looted) ev(d.x, d.z, '#7dff9a', 'SUPPLY DROP');
+    if (EVENTS.signal && !EVENTS.signal.resolved) ev(EVENTS.signal.x, EVENTS.signal.z, '#ff9f43', 'SIGNAL');
     for (const e of ENEMIES) { if (e.dead || !e.hostile || e.state === 'dormant' || e.state === 'buried') continue; if (!(e.aware || (SURV && SURV.distTo(e) < 40))) continue; const [a, b] = toS(e.pos.x, e.pos.z); g.fillStyle = '#ff5a4c'; g.beginPath(); g.arc(a, b, e.type === 'stalker' ? 4.5 : 2.6, 0, TAU); g.fill(); }
     if (SURV) { const [a, b] = toS(SURV.pos.x, SURV.pos.z); g.save(); g.translate(a, b); g.rotate(-SURV.yaw + Math.PI); g.fillStyle = '#fff'; g.beginPath(); g.moveTo(0, -7); g.lineTo(5, 5); g.lineTo(0, 2); g.lineTo(-5, 5); g.closePath(); g.fill(); g.restore(); }
     // camera view cone
@@ -4692,10 +5485,11 @@ const HUD = {
     $('bRads').style.width = clamp(s.rads / 10, 0, 100) + '%'; $('vRads').textContent = Math.round(s.rads); $('vRads').className = 'v' + (s.rads > 500 ? ' crit' : s.rads > 250 ? ' warn' : '');
     $('sTask').textContent = s.dead ? 'Deceased' : (s.task ? (s.task.kind === 'sleep' && s.task.asleep ? 'Sleeping' : s.task.label) : 'Thinking');
     $('sGoal').textContent = s.goal; $('sThought').textContent = s.thought;
+    if (this.traitsFor !== s) { this.traitsFor = s; $('sTraits').innerHTML = s.traits.map(t => `<span class="chip trait" title="${TRAITS[t].desc}">${TRAITS[t].name.toUpperCase()}</span>`).join(''); }
     const w = WEAPONS[s.weaponId]; $('sWeapon').textContent = w.name + (w.ammo ? ' · ' + (s.inv[w.ammo] || 0) + ' ' + ITEMS[w.ammo].name : '');
     $('sTools').innerHTML = TOOLS_NEEDED.map(t => `<span class="chip${s.has(t) ? ' have' : ''}">${ITEMS[t].name.toUpperCase()}</span>`).join('');
     const nb = BASE.nextPiece();
-    $('sBase').textContent = !BASE.site ? (s.story === 'settle' ? 'Scouting sites' : 'No site chosen') : `${BASE.built.size}/${PIECES.length} built · ${nb ? 'next: ' + nb.name + (BASE.missing(nb, s) ? ' (needs ' + ITEMS[BASE.missing(nb, s)].name.toLowerCase() + ')' : '') : 'complete'}`;
+    $('sBase').textContent = !BASE.site ? (s.story === 'settle' ? 'Scouting sites' : 'No site chosen') : `${STYLE[BASE.style].name} · ${BASE.built.size}/${BASE.total()} built · ${nb ? 'next: ' + nb.name + (BASE.missing(nb, s) ? ' (needs ' + ITEMS[BASE.missing(nb, s)].name.toLowerCase() + ')' : '') : 'complete'}`;
     const h = hourOfDay(), W = S.weather; $('clock').textContent = `DAY ${S.day} · ${clockString()}`;
     $('weather').textContent = (W.kind === 'clear' || W.intensity < 0.3 ? (h > 5.4 && h < 20.3 ? 'CLEAR' : 'NIGHT') : WEATHER_NAMES[W.kind]) + (S.sleepBoost > 1 && S.speed > 0 ? ' · ZZZ' : '');
     if (this.tab === 'inv' || force) {
@@ -4706,10 +5500,16 @@ const HUD = {
       $('invList').innerHTML = html;
     }
     if (this.tab === 'data' || force) {
-      const obj = [['Leave the vault', s.story !== 'intro'], ['Find a hammer', s.has('hammer')], ['Find a saw', s.has('saw')], ['Find an axe', s.has('axe')], ['Choose a homestead site', !!BASE.site], ['Build the homestead', BASE.built.size === PIECES.length]];
+      const obj = [['Leave the vault', s.story !== 'intro'], ['Find a hammer', s.has('hammer')], ['Find a saw', s.has('saw')], ['Find an axe', s.has('axe')], ['Choose a homestead site', !!BASE.site], ['Build the homestead', !!BASE.site && !BASE.nextPiece()]];
       let cur = false; $('objList').innerHTML = obj.map(([t, d]) => { const c = !d && !cur; if (c) cur = true; return `<li class="${d ? 'done' : c ? 'cur' : ''}">${t}</li>`; }).join('');
+      const ago = (t) => { const h = (S.simTime - t) * GAME_MIN_PER_SEC / 60; return h < 1 ? 'just now' : Math.round(h) + 'h ago'; };
+      const mem = DANGER.notes.map(n => `${n.text} (${ago(n.t)})`);
+      const hunch = (s.story === 'scavenge' || s.story === 'settle') && bestToolGuess(s);
+      if (hunch) { const t = TOOLS_NEEDED.filter(k => !s.has(k)).sort((a, b) => s.belief.get(hunch.p)[b] - s.belief.get(hunch.p)[a])[0]; if (t) mem.unshift(`Hunch: a ${ITEMS[t].name.toLowerCase()} at ${hunch.p.name}`); }
+      for (const [id, v] of Object.entries(s.sitesSeen)) { const site = SITES.find(q => q.id === id); if (site && v.score > -1) mem.push(`${site.name}: ${v.score >= 0.75 ? 'great' : v.score >= 0.6 ? 'decent' : 'poor'} spot`); }
+      $('memList').innerHTML = (mem.length ? mem : ['Nothing worth remembering yet']).map(m => `<li>${m}</li>`).join('');
       $('locList').innerHTML = POIS.filter(p => p.discovered && p.kind !== 'ruin' && p.kind !== 'house').map(p => `<li class="${p.visited ? '' : 'cur'}">${p.name}</li>`).join('') || '<li>None yet</li>';
-      $('recList').innerHTML = [['Days survived', S.day], ['Kills', s.stats.kills], ['Containers looted', s.stats.looted], ['Pieces built', s.stats.built], ['Distance walked', (S.stats.distance / 1000).toFixed(2) + ' km'], ['Dweller', s.tag]].map(([a, b]) => `<li><span>${a}:</span> ${b}</li>`).join('');
+      $('recList').innerHTML = [['Days survived', S.day], ['Kills', s.stats.kills], ['Containers looted', s.stats.looted], ['Pieces built', s.stats.built], ['Sneak attacks', S.stats.sneaks || 0], ['Distance walked', (S.stats.distance / 1000).toFixed(2) + ' km'], ['Dweller', s.tag]].map(([a, b]) => `<li><span>${a}:</span> ${b}</li>`).join('');
     }
   },
   update(rdt) {
@@ -4799,6 +5599,8 @@ const AUDIO = {
   hammer(pos) { const o = this.spatial(pos, 0.9); if (!o) return; this.tone(o, { f0: 900, f1: 500, dur: 0.07, type: 'square', gain: 0.18 }); this.tone(o, { f0: 220, f1: 120, dur: 0.1, gain: 0.4 }); },
   clank(pos) { if (this.throttle('clank', 0.2)) return; const o = this.spatial(pos, 0.7); if (!o) return; this.tone(o, { f0: 1300 + Math.random() * 600, f1: 900, dur: 0.25, type: 'square', gain: 0.08 }); this.burst(o, { dur: 0.1, freq: 3000, q: 4, gain: 0.3 }); },
   thud(pos) { const o = this.spatial(pos, 1.2, 30); if (!o) return; this.tone(o, { f0: 90, f1: 30, dur: 0.6, gain: 0.9 }); this.burst(o, { dur: 0.8, freq: 300, type: 'lowpass', gain: 0.6, noise: 'brown' }); CAM.shake = Math.max(CAM.shake, 0.3); },
+  plane() { const o = this.spatial(null, 0.5); if (!o) return; this.burst(o, { dur: 6, freq: 160, type: 'lowpass', gain: 0.55, noise: 'brown', attack: 2 }); this.tone(o, { f0: 72, f1: 64, dur: 6, type: 'sawtooth', gain: 0.07, attack: 2 }); },
+  radio() { const o = this.spatial(null, 0.35); if (!o) return; this.burst(o, { dur: 1.2, freq: 2500, q: 0.6, gain: 0.25, attack: 0.02 }); [0, 1, 2].forEach(i => setTimeout(() => this.tone(o, { f0: 1100, f1: 1100, dur: 0.09, type: 'square', gain: 0.04 }), 1300 + i * 160)); },
   thunder(d) { const o = this.spatial(null, clamp(2.2 - d / 200, 0.3, 1.6)); if (!o) return; this.burst(o, { dur: 3.2, freq: 180, type: 'lowpass', gain: 1, noise: 'brown', attack: 0.05 }); this.burst(o, { dur: 1.2, freq: 900, q: 0.5, gain: 0.35, attack: 0.01 }); },
   siren() { const o = this.spatial(VAULT.siren.pos, 0.9, 30); if (!o) return; const c = this.ctx, t = c.currentTime, osc = c.createOscillator(), g = c.createGain(); osc.type = 'sawtooth'; for (let i = 0; i < 6; i++) { osc.frequency.setValueAtTime(420, t + i); osc.frequency.linearRampToValueAtTime(620, t + i + 0.5); osc.frequency.linearRampToValueAtTime(420, t + i + 1); } g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.12, t + 0.2); g.gain.setValueAtTime(0.12, t + 5.5); g.gain.exponentialRampToValueAtTime(0.0001, t + 6.2); const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 1400; osc.connect(f); f.connect(g); g.connect(o); osc.start(t); osc.stop(t + 6.3); this.burst(o, { dur: 6, freq: 120, type: 'lowpass', gain: 0.5, noise: 'brown', attack: 1 }); },
   levelUp() { const o = this.spatial(null, 0.5); if (!o) return; [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => this.tone(o, { f0: f, f1: f, dur: 0.25, type: 'square', gain: 0.06 }), i * 110)); },
@@ -4936,7 +5738,7 @@ function worldSeed(seed) {
 function resetWorldState() {
   for (const a of [POIS, TREES, CARS, NOSCATTER, CONTAINERS, ENEMIES, COLL.list, FIRES, ANIM, RAD_SOURCES, OVERPASS_WRECKS, LOGQ, BANNERS, VLIGHTS.sources, VLIGHTS.slots, FX.lights, FX.tracers, FX.decals, FX.flashes || [], INST.chunks, FALLING, FLATS]) a.length = 0;
   COLL.cells.clear(); SB.clear(); for (const k in INST.kinds) delete INST.kinds[k];
-  FX.clearLabels(); BASE.reset(); BASE.fire = null; BASE.turret = null; BASE.antenna = null;
+  FX.clearLabels(); BASE.reset(); BASE.fire = null; BASE.turret = null; BASE.antenna = null; resetMind(); EVENTS.reset();
   DIRECTOR.t = 0; DIRECTOR.encounterT = 240; DIRECTOR.nightRaidDone = -1;
   S.gameMinutes = 7 * 60 + 10; S.day = 1; S.simTime = 0; S.flags = {}; S.sleepBoost = 1;
   S.weather = { kind: 'clear', t: 0, next: 420, intensity: 0, target: 0 };
@@ -4982,8 +5784,10 @@ async function restart(newWorld) {
     CAM.setMode('cinema'); CAM.autoIntro = true;
     return;
   }
-  // next dweller, same world
+  // next dweller, same world: the vault only passes on where the last one fell
   scene.remove(SURV.root);
+  const graves = DANGER.notes.filter(n => n.text.includes(' died near '));
+  resetMind(); for (const n of graves) { dangerAdd(n.x, n.z, 4, 1); DANGER.notes.push(n); }
   S.stats.dwellerNo++;
   SURV = new Survivor({ x: VAULT.spawn.x, z: VAULT.front + 1.2 }); SURV.task = new IntroTask(SURV); SURV.task.key = 'intro'; SURV.task.prio = 200;
   for (const e of ENEMIES) { e.aware = false; if (!e.dead && e.state !== 'dormant' && e.state !== 'buried') e.setState('wander'); }
@@ -4996,7 +5800,7 @@ function onSurvivorDeath() {
   const c = addContainer('car', s.pos.x, s.pos.z, 0, { name: 'Remains of ' + s.name }); c.loot = loot; c.corpse = true;
   const p = addPOI('Grave of ' + s.name.split(' ')[0], s.pos.x, s.pos.z, 8, 'grave', 6); p.discovered = true;
   $('endText').textContent = `${s.tag} "${s.name}" did not make it.`;
-  $('endStats').innerHTML = [['Days survived', S.day], ['Level', s.level], ['Kills', s.stats.kills], ['Containers looted', s.stats.looted], ['Homestead pieces built', BASE.built.size + '/' + PIECES.length], ['Distance', (S.stats.distance / 1000).toFixed(2) + ' km']].map(([a, b]) => `<span>${a}</span><span>${b}</span>`).join('');
+  $('endStats').innerHTML = [['Days survived', S.day], ['Level', s.level], ['Kills', s.stats.kills], ['Containers looted', s.stats.looted], ['Homestead pieces built', BASE.built.size + '/' + BASE.total()], ['Sneak attacks', S.stats.sneaks || 0], ['Distance', (S.stats.distance / 1000).toFixed(2) + ' km']].map(([a, b]) => `<span>${a}</span><span>${b}</span>`).join('');
   $('endcard').hidden = false; S.flags.endAuto = 25;
 }
 function updateVaultDoor(dt) {
@@ -5023,6 +5827,7 @@ function step(dt) {
   if (SURV) SURV.update(dt);
   for (let i = ENEMIES.length - 1; i >= 0; i--) { const e = ENEMIES[i]; if (e) e.update(dt); }
   updateDirector(dt);
+  EVENTS.update(dt);
   BASE.update(dt);
   updateContainers(dt);
   updateVaultDoor(dt);
@@ -5083,7 +5888,7 @@ async function start(data = {}) {
     $('bootErr').textContent = 'Feed failed to start: ' + (err && err.message ? err.message : err) + '. A browser with WebGL2 is required.';
   }
 }
-window.__wl = { cullActors, ENV, HUD, FX, VAULT, get camera() { return camera; }, get composer() { return composer; }, updateChunks, updateEnvironment, S, get SURV() { return SURV; }, BASE, ENEMIES, CONTAINERS, POIS, step, setSpeed, CAM, NAV, findPath, walkClear, losClear, COLL, TREES, CARS, LAYOUT, groundHeight, get scene() { return scene; }, get renderer() { return renderer; } };
+window.__wl = { EVENTS, DANGER, SITES, PIECES, TRAITS, STYLE, LOGQ, siteFeatures, cullActors, ENV, HUD, FX, VAULT, get camera() { return camera; }, get composer() { return composer; }, updateChunks, updateEnvironment, S, get SURV() { return SURV; }, BASE, ENEMIES, CONTAINERS, POIS, step, setSpeed, CAM, NAV, findPath, walkClear, losClear, COLL, TREES, CARS, LAYOUT, groundHeight, get scene() { return scene; }, get renderer() { return renderer; } };
 window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
 </script>
 </body>
