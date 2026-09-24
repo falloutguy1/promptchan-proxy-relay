@@ -1,0 +1,1151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>html,body{margin:0}</style>
+<title>Dead Country</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Special+Elite&display=swap">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#121612; --panel:#191e19; --panel2:#212821; --line:#2f382e;
+  --ink:#dcd6c3; --dim:#8c927f; --faint:#5d6457;
+  --amber:#d9a441; --blood:#c4533f; --moss:#86a56f; --sky:#79a0b4; --rust:#a86a3a;
+  --stencil:'Big Shoulders Stencil Display',Impact,'Arial Narrow',sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+  --hand:'Special Elite','Courier New',Courier,monospace;
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--mono);font-size:13px;overflow:hidden}
+#app{display:flex;height:100%}
+#stage{position:relative;flex:1;min-width:0;background:#0d100e;overflow:hidden}
+#view{display:block;width:100%;height:100%;cursor:grab;touch-action:none}
+#view.drag{cursor:grabbing}
+.hud{position:absolute;pointer-events:none;text-shadow:0 1px 2px rgba(0,0,0,.8)}
+.tl{top:12px;left:14px}
+.tr{top:10px;right:14px;text-align:right}
+.brand{font-family:var(--stencil);font-weight:800;font-size:28px;letter-spacing:.08em;line-height:1;color:var(--ink)}
+.feed{margin-top:4px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);display:flex;align-items:center;gap:6px}
+.rec{width:8px;height:8px;border-radius:50%;background:var(--blood);display:inline-block;animation:blink 1.6s steps(2,start) infinite}
+@keyframes blink{to{visibility:hidden}}
+.clock{font-family:var(--stencil);font-weight:700;font-size:36px;line-height:1;font-variant-numeric:tabular-nums}
+.day{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-top:3px}
+.controls{position:absolute;left:12px;right:12px;bottom:12px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.group{display:flex;gap:0}
+.group .btn{border-radius:0}
+.group .btn:first-child{border-radius:3px 0 0 3px}
+.group .btn:last-child{border-radius:0 3px 3px 0}
+.group .btn+.btn{border-left:0}
+.btn{font:500 12px var(--mono);background:rgba(18,22,18,.88);color:var(--ink);border:1px solid var(--line);padding:7px 10px;border-radius:3px;cursor:pointer;white-space:nowrap}
+.btn:hover{background:#252c24}
+.btn[aria-pressed="true"]{background:var(--amber);border-color:var(--amber);color:#1c1508}
+.btn:disabled{opacity:.45;cursor:default}
+.btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.btn.help{border-color:#4d5f3f}
+.btn.hurt{border-color:#6a3a31}
+.spacer{flex:1}
+[hidden]{display:none!important}
+#over{position:absolute;inset:0;display:grid;place-items:center;background:rgba(8,10,8,.72);padding:16px}
+.obit{max-width:420px;width:100%;background:var(--panel);border:1px solid var(--line);padding:22px 22px 18px}
+.obit h3{margin:0 0 4px;font-family:var(--stencil);font-size:30px;letter-spacing:.05em;color:var(--blood);text-wrap:balance}
+.obit p{font-family:var(--hand);font-size:14px;line-height:1.5;margin:8px 0 14px;color:var(--ink)}
+.obit .row{display:flex;gap:8px;flex-wrap:wrap}
+.statline{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 4px}
+.statline div{border-top:1px solid var(--line);padding-top:6px}
+.statline b{display:block;font-family:var(--stencil);font-size:24px;font-variant-numeric:tabular-nums}
+.statline span{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+
+#side{width:340px;flex:none;border-left:1px solid var(--line);background:var(--panel);overflow-y:auto}
+.sec{padding:14px 16px;border-bottom:1px solid var(--line)}
+.eyebrow{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:6px;display:flex;justify-content:space-between;gap:8px}
+.eyebrow b{color:var(--ink);font-weight:500}
+h2{margin:0;font-family:var(--stencil);font-weight:800;font-size:30px;letter-spacing:.04em;line-height:1;text-wrap:balance}
+.meta{color:var(--dim);font-size:12px;margin-top:4px}
+.doing{margin-top:10px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.pill{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;padding:2px 7px;border:1px solid var(--line);border-radius:2px;background:var(--panel2);color:var(--ink)}
+.pill.danger{border-color:var(--blood);color:#f0b3a6;background:#3a1f1a}
+.pill.rest{border-color:#3b4c5b;color:#b9d0dc;background:#1b252c}
+.pill.work{border-color:#6b5427;color:#f0d49a;background:#2e2615}
+.thought{font-family:var(--hand);color:var(--ink);font-size:13.5px}
+.bars{display:grid;grid-template-columns:62px 1fr 30px;gap:7px 10px;align-items:center;margin-top:12px;font-size:11.5px}
+.bars span{color:var(--dim)}
+.bars em{font-style:normal;text-align:right;font-variant-numeric:tabular-nums}
+.bar{height:6px;background:#283027;position:relative;overflow:hidden}
+.bar i{position:absolute;inset:0 auto 0 0;background:var(--moss);transition:width .25s}
+.bar.low i{background:var(--blood)}
+.kv{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px}
+.kv div{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.kv b{display:block;font-family:var(--mono);font-weight:500;font-size:12.5px;color:var(--ink);letter-spacing:0;text-transform:none;margin-top:2px}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{font-size:11.5px;padding:2px 7px;background:var(--panel2);border:1px solid var(--line);border-radius:2px;font-variant-numeric:tabular-nums}
+.chip b{font-weight:600;color:var(--amber);margin-left:4px}
+.none{color:var(--faint);font-size:12px;font-family:var(--hand)}
+.proj{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:7px}
+.proj li{display:grid;grid-template-columns:14px 1fr;gap:8px;font-size:12px;align-items:start}
+.proj .mk{width:10px;height:10px;border:1px solid var(--faint);margin-top:3px}
+.proj li.done .mk{background:var(--moss);border-color:var(--moss)}
+.proj li.next .mk{border-color:var(--amber)}
+.proj li.done .nm{color:var(--dim)}
+.proj .need{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.proj .need span{font-size:10.5px;padding:1px 5px;border:1px solid var(--line);color:var(--dim);font-variant-numeric:tabular-nums}
+.proj .need span.ok{color:var(--moss);border-color:#3e5234}
+.pop{margin-top:10px;display:flex;flex-wrap:wrap;gap:5px}
+#mini{display:block;width:100%;aspect-ratio:128/96;max-width:100%;image-rendering:pixelated;border:1px solid var(--line);cursor:crosshair;background:#0b0d0b}
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;font-size:10.5px;color:var(--dim)}
+.legend i{display:inline-block;width:8px;height:8px;margin-right:4px;vertical-align:-1px}
+#journal{list-style:none;margin:0;padding:0;display:grid;gap:9px}
+#journal li{font-family:var(--hand);font-size:13px;line-height:1.45;color:var(--ink)}
+#journal time{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--dim)}
+#journal li.danger time{color:var(--blood)}
+#journal li.good time{color:var(--moss)}
+#journal li.build time{color:var(--amber)}
+#journal li.other{color:#b8c2c8}
+.note{font-size:11.5px;color:var(--dim);line-height:1.5}
+@media (max-width:780px){
+  body{overflow:auto}
+  #app{flex-direction:column;height:auto}
+  #stage{height:62vh;min-height:360px;flex:none}
+  #side{width:auto;border-left:0;border-top:1px solid var(--line);overflow:visible}
+  .brand{font-size:22px}
+  .clock{font-size:28px}
+  .btn{padding:7px 8px}
+}
+@media (prefers-reduced-motion:reduce){.rec{animation:none}}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <main id="stage">
+    <canvas id="view" aria-label="Top-down view of the survivor and the world"></canvas>
+    <div class="hud tl">
+      <div class="brand">DEAD COUNTRY</div>
+      <div class="feed"><i class="rec"></i><span>Live feed</span><span>·</span><span id="feedName">—</span></div>
+    </div>
+    <div class="hud tr">
+      <div class="clock" id="hClock">07:00</div>
+      <div class="day" id="hDay">Day 1</div>
+    </div>
+    <div class="controls">
+      <div class="group" role="group" aria-label="Simulation speed">
+        <button class="btn" id="sp0" data-speed="0" title="Pause (Space)">Pause</button>
+        <button class="btn" id="sp1" data-speed="1" title="1× (1)">1×</button>
+        <button class="btn" id="sp2" data-speed="2" title="2× (2)">2×</button>
+        <button class="btn" id="sp5" data-speed="5" title="5× (3)">5×</button>
+        <button class="btn" id="sp12" data-speed="12" title="12× (4)">12×</button>
+      </div>
+      <div class="group" role="group" aria-label="Camera">
+        <button class="btn" id="follow" aria-pressed="true" title="Follow survivor (F)">Follow</button>
+        <button class="btn" id="zout" title="Zoom out">−</button>
+        <button class="btn" id="zin" title="Zoom in">+</button>
+      </div>
+      <span class="spacer"></span>
+      <button class="btn help" id="drop" title="Parachute a supply crate near the survivor">Airdrop</button>
+      <button class="btn hurt" id="horde" title="Send a pack of infected at the survivor">Send horde</button>
+      <button class="btn" id="newworld" title="Generate a new world">New world</button>
+    </div>
+    <div id="over" hidden>
+      <div class="obit">
+        <div class="eyebrow">Signal lost</div>
+        <h3 id="oTitle">—</h3>
+        <div class="statline">
+          <div><b id="oDays">0</b><span>Days alive</span></div>
+          <div><b id="oKills">0</b><span>Infected killed</span></div>
+          <div><b id="oPop">0</b><span>Settlers left</span></div>
+        </div>
+        <p id="oText"></p>
+        <div class="row" id="oBtns"></div>
+      </div>
+    </div>
+  </main>
+
+  <aside id="side">
+    <section class="sec">
+      <div class="eyebrow"><span>Subject under observation</span><span id="sAlive">Day 1 alive</span></div>
+      <h2 id="sName">—</h2>
+      <div class="meta"><span id="sWeather">Clear</span> · <span id="sWhere">Countryside</span></div>
+      <div class="doing"><span class="pill" id="sState">Exploring</span><span class="thought" id="sThought"></span></div>
+      <div class="bars">
+        <span>Health</span><div class="bar" id="bHp"><i></i></div><em id="vHp">100</em>
+        <span>Food</span><div class="bar" id="bFood"><i></i></div><em id="vFood">100</em>
+        <span>Water</span><div class="bar" id="bWater"><i></i></div><em id="vWater">100</em>
+        <span>Energy</span><div class="bar" id="bEnergy"><i></i></div><em id="vEnergy">100</em>
+      </div>
+      <div class="kv">
+        <div>Weapon<b id="sWeapon">Bare hands</b></div>
+        <div>Rounds<b id="sAmmo">0</b></div>
+        <div>Kills<b id="sKills">0</b></div>
+      </div>
+    </section>
+    <section class="sec">
+      <div class="eyebrow"><span>Backpack</span><b id="sCarry">0 / 12</b></div>
+      <div class="chips" id="inv"></div>
+    </section>
+    <section class="sec">
+      <div class="eyebrow"><span id="bName">No settlement yet</span><b id="bPop"></b></div>
+      <div class="chips" id="stock"><span class="none">Still wandering. Looking for a place to settle.</span></div>
+      <ul class="proj" id="proj"></ul>
+      <div class="pop" id="people"></div>
+    </section>
+    <section class="sec">
+      <div class="eyebrow"><span>Map</span><span id="mapInfo">0% explored</span></div>
+      <canvas id="mini" width="128" height="96" aria-label="Minimap. Click to move the camera."></canvas>
+      <div class="legend">
+        <span><i style="background:#e0b24c"></i>Survivor</span>
+        <span><i style="background:#79a0b4"></i>Settlers</span>
+        <span><i style="background:#c4533f"></i>Settlement</span>
+        <span><i style="background:#8a7a5c"></i>Buildings</span>
+      </div>
+    </section>
+    <section class="sec">
+      <div class="eyebrow"><span>Field journal</span><span id="jCount"></span></div>
+      <ol id="journal"></ol>
+    </section>
+    <section class="sec">
+      <p class="note">You only watch. The survivor makes every choice alone: scavenge, fight or run, drink, sleep, then build a settlement and bring others in by radio. Drag to pan, scroll to zoom. Keys: Space pause, 1–4 speed, F follow.</p>
+    </section>
+  </aside>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const cv = $('view'), ctx = cv.getContext('2d');
+const W = 128, H = 96, TS = 16, DAY = 240, CARRY = 12;
+let dpr = 1, vw = 0, vh = 0;
+
+// ---------- RNG / noise ----------
+let seed = 1, rnd = Math.random;
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const R = (a,b) => a + rnd()*(b-a);
+const RI = (a,b) => Math.floor(R(a,b+1));
+const pick = a => a[Math.floor(rnd()*a.length)];
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function hash(x,y){let h=(x*374761393+y*668265263+seed*97)|0;h=Math.imul(h^(h>>>13),1274126177);return((h^(h>>>16))>>>0)/4294967296;}
+function vnoise(x,y){const xi=Math.floor(x),yi=Math.floor(y),xf=x-xi,yf=y-yi,s=t=>t*t*(3-2*t);const a=hash(xi,yi),b=hash(xi+1,yi),c=hash(xi,yi+1),d=hash(xi+1,yi+1),u=s(xf),v=s(yf);return a+(b-a)*u+(c-a)*v+(a-b-c+d)*u*v;}
+function fbm(x,y){let v=0,a=.5,f=1;for(let i=0;i<4;i++){v+=a*vnoise(x*f,y*f);f*=2;a*=.5;}return v/.9375;}
+
+// ---------- tiles ----------
+const GRASS=0,TREE=1,WATER=2,ROAD=3,FLOOR=4,WALL=5,DOOR=6,STUMP=7,PALI=8,GATE=9,SAND=10,FIELD=11;
+const idx=(x,y)=>y*W+x, inb=(x,y)=>x>=0&&y>=0&&x<W&&y<H;
+let tiles, explored, visible;
+const tileAt=(x,y)=>inb(x,y)?tiles[idx(x,y)]:WATER;
+const blockH=t=>t===TREE||t===WATER||t===WALL||t===PALI;
+const blockZ=t=>blockH(t)||t===GATE;
+const walkable=t=>!blockH(t);
+function stepCost(t,treeCost){ if(t===WALL||t===PALI) return -1; if(t===TREE) return treeCost>0?treeCost:-1; if(t===WATER) return 7; return 1; }
+
+// ---------- data ----------
+const ITEMS={food:{n:'Food',k:'food'},water:{n:'Water',k:'water'},bandage:{n:'Bandage',k:'med'},pills:{n:'Antibiotics',k:'med'},
+  wood:{n:'Wood',k:'mat'},cloth:{n:'Cloth',k:'mat'},scrap:{n:'Scrap',k:'mat'},nails:{n:'Nails',k:'mat'},seeds:{n:'Seeds',k:'mat'},fuel:{n:'Fuel',k:'mat'},radio:{n:'Radio parts',k:'mat'}};
+const WEAP={fists:{n:'Bare hands',dmg:12,cd:.75},bat:{n:'Baseball bat',dmg:22,cd:.9},axe:{n:'Fire axe',dmg:30,cd:1.05},machete:{n:'Scrap machete',dmg:38,cd:.85}};
+const LOOT={
+  house:[['food',4],['water',3],['cloth',4],['bandage',1.2],['nails',1.5],['seeds',1.5],['bat',.5],['radio',.35],['pills',.4],['wood',1]],
+  store:[['food',6],['water',6],['cloth',1.5],['seeds',1],['fuel',.5]],
+  pharmacy:[['bandage',5],['pills',2.5],['water',1.5],['cloth',1]],
+  garage:[['scrap',5],['nails',3],['fuel',2.5],['axe',.8],['radio',1],['bat',.4]],
+  police:[['ammo',4],['rifle',.9],['bat',1],['bandage',1.5],['radio',1.2],['food',1]],
+  barn:[['seeds',4],['wood',3],['axe',1],['cloth',1.5],['fuel',1.5],['scrap',1.5],['nails',1.5],['food',1]],
+  military:[['ammo',5],['rifle',2],['radio',2],['bandage',2],['food',2],['scrap',2],['fuel',1]]
+};
+const SOURCES={wood:['barn'],cloth:['house','store'],scrap:['garage','military','barn'],nails:['garage','house','barn'],seeds:['barn','house','store'],
+  radio:['police','military','garage','house'],fuel:['garage','barn','military'],food:['store','house','barn','military','police'],water:['store','house','pharmacy'],bandage:['pharmacy','police','house']};
+const SPOTS={house:['kitchen cupboard','wardrobe','nightstand','pantry','chest of drawers'],store:['shelf','stockroom crate','checkout counter','cooler'],
+  pharmacy:['medicine cabinet','back counter'],garage:['toolbox','workbench','parts bin'],police:['evidence locker','gun cabinet','desk'],
+  barn:['hayloft','feed bin','tool rack'],military:['footlocker','supply crate','weapons rack']};
+const FOOD_NAMES=['a tin of beans','canned peaches','a jar of pickles','dry crackers','a bag of rice','canned tuna','an old MRE','a jar of honey'];
+const PROJECTS=[
+  {id:'fire',n:'Campfire',need:{wood:3},say:'Got a fire going. Boiled water, warm hands. First good night in a while.'},
+  {id:'shelter',n:'Lean-to shelter',need:{wood:6,cloth:2},say:'Lashed together a lean-to. A roof, sort of. I sleep better under it.'},
+  {id:'rain',n:'Rain collector',need:{scrap:2,cloth:1},say:'Rigged a tarp and a barrel to catch rain. Clean water without the lake.'},
+  {id:'garden',n:'Vegetable garden',need:{seeds:3,wood:4},say:'Turned a patch of soil and planted what seeds I had. Potatoes, beans. Something that grows.'},
+  {id:'wall',n:'Palisade wall',need:{wood:22,nails:6},say:'The palisade is finished. Sharpened logs all the way round. They can scratch at it all night.'},
+  {id:'workshop',n:'Workshop',need:{scrap:5,nails:4,wood:4},say:'Built a workbench from a door and two crates. I can make things now, not just find them.'},
+  {id:'tower',n:'Watchtower',need:{wood:10,scrap:3},say:'Watchtower is up. From the top I can see the treeline and whatever comes out of it.'},
+  {id:'radio',n:'Radio mast',need:{radio:3,scrap:3,fuel:1},say:'The radio works. I broadcast our location on a loop. If anyone is out there, they know where we are.'},
+  {id:'gen',n:'Generator and lights',need:{fuel:3,scrap:5},say:'Generator coughed, then ran. Floodlights on the wall. First electric light I have seen in months.'},
+  {id:'cabins',n:'Cabins',need:{wood:18,nails:6},say:'Two cabins finished. Real beds, real walls. This is a settlement now.'}
+];
+const STRUCT={fire:[0,0],shelter:[2,-2],rain:[-2,-2],garden:[-4,2],workshop:[3,2],tower:[4,-4],radio:[-4,-4],gen:[4,4],cabins:[-1,4]};
+const TOWN_NAMES=['Zelenyi Log','Staraya Pila','Belyi Yar','Kolosovo','Tikhaya Rechka','Verkhnye Brody','Sosnovka','Gornyi Kamen'];
+const FIRST=['Pavel','Mara','Jonah','Ilse','Tomas','Nadia','Eli','Sofia','Anton','Lena','Dmitri','Ruth','Oskar','Vera','Milan','Hana','Yuri','Katya','Bram','Irina'];
+const LAST=['Orlov','Kessler','Reyes','Varga','Brandt','Petrova','Hart','Lind','Novak','Sokol','Marek','Dvorak','Klein','Havel'];
+const BASE_NAMES=['Birch Hollow','Longwater','Kestrel Camp','Emberfield','Stillwater','Pine Refuge','Greyfen'];
+
+// ---------- world state ----------
+let towns, containers, buildings, zombies, followers, base, surv, crate, logBuf, decals, fx, shots, rain;
+let time=0, prevHr=7, uid=1, weather='Clear', spawnT=0, revealT=0, lastDrop=-1e9, lastHorde=-1e9, over=false, legacy=0;
+const newName=()=>pick(FIRST)+' '+pick(LAST);
+
+const clockT=()=>time+DAY*7/24;
+const dayNum=()=>Math.floor(clockT()/DAY)+1;
+const hour=()=>(clockT()%DAY)/DAY*24;
+const isNight=()=>{const h=hour();return h>=21||h<5.5;};
+function darkness(){const h=hour();if(h>=7&&h<19)return 0;if(h>=19&&h<21.5)return (h-19)/2.5;if(h>=21.5||h<4.5)return 1;return 1-(h-4.5)/2.5;}
+const fmtClock=()=>{const h=hour();const hh=Math.floor(h),mm=Math.floor((h-hh)*60/10)*10;return String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');};
+const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+
+// ---------- world gen ----------
+function genWorld(){
+  seed=(Math.random()*1e9)|0; rnd=mulberry32(seed);
+  tiles=new Uint8Array(W*H); explored=new Uint8Array(W*H); visible=new Uint8Array(W*H);
+  towns=[];containers=[];buildings=[];zombies=[];followers=[];base=null;crate=null;decals=[];fx=[];shots=[];logBuf=[];
+  time=0;prevHr=7;weather='Clear';over=false;legacy=0;lastDrop=-1e9;lastHorde=-1e9;
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+    const e=fbm(x/22+11,y/22+7), m=fbm(x/13+50,y/13+50);
+    let edge=Math.min(x,y,W-1-x,H-1-y); const ef=edge<4?(4-edge)*0.06:0;
+    let t=GRASS;
+    if(e-ef<0.3) t=WATER; else if(e-ef<0.33) t=SAND;
+    else if(m>0.55&&hash(x+999,y)<0.82) t=TREE;
+    else if(hash(x+333,y+77)<0.03) t=TREE;
+    tiles[idx(x,y)]=t;
+  }
+  const names=shuffle(TOWN_NAMES.slice());
+  for(let tries=0;towns.length<6&&tries<800;tries++){
+    const x=RI(15,W-16),y=RI(13,H-14);
+    if(towns.some(t=>Math.hypot(t.x-x,t.y-y)<30))continue;
+    let wc=0;for(let dy=-9;dy<=9;dy++)for(let dx=-9;dx<=9;dx++)if(tiles[idx(x+dx,y+dy)]===WATER)wc++;
+    if(wc>10)continue;
+    towns.push({x,y,name:names[towns.length],big:towns.length<2,found:false});
+  }
+  for(const t of towns)for(let dy=-11;dy<=11;dy++)for(let dx=-12;dx<=12;dx++){const x=t.x+dx,y=t.y+dy;if(inb(x,y)&&dx*dx/144+dy*dy/121<1){const tt=tiles[idx(x,y)];if(tt===TREE||tt===WATER||tt===SAND)tiles[idx(x,y)]=GRASS;}}
+  // roads between towns (Prim)
+  const setRoad=(x,y)=>{if(inb(x,y)){const t=tiles[idx(x,y)];if(t!==FLOOR&&t!==WALL&&t!==DOOR)tiles[idx(x,y)]=ROAD;}};
+  const lineH=(x0,x1,y)=>{for(let x=Math.min(x0,x1);x<=Math.max(x0,x1);x++){setRoad(x,y);setRoad(x,y+1);}};
+  const lineV=(y0,y1,x)=>{for(let y=Math.min(y0,y1);y<=Math.max(y0,y1);y++){setRoad(x,y);setRoad(x+1,y);}};
+  const conn=[towns[0]];const rest=towns.slice(1);
+  while(rest.length){let bi=0,bj=0,bd=1e9;rest.forEach((r,i)=>conn.forEach((c,j)=>{const d=Math.hypot(r.x-c.x,r.y-c.y);if(d<bd){bd=d;bi=i;bj=j;}}));
+    const a=conn[bj],b=rest[bi];if(rnd()<.5){lineH(a.x,b.x,a.y);lineV(a.y,b.y,b.x);}else{lineV(a.y,b.y,a.x);lineH(a.x,b.x,b.y);}conn.push(b);rest.splice(bi,1);}
+  // a road off the map edge
+  if(towns.length){const t=towns[towns.length-1];lineH(t.x,t.x<W/2?0:W-1,t.y);}
+  for(const t of towns){lineH(t.x-12,t.x+12,t.y);lineV(t.y-10,t.y+10,t.x);if(t.big)lineH(t.x-10,t.x+10,t.y+7);}
+  // buildings
+  for(const t of towns){
+    const want=t.big?13:8, special=t.big?['store','pharmacy','police','garage']:['store',pick(['garage','pharmacy'])];let n=0;
+    for(let a=0;a<220&&n<want;a++){
+      const bw=RI(4,7),bh=RI(4,6),bx=t.x+RI(-13,13-bw),by=t.y+RI(-11,11-bh);
+      const type=n<special.length?special[n]:'house';
+      if(placeBuilding(bx,by,bw,bh,type,t.name,true))n++;
+    }
+  }
+  for(let f=0,a=0;f<4&&a<400;a++){
+    const x=RI(6,W-14),y=RI(6,H-12);if(towns.some(t=>Math.hypot(t.x-x,t.y-y)<18))continue;
+    if(placeBuilding(x,y,6,5,'barn','a lonely farm',false)){f++;
+      for(let dy=0;dy<4;dy++)for(let dx=0;dx<6;dx++){const xx=x+dx,yy=y+6+dy;if(inb(xx,yy)&&[GRASS,TREE,SAND].includes(tiles[idx(xx,yy)]))tiles[idx(xx,yy)]=FIELD;}}
+  }
+  for(let a=0;a<400;a++){const x=RI(8,W-16),y=RI(8,H-14);if(towns.some(t=>Math.hypot(t.x-x,t.y-y)<20))continue;
+    if(placeBuilding(x,y,8,5,'military','the army checkpoint',false)){for(let i=0;i<6;i++)spawnZombie(x+RI(-3,10),y+RI(-3,8));break;}}
+  for(const t of towns)for(let i=0;i<(t.big?7:4);i++)spawnZombie(t.x+RI(-10,10),t.y+RI(-9,9));
+  for(let i=0;i<10;i++)spawnZombie(RI(0,W-1),RI(0,H-1));
+  paintAll();
+}
+function placeBuilding(bx,by,bw,bh,type,where,needRoad){
+  if(bx<2||by<2||bx+bw>W-2||by+bh>H-2)return false;
+  for(let y=by-1;y<=by+bh;y++)for(let x=bx-1;x<=bx+bw;x++){const t=tiles[idx(x,y)];if(t===ROAD||t===WATER||t===FLOOR||t===WALL||t===DOOR||t===FIELD)return false;}
+  // door: side facing nearest road
+  let door=null,bd=1e9;
+  const cand=[];
+  for(let x=bx+1;x<bx+bw-1;x++){cand.push([x,by,0,-1]);cand.push([x,by+bh-1,0,1]);}
+  for(let y=by+1;y<by+bh-1;y++){cand.push([bx,y,-1,0]);cand.push([bx+bw-1,y,1,0]);}
+  for(const c of cand){let d=needRoad?99:rnd()*5;
+    for(let k=1;k<=3&&needRoad;k++)if(tileAt(c[0]+c[2]*k,c[1]+c[3]*k)===ROAD){d=k+rnd()*.5;break;}
+    if(d<bd){bd=d;door=c;}}
+  if(needRoad&&bd>3)return false;
+  for(let y=by;y<by+bh;y++)for(let x=bx;x<bx+bw;x++){const edge=x===bx||y===by||x===bx+bw-1||y===by+bh-1;tiles[idx(x,y)]=edge?WALL:FLOOR;}
+  tiles[idx(door[0],door[1])]=DOOR;
+  const ox=door[0]+door[2],oy=door[1]+door[3];if(inb(ox,oy)&&tiles[idx(ox,oy)]===TREE)tiles[idx(ox,oy)]=GRASS;
+  const b={x:bx,y:by,w:bw,h:bh,type,where};buildings.push(b);
+  const nc=type==='house'?RI(1,2):RI(2,3);
+  for(let i=0,a=0;i<nc&&a<30;a++){const cx=RI(bx+1,bx+bw-2),cy=RI(by+1,by+bh-2);
+    if(Math.abs(cx-(door[0]-door[2]))+Math.abs(cy-(door[1]-door[3]))<1)continue;
+    if(containers.some(c=>c.x===cx&&c.y===cy))continue;
+    containers.push({id:uid++,x:cx,y:cy,type,where,spot:pick(SPOTS[type]),looted:false,respawn:0});i++;}
+  return true;
+}
+function randWalkNear(x,y,r,test){for(let i=0;i<60;i++){const xx=Math.floor(x+R(-r,r)),yy=Math.floor(y+R(-r,r));if(inb(xx,yy)&&!blockZ(tiles[idx(xx,yy)])&&(!test||test(xx,yy)))return[xx,yy];}return null;}
+function spawnZombie(x,y,target){
+  const p=randWalkNear(x,y,2);if(!p)return null;
+  const z={id:uid++,x:p[0]+.5,y:p[1]+.5,hp:50,max:50,spd:R(.85,1.15),dir:R(0,6.28),target:target||null,scan:0,wt:0,wa:0,wm:false,side:0,sideDir:1,cd:0,hurtT:0,home:[x,y],shade:R(-8,8)};
+  zombies.push(z);return z;
+}
+
+// ---------- terrain painting ----------
+const tcan=document.createElement('canvas');tcan.width=W*TS;tcan.height=H*TS;const tctx=tcan.getContext('2d');
+function grassCol(x,y){const h=hash(x,y);return `hsl(${86+h*16},${19+h*9}%,${23+h*5}%)`;}
+function paintTile(x,y){
+  const t=tiles[idx(x,y)],px=x*TS,py=y*TS,h=hash(x,y),c=tctx,S=TS;
+  const ground=()=>{c.fillStyle=grassCol(x,y);c.fillRect(px,py,S,S);};
+  switch(t){
+    case GRASS: ground();
+      if(h>.62){c.fillStyle='rgba(170,190,120,.18)';c.fillRect(px+h*10,py+(h*37%1)*12,1,3);c.fillRect(px+(h*53%1)*12,py+(h*19%1)*12,1,2);}
+      if(h<.04){c.fillStyle='#b9a45a';c.fillRect(px+7,py+6,2,2);}
+      break;
+    case STUMP: ground();c.fillStyle='#5a4128';c.beginPath();c.arc(px+S/2,py+S/2,S*.2,0,7);c.fill();c.strokeStyle='#8a6a44';c.lineWidth=1;c.beginPath();c.arc(px+S/2,py+S/2,S*.1,0,7);c.stroke();break;
+    case TREE:{c.fillStyle=`hsl(${95+h*10},22%,${17+h*3}%)`;c.fillRect(px,py,S,S);
+      c.fillStyle='rgba(0,0,0,.28)';c.beginPath();c.arc(px+S*.56,py+S*.6,S*.44,0,7);c.fill();
+      c.fillStyle=`hsl(${108+h*24},${24+h*10}%,${19+h*7}%)`;c.beginPath();c.arc(px+S/2,py+S/2,S*.45,0,7);c.fill();
+      c.fillStyle=`hsla(${100+h*20},30%,${32+h*8}%,.55)`;c.beginPath();c.arc(px+S*.4,py+S*.38,S*.2,0,7);c.fill();break;}
+    case WATER:{let shore=0;for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]])if(tileAt(x+dx,y+dy)!==WATER&&inb(x+dx,y+dy))shore++;
+      c.fillStyle=shore?`hsl(198,${22+h*4}%,${27+h*2}%)`:`hsl(200,${26+h*4}%,${19+h*3}%)`;c.fillRect(px,py,S,S);break;}
+    case SAND: c.fillStyle=`hsl(46,${18+h*6}%,${38+h*5}%)`;c.fillRect(px,py,S,S);break;
+    case ROAD: c.fillStyle=`hsl(90,3%,${25+h*3}%)`;c.fillRect(px,py,S,S);
+      if(h>.8){c.strokeStyle='rgba(0,0,0,.35)';c.lineWidth=1;c.beginPath();c.moveTo(px+2,py+h*S);c.lineTo(px+S*.6,py+S*.4);c.lineTo(px+S-2,py+S*.7);c.stroke();}
+      if(h<.08){c.fillStyle=grassCol(x,y);c.fillRect(px+S*.3,py+S*.4,4,3);}break;
+    case FLOOR: c.fillStyle=`hsl(28,${20+h*6}%,${27+h*4}%)`;c.fillRect(px,py,S,S);c.fillStyle='rgba(0,0,0,.18)';for(let k=1;k<3;k++)c.fillRect(px,py+k*S/3,S,1);
+      if(h>.85){c.fillStyle='rgba(20,15,10,.35)';c.fillRect(px+3,py+5,6,4);}break;
+    case WALL: c.fillStyle='#24201c';c.fillRect(px,py,S,S);c.fillStyle='#3b342c';c.fillRect(px,py,S,3);c.fillStyle='rgba(255,255,255,.04)';c.fillRect(px+(h*S|0),py+4,1,S-5);break;
+    case DOOR: c.fillStyle='hsl(28,22%,29%)';c.fillRect(px,py,S,S);c.fillStyle='#6d4c2c';c.fillRect(px+2,py+2,S-4,S-4);c.fillStyle='#3a2816';c.fillRect(px+S/2-1,py+2,2,S-4);break;
+    case PALI: ground();for(let k=0;k<4;k++){const xx=px+1+k*4;c.fillStyle='#5b3e22';c.fillRect(xx,py+3,3,S-3);c.fillStyle='#8a6440';c.fillRect(xx,py+2,3,2);}c.fillStyle='rgba(0,0,0,.3)';c.fillRect(px,py+S-2,S,2);break;
+    case GATE: ground();c.fillStyle='#5b3e22';c.fillRect(px,py+2,3,S-2);c.fillRect(px+S-3,py+2,3,S-2);c.fillStyle='#7c5935';c.fillRect(px,py+S/2-1,S,2);c.fillRect(px,py+4,S,2);break;
+    case FIELD: c.fillStyle=`hsl(30,${22+h*6}%,${22+h*3}%)`;c.fillRect(px,py,S,S);c.fillStyle='#5f7a3a';for(let k=0;k<4;k++)c.fillRect(px+2+k*4,py+2+(k%2)*6,2,5);break;
+  }
+}
+function paintAll(){for(let y=0;y<H;y++)for(let x=0;x<W;x++)paintTile(x,y);}
+function setTile(x,y,t){if(!inb(x,y))return;tiles[idx(x,y)]=t;paintTile(x,y);}
+
+// ---------- pathfinding ----------
+const DIRS=[[1,0,1],[-1,0,1],[0,1,1],[0,-1,1],[1,1,1.414],[1,-1,1.414],[-1,1,1.414],[-1,-1,1.414]];
+function astar(sx,sy,isGoal,tx,ty,limit,treeCost){
+  limit=limit||14000;treeCost=treeCost||10;
+  const N=W*H,g=new Float32Array(N).fill(1e9),came=new Int32Array(N).fill(-1),closed=new Uint8Array(N);
+  const hf=[],hi=[];
+  const push=(f,i)=>{hf.push(f);hi.push(i);let k=hf.length-1;while(k>0){const p=(k-1)>>1;if(hf[p]<=hf[k])break;[hf[p],hf[k]]=[hf[k],hf[p]];[hi[p],hi[k]]=[hi[k],hi[p]];k=p;}};
+  const pop=()=>{const top=hi[0];const lf=hf.pop(),li=hi.pop();if(hf.length){hf[0]=lf;hi[0]=li;let k=0;for(;;){const l=2*k+1,r=l+1;let m=k;if(l<hf.length&&hf[l]<hf[m])m=l;if(r<hf.length&&hf[r]<hf[m])m=r;if(m===k)break;[hf[m],hf[k]]=[hf[k],hf[m]];[hi[m],hi[k]]=[hi[k],hi[m]];k=m;}}return top;};
+  const h=(x,y)=>{const dx=Math.abs(x-tx),dy=Math.abs(y-ty);return dx+dy-.586*Math.min(dx,dy);};
+  if(!inb(sx,sy))return null;
+  const s=idx(sx,sy);g[s]=0;push(h(sx,sy),s);let n=0;
+  while(hf.length){
+    const i=pop();if(closed[i])continue;closed[i]=1;const x=i%W,y=(i/W)|0;
+    if(isGoal(x,y)){const path=[];let k=i;while(k!==s&&k>=0){path.push([k%W,(k/W)|0]);k=came[k];}return path.reverse();}
+    if(++n>limit)break;
+    for(const[dx,dy,m]of DIRS){const nx=x+dx,ny=y+dy;if(!inb(nx,ny))continue;const ni=idx(nx,ny);if(closed[ni])continue;
+      const c=stepCost(tiles[ni],treeCost);if(c<0)continue;
+      if(m>1&&(stepCost(tiles[idx(x+dx,y)],treeCost)!==1||stepCost(tiles[idx(x,y+dy)],treeCost)!==1))continue;
+      const ng=g[i]+c*m;if(ng<g[ni]){g[ni]=ng;came[ni]=i;push(ng+h(nx,ny),ni);}}
+  }
+  return null;
+}
+function moveCollide(e,mx,my,blk){const r=.3;let moved=0;
+  const nx=e.x+mx;if(!blk(tileAt(Math.floor(nx+Math.sign(mx)*r),Math.floor(e.y)))){e.x=nx;moved+=Math.abs(mx);}
+  const ny=e.y+my;if(!blk(tileAt(Math.floor(e.x),Math.floor(ny+Math.sign(my)*r)))){e.y=ny;moved+=Math.abs(my);}
+  return moved;}
+function followPath(e,dt,mult){
+  if(!e.path||e.pi>=e.path.length)return true;
+  const[px,py]=e.path[e.pi];const t=tiles[idx(px,py)];
+  const cx=px+.5,cy=py+.5,dx=cx-e.x,dy=cy-e.y,d=Math.hypot(dx,dy);
+  if(t===TREE&&d<1.55){ // bushwhack
+    e.chopT=(e.chopT||0)+dt*(e.hasAxe?2:1);e.acting='chop';e.dir=Math.atan2(dy,dx);
+    if(e.chopT>=3){e.chopT=0;setTile(px,py,STUMP);if(e.inv)e.inv.wood=(e.inv.wood||0)+1;}
+    return false;
+  }
+  e.acting=null;
+  const under=tileAt(Math.floor(e.x),Math.floor(e.y));
+  let sp=3*(mult||1)*(under===WATER?.4:1)*(e.energy!==undefined&&e.energy<10?.65:1)*dt;
+  if(d<=sp){e.x=cx;e.y=cy;e.pi++;return e.pi>=e.path.length;}
+  e.x+=dx/d*sp;e.y+=dy/d*sp;e.dir=Math.atan2(dy,dx);return false;
+}
+
+// ---------- journal ----------
+function log(text,tone){
+  const e={day:dayNum(),clock:fmtClock(),text,tone:tone||'info',id:uid++};
+  logBuf.push(e);if(logBuf.length>140)logBuf.shift();
+  journalDirty.push(e);
+}
+let journalDirty=[];
+function float(x,y,text,col){fx.push({x,y,text,col,t:0});}
+
+// ---------- inventory helpers ----------
+const matCount=s=>{let n=0;for(const k in s.inv)if(ITEMS[k]&&ITEMS[k].k==='mat')n+=s.inv[k];return n;};
+function itemsText(items){
+  const parts=[];for(const[k,q]of Object.entries(items)){
+    if(k==='food')parts.push(q>1?q+' cans of food':pick(FOOD_NAMES));
+    else if(k==='water')parts.push(q>1?q+' bottles of water':'a bottle of water');
+    else if(k==='bat')parts.push('a baseball bat');else if(k==='axe')parts.push('a fire axe');else if(k==='rifle')parts.push('a hunting rifle');
+    else if(k==='ammo')parts.push(q+' rifle rounds');else if(k==='pills')parts.push('antibiotics');else if(k==='radio')parts.push('radio parts');
+    else parts.push(q+' '+ITEMS[k].n.toLowerCase());}
+  if(parts.length<2)return parts.join('');return parts.slice(0,-1).join(', ')+' and '+parts[parts.length-1];
+}
+function rollLoot(type){
+  const out={};if(rnd()<.12)return out;const tbl=LOOT[type];const n=RI(1,3);let tot=0;for(const[,w]of tbl)tot+=w;
+  for(let i=0;i<n;i++){let r=rnd()*tot,it=tbl[0][0];for(const[k,w]of tbl){if((r-=w)<=0){it=k;break;}}
+    const q=it==='wood'?RI(2,4):it==='ammo'?RI(3,8):it==='nails'?RI(2,4):it==='scrap'?RI(1,3):1;out[it]=(out[it]||0)+q;}
+  return out;
+}
+function giveItems(s,items){
+  for(const[k,q]of Object.entries(items)){
+    if(k==='bat'||k==='axe'){if(k==='axe'){if(!s.hasAxe&&s.main)log('A fire axe. Now I can cut real timber, and anything that comes at me.','good');s.hasAxe=true;}if(WEAP[k].dmg>WEAP[s.melee].dmg)s.melee=k;}
+    else if(k==='rifle'){if(!s.rifle&&s.main)log('A hunting rifle. Loud, so I will only use it when I have to.','good');s.rifle=true;s.ammo+=RI(2,5);}
+    else if(k==='ammo')s.ammo+=q;
+    else s.inv[k]=(s.inv[k]||0)+q;
+  }
+}
+
+// ---------- entities ----------
+function makeSurvivor(x,y,name){
+  return{id:uid++,name,x:x+.5,y:y+.5,hp:100,food:78,water:72,energy:92,inv:{},melee:'fists',hasAxe:false,rifle:false,ammo:0,dir:0,path:null,pi:0,goal:null,
+    thinkT:0,atkCd:0,kills:0,born:time,sick:0,sleeping:false,thought:'',failed:{},main:true,hitT:0,lastHit:'',acting:null};
+}
+function makeFollower(name,role,x,y){return{id:uid++,name,role,x,y,hp:100,path:null,pi:0,atkCd:0,idleT:0,dir:0,trip:null,cool:R(40,90),inv:{},hitT:0,since:dayNum()};}
+const humans=()=>surv&&surv.hp>0?[surv,...followers]:followers.slice();
+const inBaseXY=(x,y)=>base&&Math.abs(x-(base.x+.5))<5.6&&Math.abs(y-(base.y+.5))<5.6;
+const popCap=()=>!base?0:2+(base.built.shelter?1:0)+(base.built.cabins?5:0);
+
+function hurt(h,dmg,src){
+  h.hp-=dmg;h.hitT=.25;h.lastHit=src;float(h.x,h.y-.6,'-'+dmg,'#e07a66');
+  if(rnd()<.5)decal(h.x,h.y,.18);
+  if(h.sleeping){h.sleeping=false;if(h.main){log('Woke up to teeth. Something found me in my sleep.','danger');endGoal(h);}}
+}
+function decal(x,y,r){decals.push({x:x+R(-.2,.2),y:y+R(-.2,.2),r:r*R(.7,1.4)});if(decals.length>90)decals.shift();}
+function hitZombie(z,dmg,by){
+  z.hp-=dmg;z.hurtT=.2;const a=Math.atan2(z.y-by.y,z.x-by.x);moveCollide(z,Math.cos(a)*.25,Math.sin(a)*.25,blockZ);
+  if(!z.target)z.target=by;
+  if(z.hp<=0){zombies.splice(zombies.indexOf(z),1);decal(z.x,z.y,.3);decal(z.x,z.y,.22);
+    if(by===surv){surv.kills++;const k=surv.kills;
+      if(k===1)log('Killed my first one. It used to be a person. I can\'t think about that.','danger');
+      else if([10,25,50,100,200].includes(k))log(`That makes ${k}. I've stopped counting faces.`,'danger');}
+    return true;}
+  return false;
+}
+function noise(x,y,r){for(const z of zombies)if(Math.hypot(z.x-x,z.y-y)<r&&!z.target)z.target=surv;}
+
+// ---------- survivor AI ----------
+function setGoal(s,g){
+  if(s.goal&&s.goal.key===g.key)return;
+  if(s.sleeping&&g.key!=='sleep')s.sleeping=false;
+  s.goal=g;s.path=null;s.pi=0;s.acting=null;s.thought=g.say;g.t=0;
+}
+function endGoal(s){s.goal=null;s.path=null;s.thinkT=0;s.acting=null;s.sleeping=false;}
+function act(key,say,dur,fn,anim){return{key,type:'act',say,dur,fn,anim:anim||'work',urgent:1};}
+function travel(key,say,tx,ty,actFn,opts){return Object.assign({key,type:'travel',say,tx,ty,act:actFn},opts||{});}
+const adj=(tx,ty)=>(x,y)=>Math.abs(x-tx)<=1&&Math.abs(y-ty)<=1&&walkable(tiles[idx(x,y)]);
+const distBase=s=>base?Math.hypot(s.x-base.x-.5,s.y-base.y-.5):1e9;
+
+function findContainer(types,s){
+  let best=null,bd=1e9;
+  for(const c of containers){if(c.looted||!types.includes(c.type)||!explored[idx(c.x,c.y)])continue;
+    if(s.failed['loot'+c.id]&&time-s.failed['loot'+c.id]<60)continue;
+    const d=Math.hypot(c.x-s.x,c.y-s.y)+(base?Math.hypot(c.x-base.x,c.y-base.y)*.35:0);if(d<bd){bd=d;best=c;}}
+  return best;
+}
+function nearestTile(s,test,r){
+  const fx=Math.floor(s.x),fy=Math.floor(s.y);
+  for(let rr=1;rr<=r;rr++){let best=null,bd=1e9;
+    for(let dy=-rr;dy<=rr;dy++)for(let dx=-rr;dx<=rr;dx++){if(Math.max(Math.abs(dx),Math.abs(dy))!==rr)continue;const x=fx+dx,y=fy+dy;
+      if(!inb(x,y)||!explored[idx(x,y)]||!test(x,y))continue;const d=dx*dx+dy*dy;if(d<bd){bd=d;best=[x,y];}}
+    if(best)return best;}
+  return null;
+}
+function nearestBuilding(s,maxD){let best=null,bd=maxD||1e9;for(const b of buildings){if(!explored[idx(b.x+1,b.y+1)])continue;const d=Math.hypot(b.x+b.w/2-s.x,b.y+b.h/2-s.y);if(d<bd){bd=d;best=b;}}return best;}
+function interiorSpot(b){for(let i=0;i<20;i++){const x=RI(b.x+1,b.x+b.w-2),y=RI(b.y+1,b.y+b.h-2);if(tiles[idx(x,y)]===FLOOR)return[x,y];}return[b.x+1,b.y+1];}
+function haveMat(m){return(base?(base.stock[m]||0):0)+(surv.inv[m]||0);}
+function neededMat(s){
+  if(!base)return null;
+  const acc={};
+  const unb=PROJECTS.filter(p=>!base.built[p.id]).slice(0,3);
+  for(const p of unb)for(const[m,n]of Object.entries(p.need)){acc[m]=(acc[m]||0)+n;if(haveMat(m)<acc[m]&&(m==='wood'||findContainer(SOURCES[m],s)))return m;}
+  const mouths=1+followers.length;
+  if(haveMat('food')<1+mouths&&findContainer(SOURCES.food,s))return'food';
+  if(!base.built.rain&&haveMat('water')<1+mouths&&findContainer(SOURCES.water,s))return'water';
+  return null;
+}
+function buildable(){
+  if(!base)return null;
+  for(const p of PROJECTS){if(base.built[p.id])continue;if(Object.entries(p.need).every(([m,n])=>haveMat(m)>=n))return p;}
+  return null;
+}
+function readyToBuild(s){const p=buildable();return p&&Object.keys(p.need).some(m=>(s.inv[m]||0)>0);}
+
+function decide(s){
+  const nt=isNight();
+  // ---- threats
+  const sense=s.sleeping?2.5:(nt?5.5:8);const near=[];
+  for(const z of zombies){const d=Math.hypot(z.x-s.x,z.y-s.y);if(d<sense&&(d<5||z.target===s)&&!(z.noReach>time&&d>1.3))near.push({z,d});}
+  const safe=base&&base.built.wall&&inBaseXY(s.x,s.y);
+  const threats=safe?near.filter(o=>inBaseXY(o.z.x,o.z.y)):near;
+  if(threats.length){
+    threats.sort((a,b)=>a.d-b.d);const close=threats.filter(o=>o.d<6).length;const dmg=WEAP[s.melee].dmg;const gun=s.rifle&&s.ammo>0;
+    const z=threats[0].z;
+    const brave=s.hp>35&&((close<=1&&s.hp>60)||(close<=1&&dmg>=20)||(close<=3&&dmg>=30&&s.hp>60)||(gun&&close<=4));
+    if(brave||(threats[0].d<1&&s.hp>15&&close<=2)){setGoal(s,{key:'fight'+z.id,type:'fight',z,say:gun&&threats[0].d>2?'Taking aim':close>1?'Holding them off':'Fighting back',urgent:1});return;}
+    if(s.goal&&s.goal.type==='flee')return;
+    setGoal(s,{key:'flee',type:'flee',say:close>2?'Too many. Running':'Getting away from it',urgent:1});
+    if(close>2&&(!s.lastFleeLog||time-s.lastFleeLog>DAY/2)){s.lastFleeLog=time;log(`${close} of them at once. I ran until my lungs burned.`,'danger');}
+    return;
+  }
+  if(s.goal&&(s.goal.type==='fight'||s.goal.type==='flee'))endGoal(s);
+  if(s.goal&&s.goal.type==='act')return;
+  // ---- body
+  if(s.hp<55&&s.inv.bandage)return setGoal(s,act('heal','Bandaging a wound',2,s=>{s.inv.bandage--;s.hp=Math.min(100,s.hp+32);}));
+  if(s.sick>0&&s.inv.pills)return setGoal(s,act('pills','Taking antibiotics',1.2,s=>{s.inv.pills--;s.sick=0;log('Took the antibiotics. The fever broke by evening.','good');}));
+  if(s.water<40){
+    if(s.inv.water)return setGoal(s,act('drink','Drinking',1,s=>{s.inv.water--;s.water=Math.min(100,s.water+45);},'drink'));
+    if(base&&(base.stock.water||0)>0&&distBase(s)<45)return setGoal(s,travel('bwater','Heading home for water',base.x,base.y+1,s=>{if(base.stock.water>0){base.stock.water--;s.water=Math.min(100,s.water+50);}return true;},{urgent:2}));
+    const w=nearestTile(s,(x,y)=>tiles[idx(x,y)]===WATER,45);
+    if(w)return setGoal(s,travel('water','Thirsty. Walking to water',w[0],w[1],(s,dt,g)=>{s.acting='drink';if(g.t<2.5)return false;
+      s.water=100;if((s.inv.water||0)<2)s.inv.water=(s.inv.water||0)+1;
+      const boiled=base&&base.built.fire&&distBase(s)<16;
+      if(!boiled&&rnd()<.18&&!s.sick){s.sick=DAY*.8;log('Drank from the lake without boiling it. My stomach is in knots.','danger');}
+      return true;},{isGoal:adj(w[0],w[1]),urgent:2}));
+  }
+  if(s.food<40){
+    if(s.inv.food)return setGoal(s,act('eat','Eating',1.5,s=>{s.inv.food--;s.food=Math.min(100,s.food+42);s.hp=Math.min(100,s.hp+3);},'eat'));
+    if(base&&(base.stock.food||0)>0&&distBase(s)<45)return setGoal(s,travel('bfood','Heading home to eat',base.x,base.y+1,s=>{if(base.stock.food>0){base.stock.food--;s.food=Math.min(100,s.food+48);}return true;},{urgent:2}));
+    const c=findContainer(SOURCES.food,s);
+    if(c)return setGoal(s,lootGoal(c,'Hungry. Checking a '+c.spot,2));
+    const a=findContainer(Object.keys(LOOT),s);
+    if(a)return setGoal(s,lootGoal(a,'Starving. Searching anything',2));
+  }
+  if(base&&s.hp<40&&!s.sick)return setGoal(s,travel('recover','Too hurt to scavenge. Resting at camp',base.x+1,base.y+1,(s,dt)=>{s.acting='rest';s.hp=Math.min(100,s.hp+.3*dt);return s.hp>=75;},{urgent:2}));
+  // ---- sleep / night
+  if(s.energy<20||(nt&&s.energy<60))return setGoal(s,sleepGoal(s));
+  if(crate&&crate.landed&&!crate.taken&&Math.hypot(crate.x-s.x,crate.y-s.y)<34&&!nt)
+    return setGoal(s,travel('crate','Going for the supply crate',Math.floor(crate.x),Math.floor(crate.y),openCrate,{urgent:2,isGoal:adj(Math.floor(crate.x),Math.floor(crate.y))}));
+  if(nt&&!base)return setGoal(s,hideGoal(s));
+  if(nt&&base&&distBase(s)>4)return setGoal(s,travel('home','Getting back before full dark',base.x,base.y+1,()=>true,{urgent:2}));
+  // ---- settlement work
+  if(base){
+    const carried=matCount(s),extra=Math.max(0,(s.inv.food||0)-2)+Math.max(0,(s.inv.water||0)-2)+Math.max(0,(s.inv.bandage||0)-3);
+    if((carried||extra)&&(carried>=CARRY||distBase(s)<8||nt||readyToBuild(s)))return setGoal(s,travel('deposit','Unloading at camp',base.x,base.y+1,deposit,{urgent:1}));
+    const p=buildable();
+    if(p)return setGoal(s,travel('build'+p.id,'Building: '+p.n.toLowerCase(),base.x+STRUCT[p.id][0],base.y+STRUCT[p.id][1]+1,(s,dt,g)=>{s.acting='build';if(g.t<7)return false;completeProject(p);return true;},{urgent:1,isGoal:(x,y)=>Math.abs(x-base.x-STRUCT[p.id][0])<=1&&Math.abs(y-base.y-STRUCT[p.id][1])<=1&&walkable(tiles[idx(x,y)])}));
+    if(nt)return setGoal(s,travel('watch','Keeping watch by the fire',base.x+RI(-2,2),base.y+RI(-1,2),(s,dt,g)=>{s.acting='rest';s.hp=Math.min(100,s.hp+.03*dt);return g.t>8;},{urgent:1}));
+  } else if(time>DAY*.25&&(time>DAY*.55||(s.inv.wood||0)>=3)){
+    const site=findBaseSite(s);
+    if(site)return setGoal(s,travel('establish','Scouting a place to settle',site[0],site[1],(s,dt,g)=>{s.acting='build';if(g.t<2.5)return false;establish(site);return true;},{urgent:1}));
+  }
+  // ---- keep an ongoing task
+  if(s.goal&&s.goal.task)return;
+  if(s.goal&&s.goal.urgent)return;
+  // ---- gather
+  const mat=neededMat(s);
+  if(mat==='wood'||(!base&&time>DAY*.3&&(s.inv.wood||0)<3)){
+    const t=nearestTile(s,(x,y)=>tiles[idx(x,y)]===TREE&&!inBaseXY(x+.5,y+.5),26);
+    if(t)return setGoal(s,travel('chop'+t[0]+','+t[1],s.hasAxe?'Chopping timber':'Snapping off branches',t[0],t[1],(s,dt,g)=>{s.acting='chop';s.dir=Math.atan2(t[1]+.5-s.y,t[0]+.5-s.x);
+      if(g.t<(s.hasAxe?2.2:4.5))return false;if(tiles[idx(t[0],t[1])]===TREE){setTile(t[0],t[1],STUMP);const q=s.hasAxe?3:2;s.inv.wood=(s.inv.wood||0)+q;float(s.x,s.y-.8,'+'+q+' wood','#d9a441');}return true;},{task:true,isGoal:adj(t[0],t[1])}));
+  }
+  if(mat){const c=findContainer(SOURCES[mat],s);if(c)return setGoal(s,lootGoal(c,'Looking for '+ITEMS[mat].n.toLowerCase()));}
+  const any=findContainer(Object.keys(LOOT),s);
+  if(any&&(Math.hypot(any.x-s.x,any.y-s.y)<40||s.melee==='fists'))return setGoal(s,lootGoal(any,'Searching a '+any.spot));
+  const ex=exploreTarget(s);
+  if(ex)return setGoal(s,travel('explore'+ex[0]+','+ex[1],pick(['Scouting new ground','Following the road','Seeing what is over the hill','Exploring']),ex[0],ex[1],()=>true,{task:true,isGoal:(x,y)=>Math.abs(x-ex[0])<=2&&Math.abs(y-ex[1])<=2}));
+  if(base)return setGoal(s,travel('idle'+RI(0,99),'Tidying up camp',base.x+RI(-3,3),base.y+RI(-3,3),(s,dt,g)=>g.t>5,{task:true}));
+}
+function lootGoal(c,say,urgent){
+  return travel('loot'+c.id,say,c.x,c.y,(s,dt,g)=>{s.acting='search';if(g.t<2.5)return false;lootContainer(s,c);return true;},{task:true,urgent,isGoal:(x,y)=>Math.abs(x-c.x)<=1&&Math.abs(y-c.y)<=1&&walkable(tiles[idx(x,y)])});
+}
+function lootContainer(s,c){
+  if(c.looted)return;c.looted=true;c.respawn=dayNum()+RI(4,7);
+  const items=rollLoot(c.type);const where=c.where.startsWith('a ')||c.where.startsWith('the ')?c.where:c.where;
+  if(!Object.keys(items).length){if(rnd()<.35)log(`Searched a ${c.spot} in ${where}. Picked clean. Someone got here first.`);return;}
+  giveItems(s,items);float(s.x,s.y-.8,'+'+Object.keys(items).length+' items','#d9a441');
+  if(rnd()<.55||items.rifle||items.radio||items.pills)log(`Found ${itemsText(items)} in a ${c.spot} in ${where}.`);
+  if(base&&followers.length<popCap()&&rnd()<.04){
+    const nm=newName();const f=makeFollower(nm,roleNeeded(),s.x,s.y);followers.push(f);
+    log(`Someone was hiding in the back room. ${nm}. Starved, scared, but not bitten. I told them about ${base.name}. They're coming with me.`,'good');
+  }
+}
+function deposit(s,dt,g){
+  if(g.t<1.2)return false;
+  const moved={};
+  for(const k of Object.keys(s.inv)){if(!ITEMS[k])continue;let keep=0;if(k==='food'||k==='water')keep=2;if(k==='bandage')keep=3;if(k==='pills')keep=2;
+    const q=s.inv[k]-keep;if(q>0){base.stock[k]=(base.stock[k]||0)+q;s.inv[k]-=q;moved[k]=q;}}
+  if(base.built.workshop){
+    if(WEAP[s.melee].dmg<38&&(base.stock.scrap||0)>=3&&!buildableNeeds('scrap')){base.stock.scrap-=3;s.melee='machete';log('Hammered out a machete at the workbench from a car spring. Heavy, sharp, quiet.','good');}
+    if((s.inv.bandage||0)<2&&(base.stock.cloth||0)>=4){base.stock.cloth-=2;s.inv.bandage=(s.inv.bandage||0)+1;}
+  }
+  const n=Object.values(moved).reduce((a,b)=>a+b,0);if(n>=6&&rnd()<.5)log(`Dropped off ${itemsText(moved)} at ${base.name}.`);
+  return true;
+}
+function buildableNeeds(m){const p=PROJECTS.find(p=>!base.built[p.id]);return p&&p.need[m]&&haveMat(m)-3<p.need[m];}
+function sleepGoal(s){
+  let spot,safe=false,say='Bedding down for the night';
+  if(base){const o=base.built.cabins?STRUCT.cabins:base.built.shelter?STRUCT.shelter:[1,0];spot=[base.x+o[0],base.y+o[1]+1];safe=!!base.built.shelter;if(base.built.shelter)say='Sleeping under the lean-to';}
+  else{const b=nearestBuilding(s,40);if(b){spot=interiorSpot(b);say='Barricading into a house to sleep';}else{spot=[Math.floor(s.x),Math.floor(s.y)];say='Sleeping rough';}}
+  if(s.energy<20&&!isNight())say='Exhausted. Need rest';
+  return travel('sleep',say,spot[0],spot[1],(s,dt)=>{s.sleeping=true;s.acting='sleep';s.energy=Math.min(100,s.energy+dt*(safe?1.6:1.2));
+    if(s.food>25&&s.water>25)s.hp=Math.min(100,s.hp+dt*(safe?.16:.08));
+    if(!isNight()&&s.energy>=85){s.sleeping=false;if(rnd()<.4)log(pick(['Slept through. Still alive. That counts as a good night.','Woke stiff and cold. Another day.','Dreamt about my family again. Up at first light.']));return true;}return false;},{urgent:2});
+}
+function hideGoal(s){
+  const b=nearestBuilding(s,45);const spot=b?interiorSpot(b):[Math.floor(s.x),Math.floor(s.y)];
+  return travel('hide',b?'Holing up indoors for the night':'Keeping low in the dark',spot[0],spot[1],(s,dt)=>{s.acting='rest';return!isNight();},{urgent:2});
+}
+function exploreTarget(s){
+  let best=null,bs=1e9;
+  for(let i=0;i<80;i++){const x=Math.floor(s.x+R(-36,36)),y=Math.floor(s.y+R(-36,36));if(!inb(x,y)||explored[idx(x,y)]||tiles[idx(x,y)]===WATER)continue;
+    const d=Math.hypot(x-s.x,y-s.y);let sc=Math.abs(d-16)+(tiles[idx(x,y)]===TREE?6:0)-(tiles[idx(x,y)]===ROAD?6:0)+(base?Math.hypot(x-base.x,y-base.y)*.2:0);if(sc<bs){bs=sc;best=[x,y];}}
+  if(best)return best;
+  for(let i=0;i<300;i++){const x=RI(0,W-1),y=RI(0,H-1);if(!explored[idx(x,y)]&&tiles[idx(x,y)]!==WATER)return[x,y];}
+  return null;
+}
+function findBaseSite(s){
+  let best=null,bs=-1e9;
+  for(let i=0;i<260;i++){
+    const x=Math.floor(s.x+R(-28,28)),y=Math.floor(s.y+R(-28,28));
+    if(x<9||y<9||x>W-10||y>H-10||!explored[idx(x,y)])continue;
+    let ok=true,trees=0;
+    for(let dy=-7;dy<=7&&ok;dy++)for(let dx=-7;dx<=7;dx++){const t=tiles[idx(x+dx,y+dy)];
+      if(t===FLOOR||t===WALL||t===DOOR){ok=false;break;}
+      if(Math.max(Math.abs(dx),Math.abs(dy))<=6&&(t===WATER||t===ROAD||t===FIELD)){ok=false;break;}
+      if(t===TREE)trees++;}
+    if(!ok)continue;
+    let wd=99;for(let dy=-15;dy<=15;dy+=1)for(let dx=-15;dx<=15;dx+=1){if(tileAt(x+dx,y+dy)===WATER&&inb(x+dx,y+dy)){const d=Math.hypot(dx,dy);if(d<wd)wd=d;}}
+    let sc=wd<99?(16-wd)*2:-25;sc+=Math.min(trees,40)*.25-trees*.05;
+    let td=1e9;for(const t of towns)td=Math.min(td,Math.hypot(t.x-x,t.y-y));sc+=td<14?-30:td<38?18-(td-14)*.5:0;
+    sc-=Math.hypot(x-s.x,y-s.y)*.25;
+    if(sc>bs){bs=sc;best=[x,y];}
+  }
+  return best;
+}
+function establish(site){
+  const [x,y]=site;
+  base={x,y,name:pick(BASE_NAMES),stock:{},built:{},since:dayNum()};
+  for(let dy=-5;dy<=5;dy++)for(let dx=-5;dx<=5;dx++)if(tileAt(x+dx,y+dy)===TREE)setTile(x+dx,y+dy,STUMP);
+  let what=nearestTile({x,y},(xx,yy)=>tiles[idx(xx,yy)]===WATER,16)?'near the water':'in the trees';
+  log(`Found a clearing ${what}. Good sightlines, timber close by. This is where I start over. I'm calling it ${base.name}.`,'build');
+  deposit(surv,0,{t:9});
+}
+function completeProject(p){
+  if(base.built[p.id])return;
+  for(const[m,n]of Object.entries(p.need)){let need=n;const fromStock=Math.min(base.stock[m]||0,need);base.stock[m]=(base.stock[m]||0)-fromStock;need-=fromStock;if(need>0)surv.inv[m]-=need;}
+  base.built[p.id]=true;base.builtDay=base.builtDay||{};base.builtDay[p.id]=dayNum();
+  log(p.say,'build');
+  if(p.id==='wall'){const r=6;for(let d=-r;d<=r;d++){for(const[xx,yy]of[[base.x+d,base.y-r],[base.x+d,base.y+r],[base.x-r,base.y+d],[base.x+r,base.y+d]]){if(!inb(xx,yy))continue;const t=tiles[idx(xx,yy)];if(t!==WATER)setTile(xx,yy,PALI);}}
+    setTile(base.x,base.y+r,GATE);setTile(base.x,base.y-r,GATE);}
+  if(p.id==='garden'){base.stock.food=(base.stock.food||0)+1;}
+  if(PROJECTS.every(q=>base.built[q.id]))log(`Every project finished. ${base.name} has walls, water, food and light. We made something out of the end of the world.`,'build');
+}
+function openCrate(s,dt,g){
+  s.acting='search';if(g.t<2)return false;if(!crate||crate.taken)return true;crate.taken=true;
+  const items={food:3,water:3,bandage:2,ammo:RI(6,12)};const extra=pick(['nails','scrap','radio','fuel','cloth','seeds']);items[extra]=RI(2,4);if(rnd()<.35)items.axe=1;if(rnd()<.25&&!s.rifle)items.rifle=1;
+  giveItems(s,items);log(`A crate on a parachute, green paint, no markings. Inside: ${itemsText(items)}. Someone is still out there.`,'good');crate=null;return true;
+}
+function roleNeeded(){const c={guard:0,farmer:0,scav:0};followers.forEach(f=>c[f.role]++);
+  if(c.guard===0)return'guard';if(base.built.garden&&c.farmer===0)return'farmer';if(c.scav<c.guard)return'scav';return pick(['guard','scav','farmer']);}
+const ROLE_N={guard:'Guard',farmer:'Farmer',scav:'Scavenger'};
+
+function survivorUpdate(s,dt){
+  const sickMul=s.sick>0?1.6:1, sl=s.sleeping?.4:1;
+  s.food=Math.max(0,s.food-.2*dt*sickMul*sl);s.water=Math.max(0,s.water-.3*dt*sickMul*sl);
+  if(!s.sleeping)s.energy=Math.max(0,s.energy-.48*dt*(s.goal&&s.goal.type==='flee'?1.8:1));
+  if(s.sick>0){s.sick-=dt;s.hp-=.05*dt;s.lastHit='fever';if(s.sick<=0){s.sick=0;log('The sickness has passed. Weak, but I can keep food down again.','good');}}
+  if(s.food<=0){s.hp-=.3*dt;s.lastHit='starvation';}
+  if(s.water<=0){s.hp-=.45*dt;s.lastHit='thirst';}
+  if(s.food>55&&s.water>55&&s.sick<=0&&!s.sleeping)s.hp=Math.min(100,s.hp+.035*dt);
+  if(s.energy<=0&&!s.sleeping){setGoal(s,sleepGoal(s));s.goal.tx=Math.floor(s.x);s.goal.ty=Math.floor(s.y);}
+  s.atkCd-=dt;s.hitT=Math.max(0,s.hitT-dt);
+  if(s.hp<=0){die(s);return;}
+  s.thinkT-=dt;if(s.thinkT<=0||!s.goal){s.thinkT=.5;decide(s);}
+  execGoal(s,dt);
+}
+function execGoal(s,dt){
+  const g=s.goal;if(!g)return;g.t+=dt;
+  if(g.type==='fight')return doFight(s,g,dt);
+  if(g.type==='flee')return doFlee(s,g,dt);
+  if(g.type==='act'){s.acting=g.anim;if(g.t>=g.dur){g.fn(s);endGoal(s);}return;}
+  if(!g.arrived){
+    if(!s.path){const fx=Math.floor(s.x),fy=Math.floor(s.y);const goalFn=g.isGoal||((x,y)=>x===g.tx&&y===g.ty);
+      const p=astar(fx,fy,goalFn,g.tx,g.ty);
+      if(!p){s.failed[g.key]=time;if(g.key.startsWith('loot'))s.failed[g.key]=time;endGoal(s);return;}
+      s.path=p;s.pi=0;}
+    if(followPath(s,dt,1)){g.arrived=true;g.t=0;}
+    return;
+  }
+  if(g.act(s,dt,g))endGoal(s);
+}
+function doFight(s,g,dt){
+  const z=g.z;if(!zombies.includes(z)||g.t>14){endGoal(s);return;}
+  const d=dist(s,z),gun=s.rifle&&s.ammo>0&&d>1.6;const range=gun?7:.95;s.dir=Math.atan2(z.y-s.y,z.x-s.x);
+  if(g.best===undefined||d<g.best-.3||d<=range){g.best=Math.min(d,g.best===undefined?1e9:g.best);g.prog=g.t;}
+  if(g.t-g.prog>3){z.noReach=time+40;endGoal(s);return;}
+  if(d>range){moveCollide(s,Math.cos(s.dir)*3*dt,Math.sin(s.dir)*3*dt,blockH);s.acting=null;return;}
+  s.acting=gun?'aim':'fight';
+  if(s.atkCd<=0){
+    if(gun){s.atkCd=1.4;s.ammo--;shots.push({x1:s.x,y1:s.y,x2:z.x,y2:z.y,t:0});noise(s.x,s.y,18);if(rnd()<.85)hitZombie(z,70,s);else float(z.x,z.y-.6,'miss','#aaa');}
+    else{const w=WEAP[s.melee];s.atkCd=w.cd;s.swing=.2;hitZombie(z,Math.round(w.dmg*R(.8,1.2)),s);}
+  }
+}
+function doFlee(s,g,dt){
+  g.re=(g.re||0)-dt;
+  if(g.re<=0){g.re=1;let cx=0,cy=0,n=0;for(const z of zombies){if(Math.hypot(z.x-s.x,z.y-s.y)<10){cx+=z.x;cy+=z.y;n++;}}
+    if(!n){endGoal(s);return;}
+    let tgt=null;
+    if(base&&distBase(s)<30&&(base.built.wall||distBase(s)>6))tgt=[base.x,base.y];
+    else{const a0=Math.atan2(s.y-cy/n,s.x-cx/n);for(const off of[0,.5,-.5,1,-1,1.6,-1.6,2.4,-2.4]){const a=a0+off;const px=Math.floor(s.x+Math.cos(a)*9),py=Math.floor(s.y+Math.sin(a)*9);if(inb(px,py)&&stepCost(tiles[idx(px,py)],10)===1){tgt=[px,py];break;}}}
+    if(tgt){s.path=astar(Math.floor(s.x),Math.floor(s.y),(x,y)=>Math.abs(x-tgt[0])<=1&&Math.abs(y-tgt[1])<=1,tgt[0],tgt[1],2500,-1);s.pi=0;}
+  }
+  let cz=null,cd=.9;for(const z of zombies){const d=dist(s,z);if(d<cd){cd=d;cz=z;}}
+  if(cz&&s.atkCd<=0){const w=WEAP[s.melee];s.atkCd=w.cd;s.swing=.2;s.dir=Math.atan2(cz.y-s.y,cz.x-s.x);hitZombie(cz,Math.round(w.dmg*R(.8,1.2)),s);}
+  if(s.path)followPath(s,dt,1.12);
+  else{let ax=0,ay=0;for(const z of zombies){const d=dist(s,z);if(d<8){ax+=(s.x-z.x)/(d+.1);ay+=(s.y-z.y)/(d+.1);}}const L=Math.hypot(ax,ay);if(L>0){moveCollide(s,ax/L*3.2*dt,ay/L*3.2*dt,blockH);s.dir=Math.atan2(ay,ax);}}
+}
+function die(s){
+  if(s.dead)return;s.dead=true;s.hp=0;over=true;decal(s.x,s.y,.4);decal(s.x,s.y,.3);
+  const days=Math.max(0,(time-s.born)/DAY);
+  const cause={zombie:'Pulled down by the infected',starvation:'Starved',thirst:'Died of thirst',fever:'Taken by fever'}[s.lastHit]||'Died';
+  log(`${s.name} is dead. ${cause} on day ${dayNum()}.`,'danger');
+  $('oTitle').textContent=`${s.name} is gone`;
+  $('oDays').textContent=days.toFixed(1);$('oKills').textContent=s.kills;$('oPop').textContent=followers.length;
+  $('oText').textContent=`${cause} on day ${dayNum()} at ${fmtClock()}.`+(base?` ${base.name} still stands${followers.length?' and the settlers are still there.':', empty now.'}`:' They never found a place to settle.');
+  const bt=$('oBtns');bt.innerHTML='';
+  const mk=(label,fn,primary)=>{const b=document.createElement('button');b.className='btn';if(primary)b.setAttribute('aria-pressed','true');b.textContent=label;b.onclick=fn;bt.appendChild(b);};
+  if(followers.length){const f=followers[0];mk(`Watch ${f.name} instead`,()=>{followers.shift();surv=makeSurvivor(Math.floor(f.x),Math.floor(f.y),f.name);surv.hp=Math.max(40,f.hp);surv.melee=f.role==='guard'?'bat':'fists';legacy++;hideOver();log(`${f.name} takes over. Someone has to keep ${base?base.name:'this place'} going.`,'other');},true);}
+  mk('New survivor, same world',()=>{spawnNewSurvivor();hideOver();},!followers.length);
+  mk('New world',()=>{startWorld();hideOver();});
+  $('over').hidden=false;
+}
+function hideOver(){$('over').hidden=true;over=false;cam.follow=true;syncFollow();}
+function spawnNewSurvivor(){
+  let p=null;
+  for(let i=0;i<500&&!p;i++){const e=RI(0,3);let x=e===0?RI(2,6):e===1?RI(W-7,W-3):RI(2,W-3),y=e===2?RI(2,6):e===3?RI(H-7,H-3):RI(2,H-3);
+    const t=tiles[idx(x,y)];if((t===GRASS||t===SAND||t===ROAD)&&!towns.some(tt=>Math.hypot(tt.x-x,tt.y-y)<16))p=[x,y];}
+  if(!p)p=randWalkNear(W/2,H/2,40);
+  surv=makeSurvivor(p[0],p[1],newName());
+  const nearSand=nearestTile({x:p[0],y:p[1]},(x,y)=>tiles[idx(x,y)]===SAND,4);
+  for(let dy=-9;dy<=9;dy++)for(let dx=-9;dx<=9;dx++){const x=p[0]+dx,y=p[1]+dy;if(inb(x,y)&&dx*dx+dy*dy<=81)explored[idx(x,y)]=1;}
+  log(nearSand?`Woke up on the shore with salt in my mouth and no memory of the last two days. Nobody is coming. Time to move.`
+    :`Walked out of the woods with a torn jacket and an empty stomach. The radio has been silent for weeks. Time to find food, then somewhere to stay.`,'other');
+}
+
+// ---------- followers ----------
+function updFollower(f,dt){
+  f.atkCd-=dt;f.hitT=Math.max(0,f.hitT-dt);if(f.hp<100)f.hp=Math.min(100,f.hp+.03*dt);
+  if(f.hp<=0){followers.splice(followers.indexOf(f),1);decal(f.x,f.y,.35);log(`${f.name} is dead. We buried them by the wall.`,'danger');return;}
+  const range=f.role==='guard'?10:3.5;let tz=null,td=range;
+  for(const z of zombies){const d=dist(f,z);if(d<td){if(f.role==='guard'&&base&&Math.hypot(z.x-base.x,z.y-base.y)>11&&!f.trip)continue;td=d;tz=z;}}
+  if(tz){const reach=f.role==='guard'?1.8:.95;f.dir=Math.atan2(tz.y-f.y,tz.x-f.x);
+    if(td>reach){moveCollide(f,Math.cos(f.dir)*2.8*dt,Math.sin(f.dir)*2.8*dt,blockH);f.path=null;f.acting=null;}
+    else if(f.atkCd<=0){f.atkCd=1;f.swing=.2;f.acting='fight';hitZombie(tz,f.role==='guard'?26:14,f);}
+    return;}
+  f.acting=null;
+  if(!base){if(!f.path||f.pi>=f.path.length){if(surv&&surv.hp>0&&dist(f,surv)>3){f.path=astar(Math.floor(f.x),Math.floor(f.y),adj(Math.floor(surv.x),Math.floor(surv.y)),Math.floor(surv.x),Math.floor(surv.y),3000);f.pi=0;}}else followPath(f,dt,.9);return;}
+  if(f.role==='scav'){
+    if(f.trip){const tr=f.trip;
+      if(tr.phase==='out'){if(!f.path){f.path=astar(Math.floor(f.x),Math.floor(f.y),adj(tr.c.x,tr.c.y),tr.c.x,tr.c.y);f.pi=0;if(!f.path){f.trip=null;return;}}if(followPath(f,dt,.9)){tr.phase='loot';tr.t=0;f.path=null;}}
+      else if(tr.phase==='loot'){tr.t+=dt;f.acting='search';if(tr.t>3){if(!tr.c.looted){tr.got=rollLoot(tr.c.type);tr.c.looted=true;tr.c.respawn=dayNum()+RI(4,7);}tr.phase='back';}}
+      else{if(!f.path){f.path=astar(Math.floor(f.x),Math.floor(f.y),(x,y)=>Math.abs(x-base.x)<=1&&Math.abs(y-base.y-1)<=1,base.x,base.y+1);f.pi=0;if(!f.path){f.trip=null;return;}}
+        if(followPath(f,dt,.9)){const got=tr.got||{};const gave={};for(const[k,q]of Object.entries(got)){if(ITEMS[k]){base.stock[k]=(base.stock[k]||0)+q;gave[k]=q;}}
+          if(Object.keys(gave).length&&rnd()<.6)log(`${f.name} came back from ${tr.c.where} with ${itemsText(gave)}.`,'other');f.trip=null;f.path=null;f.cool=R(90,170);}}
+      return;}
+    if(!isNight()&&(f.cool-=dt)<=0){const opts=containers.filter(c=>!c.looted&&explored[idx(c.x,c.y)]&&Math.hypot(c.x-base.x,c.y-base.y)<50).sort((a,b)=>Math.hypot(a.x-base.x,a.y-base.y)-Math.hypot(b.x-base.x,b.y-base.y)).slice(0,6);
+      if(opts.length){f.trip={phase:'out',c:pick(opts)};f.path=null;return;}f.cool=30;}
+  }
+  if(f.path&&f.pi<f.path.length){followPath(f,dt,.55);return;}
+  if((f.idleT-=dt)>0)return;f.idleT=R(3,8);
+  let ax=0,ay=0,r=3.5;if(f.role==='farmer'&&base.built.garden){ax=STRUCT.garden[0];ay=STRUCT.garden[1]+1;r=1.5;}
+  const tx=Math.max(-5,Math.min(5,Math.round(ax+R(-r,r)))),ty=Math.max(-5,Math.min(5,Math.round(ay+R(-r,r))));
+  f.path=astar(Math.floor(f.x),Math.floor(f.y),(x,y)=>x===base.x+tx&&y===base.y+ty,base.x+tx,base.y+ty,1500);f.pi=0;
+}
+
+// ---------- zombies ----------
+function updZombie(z,dt){
+  z.cd-=dt;z.hurtT=Math.max(0,z.hurtT-dt);const nt=isNight();const sense=nt?8.5:6;
+  if(z.target&&(z.target.hp<=0||(z.target!==surv&&!followers.includes(z.target))||dist(z,z.target)>sense*2.4))z.target=null;
+  if(!z.target&&(z.scan-=dt)<=0&&!(z.ignore>time)){z.scan=.5;let best=null,bd=sense;for(const h of humans()){let d=dist(z,h);if(h.sleeping)d*=1.8;if(d<bd){bd=d;best=h;}}z.target=best;z.bd=1e9;z.pt=0;}
+  if(z.target){const t=z.target,dx=t.x-z.x,dy=t.y-z.y,d=Math.hypot(dx,dy);
+    if(d<(z.bd||1e9)-.3||d<=.7){z.bd=d;z.pt=0;}else z.pt=(z.pt||0)+dt;
+    if(z.pt>6){z.target=null;z.ignore=time+12;z.bd=1e9;z.pt=0;z.wt=0;return;}
+    if(d>.7){let a=Math.atan2(dy,dx);if(z.side>0){z.side-=dt;a+=z.sideDir*1.2;}const sp=(nt?2.4:2)*z.spd*dt;
+      const m=moveCollide(z,Math.cos(a)*sp,Math.sin(a)*sp,blockZ);if(m<sp*.3&&z.side<=0){z.side=.6;z.sideDir=rnd()<.5?1:-1;}z.dir=a;}
+    else if(z.cd<=0){z.cd=1.3;hurt(t,RI(5,9),'zombie');}
+  }else{if((z.wt-=dt)<=0){z.wt=R(2,5);z.wa=R(0,6.28);z.wm=rnd()<.6;const hd=Math.hypot(z.home[0]-z.x,z.home[1]-z.y);if(hd>8)z.wa=Math.atan2(z.home[1]-z.y,z.home[0]-z.x);}
+    if(z.wm){moveCollide(z,Math.cos(z.wa)*.55*z.spd*dt,Math.sin(z.wa)*.55*z.spd*dt,blockZ);z.dir=z.wa;}}
+}
+function spawner(dt){
+  spawnT-=dt;if(spawnT>0)return;spawnT=3;
+  const target=Math.min(80,24+dayNum()*2.5)*(isNight()?1.2:1);
+  if(zombies.length<target){
+    const inTown=rnd()<.6&&towns.length;const c=inTown?pick(towns):{x:RI(0,W-1),y:RI(0,H-1)};
+    const x=c.x+(inTown?RI(-10,10):0),y=c.y+(inTown?RI(-9,9):0);
+    if(inb(x,y)&&!blockZ(tiles[idx(x,y)])&&(!surv||Math.hypot(x-surv.x,y-surv.y)>20)&&!(base&&Math.hypot(x-base.x,y-base.y)<12)&&!visible[idx(x,y)])spawnZombie(x,y);
+  }else if(!isNight()&&zombies.length>target+5){const hs=humans();const far=zombies.find(z=>!z.target&&hs.every(h=>dist(z,h)>40));if(far)zombies.splice(zombies.indexOf(far),1);}
+}
+
+// ---------- world clock events ----------
+function dawn(){
+  const d=dayNum();
+  for(const c of containers)if(c.looted&&d>=c.respawn&&rnd()<.5)c.looted=false;
+  if(base){
+    if(base.built.garden){const g=3+followers.filter(f=>f.role==='farmer').length*2;base.stock.food=(base.stock.food||0)+g;}
+    if(base.built.rain)base.stock.water=(base.stock.water||0)+3;
+    let hungry=0;for(const f of followers){if((base.stock.food||0)>0)base.stock.food--;else{f.hp-=25;hungry++;}if((base.stock.water||0)>0)base.stock.water--;else{f.hp-=20;hungry++;}}
+    if(hungry)log(`Not enough to go around this morning. The settlers went without.`,'danger');
+  }
+  if(surv&&surv.hp>0){const alive=Math.floor((time-surv.born)/DAY);
+    if(rnd()<.6)log(`Day ${d}. ${weather==='Rain'?'Rain on the roof.':pick(['Grey sky.','Cold morning, clear sky.','Fog in the valley.','Crows at first light.'])}`+(alive>=1?` ${alive} day${alive>1?'s':''} alive.`:''),'other');}
+}
+function noon(){
+  if(base&&base.built.radio&&followers.length<popCap()&&rnd()<.7){
+    let p=null;for(let i=0;i<200&&!p;i++){const x=rnd()<.5?RI(1,3)*(rnd()<.5?1:0)+(rnd()<.5?1:W-3):RI(2,W-3),y=RI(2,H-3);if(walkable(tiles[idx(x,y)]))p=[x,y];}
+    if(p){const nm=newName(),role=roleNeeded();const f=makeFollower(nm,role,p[0]+.5,p[1]+.5);followers.push(f);
+      f.path=astar(p[0],p[1],(x,y)=>Math.abs(x-base.x)<=1&&Math.abs(y-base.y-1)<=1,base.x,base.y+1);f.pi=0;
+      log(`${nm} heard the broadcast and walked in at noon. Tired, hands up, not bitten. They'll work as our ${ROLE_N[role].toLowerCase()}.`,'good');}
+  }
+}
+function dusk(){
+  if(!surv||surv.hp<=0)return;
+  if(!base)log(pick(['Sun is going down. Every sound in the trees is a threat now.','Dark soon. I need four walls around me.','Night again. They are louder at night.']),'other');
+  else if(!base.built.wall&&rnd()<.5)log('Night falls over the camp. No walls yet. I keep the fire small.','other');
+}
+
+// ---------- player interventions ----------
+function airdrop(){
+  if(!surv||surv.hp<=0)return;
+  const p=randWalkNear(surv.x,surv.y,14,(x,y)=>Math.hypot(x-surv.x,y-surv.y)>7&&tiles[idx(x,y)]!==WATER);if(!p)return;
+  crate={x:p[0]+.5,y:p[1]+.5,t:0,landed:false,taken:false};lastDrop=time;
+  log('Engine noise overhead. A plane, low, then a parachute drifting down behind the trees.','good');
+}
+function horde(){
+  if(!surv||surv.hp<=0)return;lastHorde=time;let n=0;
+  for(let i=0;i<40&&n<6;i++){const a=R(0,6.28),r=R(12,16);const x=Math.floor(surv.x+Math.cos(a)*r),y=Math.floor(surv.y+Math.sin(a)*r);
+    if(inb(x,y)&&!blockZ(tiles[idx(x,y)])){const z=spawnZombie(x,y,surv);if(z){z.spd*=1.1;n++;}}}
+  log('A howl from the treeline, then another. Something stirred up a pack and they are heading my way.','danger');
+}
+
+// ---------- visibility ----------
+const fogC=document.createElement('canvas');fogC.width=W;fogC.height=H;const fogX=fogC.getContext('2d');const fogImg=fogX.createImageData(W,H);
+function reveal(){
+  visible.fill(0);
+  const mark=(cx,cy,r,discover)=>{const r2=r*r,fx=Math.floor(cx),fy=Math.floor(cy);for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){if(dx*dx+dy*dy>r2)continue;const x=fx+dx,y=fy+dy;if(!inb(x,y))continue;const i=idx(x,y);visible[i]=1;if(discover)explored[i]=1;}};
+  if(surv&&surv.hp>0)mark(surv.x,surv.y,isNight()?6:9,true);
+  for(const f of followers)mark(f.x,f.y,4,true);
+  if(base)mark(base.x,base.y,base.built.tower?14:7,true);
+  if(surv&&surv.hp>0)for(const t of towns)if(!t.found&&explored[idx(t.x,t.y)]){t.found=true;
+    log(`Reached ${t.name}. ${pick(['Windows smashed, doors hanging open.','Burnt-out cars block the main street.','Church bell tower, no bell.','Laundry still on the lines.'])} ${t.big?'Big enough that there might be something left.':'Small place. Worth a look.'}`);}
+  const d=fogImg.data;for(let i=0;i<W*H;i++){d[i*4]=11;d[i*4+1]=14;d[i*4+2]=12;d[i*4+3]=!explored[i]?245:visible[i]?0:115;}
+  fogX.putImageData(fogImg,0,0);
+}
+
+// ---------- camera / input ----------
+const cam={x:W/2,y:H/2,zoom:1.6,follow:true};
+function resize(){dpr=Math.min(2,window.devicePixelRatio||1);const r=cv.getBoundingClientRect();vw=r.width;vh=r.height;cv.width=Math.round(vw*dpr);cv.height=Math.round(vh*dpr);lcan.width=cv.width;lcan.height=cv.height;}
+const lcan=document.createElement('canvas');const lctx=lcan.getContext('2d');
+let drag=null;
+cv.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,moved:false};cv.setPointerCapture(e.pointerId);});
+cv.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.abs(dx)+Math.abs(dy)>3){drag.moved=true;cv.classList.add('drag');cam.follow=false;syncFollow();}
+  cam.x-=dx/(cam.zoom*TS);cam.y-=dy/(cam.zoom*TS);drag.x=e.clientX;drag.y=e.clientY;});
+const endDrag=()=>{drag=null;cv.classList.remove('drag');};
+cv.addEventListener('pointerup',endDrag);cv.addEventListener('pointercancel',endDrag);
+cv.addEventListener('wheel',e=>{e.preventDefault();cam.zoom=Math.max(.5,Math.min(4,cam.zoom*Math.exp(-e.deltaY*.0015)));},{passive:false});
+$('zin').onclick=()=>cam.zoom=Math.min(4,cam.zoom*1.25);
+$('zout').onclick=()=>cam.zoom=Math.max(.5,cam.zoom/1.25);
+function syncFollow(){$('follow').setAttribute('aria-pressed',String(cam.follow));}
+$('follow').onclick=()=>{cam.follow=!cam.follow;syncFollow();};
+let speed=2;
+function setSpeed(v){speed=v;document.querySelectorAll('[data-speed]').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.speed===v)));}
+document.querySelectorAll('[data-speed]').forEach(b=>b.onclick=()=>setSpeed(+b.dataset.speed));
+let lastSpeed=2;
+window.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;
+  if(e.code==='Space'){e.preventDefault();if(speed){lastSpeed=speed;setSpeed(0);}else setSpeed(lastSpeed||2);}
+  else if(e.key==='1')setSpeed(1);else if(e.key==='2')setSpeed(2);else if(e.key==='3')setSpeed(5);else if(e.key==='4')setSpeed(12);
+  else if(e.key==='f'||e.key==='F'){cam.follow=!cam.follow;syncFollow();}});
+$('drop').onclick=airdrop;$('horde').onclick=horde;
+$('newworld').onclick=()=>{startWorld();hideOver();};
+$('mini').addEventListener('click',e=>{const r=e.currentTarget.getBoundingClientRect();cam.x=(e.clientX-r.left)/r.width*W;cam.y=(e.clientY-r.top)/r.height*H;cam.follow=false;syncFollow();});
+
+// ---------- rendering ----------
+function drawHuman(c,e,body,pack,label){
+  const a=e.dir||0;
+  c.fillStyle='rgba(0,0,0,.35)';c.beginPath();c.ellipse(e.x+.06,e.y+.12,.3,.22,0,0,7);c.fill();
+  if(e.sleeping){c.fillStyle='#4a5a4a';c.fillRect(e.x-.4,e.y-.18,.8,.36);c.fillStyle=body;c.beginPath();c.arc(e.x-.25,e.y,.14,0,7);c.fill();return;}
+  c.save();c.translate(e.x,e.y);c.rotate(a);
+  c.fillStyle=pack;c.fillRect(-.3,-.17,.16,.34);
+  c.fillStyle=e.hitT>0?'#e8b0a0':body;c.beginPath();c.ellipse(0,0,.22,.27,0,0,7);c.fill();
+  c.fillStyle='#d8c0a0';c.beginPath();c.arc(.06,0,.13,0,7);c.fill();
+  c.fillStyle='#3a2d20';c.beginPath();c.arc(.02,0,.12,Math.PI*.5,Math.PI*1.5);c.fill();
+  const sw=e.swing>0?e.swing*5:0;
+  if(e.acting==='fight'||e.acting==='chop'||sw){c.strokeStyle='#8a7a66';c.lineWidth=.07;c.beginPath();c.moveTo(.15,.18);c.lineTo(.5,.18-sw*.3+(e.acting==='chop'?Math.sin(time*14)*.12:0));c.stroke();}
+  if(e.acting==='aim'){c.strokeStyle='#2a2522';c.lineWidth=.07;c.beginPath();c.moveTo(.1,.1);c.lineTo(.62,.05);c.stroke();}
+  c.restore();
+}
+function drawZombie(c,z){
+  c.fillStyle='rgba(0,0,0,.3)';c.beginPath();c.ellipse(z.x+.05,z.y+.1,.28,.2,0,0,7);c.fill();
+  c.save();c.translate(z.x,z.y);c.rotate(z.dir);
+  c.strokeStyle=`hsl(${80+z.shade},14%,36%)`;c.lineWidth=.09;c.beginPath();c.moveTo(.05,-.18);c.lineTo(.36,-.14);c.moveTo(.05,.18);c.lineTo(.36,.16);c.stroke();
+  c.fillStyle=z.hurtT>0?'#c88':`hsl(${78+z.shade},12%,${30+z.shade*.4}%)`;c.beginPath();c.ellipse(0,0,.2,.25,0,0,7);c.fill();
+  c.fillStyle=`hsl(${70+z.shade},18%,${46+z.shade*.5}%)`;c.beginPath();c.arc(.07,0,.12,0,7);c.fill();
+  if(isNight()){c.fillStyle='#e0402e';c.fillRect(.14,-.06,.04,.03);c.fillRect(.14,.03,.04,.03);}
+  c.restore();
+  if(z.hp<z.max){c.fillStyle='rgba(0,0,0,.5)';c.fillRect(z.x-.3,z.y-.48,.6,.07);c.fillStyle='#c4533f';c.fillRect(z.x-.3,z.y-.48,.6*Math.max(0,z.hp/z.max),.07);}
+}
+function drawBase(c){
+  const bx=base.x,by=base.y,b=base.built,T=time;
+  c.strokeStyle='rgba(217,164,65,.25)';c.setLineDash([.25,.25]);c.lineWidth=.05;if(!b.wall)c.strokeRect(bx-5.5,by-5.5,12,12);c.setLineDash([]);
+  const at=(k)=>[bx+STRUCT[k][0],by+STRUCT[k][1]];
+  if(b.garden){const[gx,gy]=at('garden');c.fillStyle='#4a3a28';c.fillRect(gx,gy,3,2);const grow=Math.min(1,((dayNum()-(base.builtDay.garden||0))+hour()/24)/2);
+    for(let i=0;i<6;i++)for(let j=0;j<3;j++){c.fillStyle='#6f8f45';const r=.06+.1*grow;c.beginPath();c.arc(gx+.3+i*.48,gy+.35+j*.6,r,0,7);c.fill();}}
+  if(b.cabins){for(const ox of[0,2.5]){const[cx,cy]=at('cabins');c.fillStyle='rgba(0,0,0,.3)';c.fillRect(cx+ox+.1,cy+.1,2,1.4);c.fillStyle='#6b4a2e';c.fillRect(cx+ox,cy,2,1.4);c.fillStyle='#8a6440';c.fillRect(cx+ox,cy,2,.25);c.fillStyle='#3a2a1a';c.fillRect(cx+ox+.85,cy+1,.3,.4);}}
+  if(b.shelter){const[sx,sy]=at('shelter');c.fillStyle='rgba(0,0,0,.3)';c.beginPath();c.moveTo(sx+.1,sy+1.1);c.lineTo(sx+.7,sy+.1);c.lineTo(sx+1.3,sy+1.1);c.fill();c.fillStyle='#7d7050';c.beginPath();c.moveTo(sx,sy+1);c.lineTo(sx+.6,sy);c.lineTo(sx+1.2,sy+1);c.fill();c.strokeStyle='#4a4030';c.lineWidth=.05;c.beginPath();c.moveTo(sx+.6,sy);c.lineTo(sx+.6,sy+1);c.stroke();}
+  if(b.rain){const[rx,ry]=at('rain');c.fillStyle='#4f6470';c.beginPath();c.arc(rx+.5,ry+.5,.32,0,7);c.fill();c.fillStyle='#7ea0b0';c.beginPath();c.arc(rx+.5,ry+.5,.2,0,7);c.fill();c.strokeStyle='#8a8a70';c.lineWidth=.04;c.strokeRect(rx,ry,1,1);}
+  if(b.workshop){const[wx,wy]=at('workshop');c.fillStyle='#5a4028';c.fillRect(wx,wy,1.6,.8);c.fillStyle='#9a9a90';c.fillRect(wx+.2,wy+.2,.4,.1);c.fillRect(wx+.9,wy+.3,.3,.3);}
+  if(b.tower){const[tx,ty]=at('tower');c.fillStyle='rgba(0,0,0,.35)';c.fillRect(tx+.2,ty+.2,1.2,1.2);c.fillStyle='#5b3e22';c.fillRect(tx,ty,1.2,1.2);c.strokeStyle='#8a6440';c.lineWidth=.07;c.beginPath();c.moveTo(tx,ty);c.lineTo(tx+1.2,ty+1.2);c.moveTo(tx+1.2,ty);c.lineTo(tx,ty+1.2);c.stroke();c.strokeRect(tx,ty,1.2,1.2);}
+  if(b.radio){const[rx,ry]=at('radio');c.strokeStyle='#9a9a90';c.lineWidth=.05;c.beginPath();c.moveTo(rx+.5,ry+.5);c.lineTo(rx-.1,ry+1.1);c.moveTo(rx+.5,ry+.5);c.lineTo(rx+1.1,ry+1.1);c.moveTo(rx+.5,ry+.5);c.lineTo(rx+.5,ry-.2);c.stroke();
+    if(Math.floor(T*1.5)%2===0){c.fillStyle='#ff4a3a';c.beginPath();c.arc(rx+.5,ry-.2,.09,0,7);c.fill();}}
+  if(b.gen){const[gx,gy]=at('gen');c.fillStyle='#3d4a3a';c.fillRect(gx,gy,.9,.6);c.fillStyle='#d9a441';c.fillRect(gx+.1,gy+.1,.2,.1);}
+  // fire
+  if(b.fire){const fx=bx+.5,fy=by+.5;c.fillStyle='#5a5550';for(let i=0;i<7;i++){const a=i/7*6.28;c.beginPath();c.arc(fx+Math.cos(a)*.32,fy+Math.sin(a)*.32,.08,0,7);c.fill();}
+    const f=.8+Math.sin(T*9)*.1+Math.sin(T*23)*.08;c.fillStyle='#d9612a';c.beginPath();c.arc(fx,fy,.2*f,0,7);c.fill();c.fillStyle='#f2c24a';c.beginPath();c.arc(fx,fy,.1*f,0,7);c.fill();}
+  else{c.fillStyle='#6a5a40';c.fillRect(bx+.2,by+.3,.6,.4);}
+}
+function render(){
+  const dk=darkness();
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#0b0d0b';ctx.fillRect(0,0,vw,vh);
+  const z=cam.zoom*TS,ox=vw/2-cam.x*z,oy=vh/2-cam.y*z;
+  ctx.imageSmoothingEnabled=false;
+  const sx=Math.max(0,-ox/cam.zoom),sy=Math.max(0,-oy/cam.zoom),ex=Math.min(W*TS,(vw-ox)/cam.zoom),ey=Math.min(H*TS,(vh-oy)/cam.zoom);
+  if(ex>sx&&ey>sy)ctx.drawImage(tcan,sx,sy,ex-sx,ey-sy,ox+sx*cam.zoom,oy+sy*cam.zoom,(ex-sx)*cam.zoom,(ey-sy)*cam.zoom);
+  ctx.save();ctx.translate(ox,oy);ctx.scale(z,z);
+  const x0=Math.max(0,Math.floor(-ox/z)),y0=Math.max(0,Math.floor(-oy/z)),x1=Math.min(W,Math.ceil((vw-ox)/z)),y1=Math.min(H,Math.ceil((vh-oy)/z));
+  // water glints
+  ctx.fillStyle='rgba(180,210,220,.18)';
+  for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){if(tiles[idx(x,y)]!==WATER)continue;const h=hash(x+7,y+3);if(h>.8){const p=(time*.3+h*10)%1;ctx.fillRect(x+p*.7,y+h*.8,.25,.04);}}
+  for(const d of decals){ctx.fillStyle='rgba(95,20,16,.55)';ctx.beginPath();ctx.arc(d.x,d.y,d.r,0,7);ctx.fill();}
+  for(const c of containers){if(c.x<x0-1||c.x>x1||c.y<y0-1||c.y>y1||!explored[idx(c.x,c.y)])continue;
+    ctx.fillStyle=c.looted?'#3d3226':'#9a7440';ctx.fillRect(c.x+.22,c.y+.28,.56,.44);ctx.fillStyle=c.looted?'#2b241c':'#c49a52';ctx.fillRect(c.x+.22,c.y+.28,.56,.1);}
+  if(base)drawBase(ctx);
+  if(crate){const cx=crate.x,cy=crate.y;
+    if(!crate.landed){const k=1-crate.t/3;ctx.fillStyle='rgba(0,0,0,.3)';ctx.beginPath();ctx.arc(cx,cy,.3,0,7);ctx.fill();ctx.fillStyle='#d8d0b8';ctx.beginPath();ctx.arc(cx-k*2,cy-k*3-.5,.6,Math.PI,0);ctx.fill();ctx.fillStyle='#4f5f3a';ctx.fillRect(cx-k*2-.25,cy-k*3-.25,.5,.5);}
+    else{ctx.fillStyle='#4f5f3a';ctx.fillRect(cx-.35,cy-.3,.7,.6);ctx.strokeStyle='#2e3a22';ctx.lineWidth=.05;ctx.strokeRect(cx-.35,cy-.3,.7,.6);
+      for(let i=0;i<5;i++){const p=((time*.5+i/5)%1);ctx.fillStyle=`rgba(220,90,60,${.35*(1-p)})`;ctx.beginPath();ctx.arc(cx+Math.sin(i+time)*.2+p*.6,cy-.3-p*2.2,.18+p*.35,0,7);ctx.fill();}}}
+  for(const zz of zombies){if(zz.x<x0-1||zz.x>x1+1||zz.y<y0-1||zz.y>y1+1)continue;const i=idx(Math.floor(zz.x),Math.floor(zz.y));if(!visible[i])continue;drawZombie(ctx,zz);}
+  for(const f of followers)drawHuman(ctx,f,'#56788a','#3a4a54');
+  if(surv&&surv.hp>0)drawHuman(ctx,surv,'#b88a3a','#5a4a2a');
+  for(const s of shots){ctx.strokeStyle=`rgba(255,220,140,${1-s.t/.15})`;ctx.lineWidth=.05;ctx.beginPath();ctx.moveTo(s.x1,s.y1);ctx.lineTo(s.x2,s.y2);ctx.stroke();}
+  ctx.imageSmoothingEnabled=true;ctx.drawImage(fogC,0,0,W,H);
+  ctx.restore();
+  // night lighting
+  if(dk>0.01){
+    lctx.setTransform(1,0,0,1,0,0);lctx.globalCompositeOperation='source-over';lctx.clearRect(0,0,lcan.width,lcan.height);
+    lctx.fillStyle=`rgba(4,8,22,${.84*dk})`;lctx.fillRect(0,0,lcan.width,lcan.height);lctx.globalCompositeOperation='destination-out';
+    const light=(wx,wy,r,s)=>{const px=(ox+wx*z)*dpr,py=(oy+wy*z)*dpr,rr=r*z*dpr;const g=lctx.createRadialGradient(px,py,0,px,py,rr);g.addColorStop(0,`rgba(0,0,0,${s})`);g.addColorStop(.55,`rgba(0,0,0,${s*.7})`);g.addColorStop(1,'rgba(0,0,0,0)');lctx.fillStyle=g;lctx.beginPath();lctx.arc(px,py,rr,0,7);lctx.fill();};
+    if(surv&&surv.hp>0)light(surv.x,surv.y,surv.sleeping?2:6,1);
+    for(const f of followers)light(f.x,f.y,2.6,.8);
+    if(base&&base.built.fire)light(base.x+.5,base.y+.5,4.5+Math.sin(time*8)*.2,1);
+    if(base&&base.built.gen){light(base.x+.5,base.y+.5,11,1);}
+    if(crate&&crate.landed)light(crate.x,crate.y,2.5,.9);
+    for(const s of shots)light(s.x1,s.y1,3,1);
+    ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(lcan,0,0);ctx.setTransform(dpr,0,0,dpr,0,0);
+    if(base&&base.built.fire){const px=ox+(base.x+.5)*z,py=oy+(base.y+.5)*z,g=ctx.createRadialGradient(px,py,0,px,py,4*z);g.addColorStop(0,`rgba(255,140,50,${.18*dk})`);g.addColorStop(1,'rgba(255,140,50,0)');ctx.fillStyle=g;ctx.fillRect(px-4*z,py-4*z,8*z,8*z);}
+  }
+  const h=hour();const dusk=h>17.5&&h<20.5?1-Math.abs(h-19)/1.5:h>5&&h<7.5?1-Math.abs(h-6.2)/1.3:0;
+  if(dusk>0){ctx.fillStyle=`rgba(230,120,50,${.1*dusk})`;ctx.fillRect(0,0,vw,vh);}
+  if(weather==='Rain'){ctx.fillStyle='rgba(20,30,40,.18)';ctx.fillRect(0,0,vw,vh);ctx.strokeStyle='rgba(170,190,210,.28)';ctx.lineWidth=1;ctx.beginPath();
+    for(const d of rain){const x=(d.x*vw+time*60*d.s)%(vw+40)-20,y=(d.y*vh+time*420*d.s)%(vh+40)-20;ctx.moveTo(x,y);ctx.lineTo(x-3,y+11);}ctx.stroke();}
+  // labels
+  const toS=(wx,wy)=>[ox+wx*z,oy+wy*z];
+  ctx.textAlign='center';
+  for(const f of followers){if(cam.zoom<1.1)continue;const[px,py]=toS(f.x,f.y);ctx.font='500 10px "IBM Plex Mono",monospace';ctx.fillStyle='rgba(185,210,222,.9)';ctx.fillText(f.name.split(' ')[0]+' · '+ROLE_N[f.role],px,py-z*.5);}
+  if(base&&cam.zoom>.7){const[px,py]=toS(base.x+.5,base.y-6.4);ctx.font='700 13px "Big Shoulders Stencil Display",Impact,sans-serif';ctx.fillStyle='rgba(217,164,65,.85)';ctx.fillText(base.name.toUpperCase(),px,py);}
+  for(const t of towns){if(!t.found)continue;const[px,py]=toS(t.x+.5,t.y-11);if(px<-100||px>vw+100||py<-50||py>vh+50)continue;ctx.font='700 15px "Big Shoulders Stencil Display",Impact,sans-serif';ctx.fillStyle='rgba(220,214,195,.55)';ctx.fillText(t.name.toUpperCase(),px,py);}
+  if(surv&&surv.hp>0){const[px,py]=toS(surv.x,surv.y);
+    ctx.font='600 11px "IBM Plex Mono",monospace';const name=surv.name.split(' ')[0];ctx.fillStyle='#f0d49a';ctx.fillText(name,px,py-z*.55-2);
+    if(surv.thought){ctx.font='13px "Special Elite","Courier New",monospace';const tw=ctx.measureText(surv.thought).width+14;const bx=px-tw/2,by=py-z*.55-34;
+      ctx.fillStyle='rgba(22,26,22,.86)';ctx.fillRect(bx,by,tw,20);ctx.strokeStyle='rgba(217,164,65,.5)';ctx.lineWidth=1;ctx.strokeRect(bx+.5,by+.5,tw-1,19);
+      ctx.beginPath();ctx.moveTo(px-4,by+20);ctx.lineTo(px,by+25);ctx.lineTo(px+4,by+20);ctx.fillStyle='rgba(22,26,22,.86)';ctx.fill();
+      ctx.fillStyle='#e6dfca';ctx.fillText(surv.thought,px,by+14);}
+    if(surv.sleeping){ctx.font='12px "IBM Plex Mono",monospace';ctx.fillStyle='rgba(200,215,230,.8)';const k=(time*.8)%1;ctx.fillText('z',px+z*.4+k*6,py-z*.4-k*12);}
+  }
+  ctx.font='600 11px "IBM Plex Mono",monospace';
+  for(const f of fx){const[px,py]=toS(f.x,f.y);ctx.globalAlpha=Math.max(0,1-f.t/1.2);ctx.fillStyle=f.col;ctx.fillText(f.text,px,py-f.t*22);}
+  ctx.globalAlpha=1;
+}
+
+// ---------- minimap ----------
+const mini=$('mini'),mctx=mini.getContext('2d'),mimg=mctx.createImageData(W,H);
+const MCOL={[GRASS]:[62,78,50],[TREE]:[36,54,34],[WATER]:[38,62,74],[ROAD]:[74,74,70],[FLOOR]:[138,122,92],[WALL]:[138,122,92],[DOOR]:[138,122,92],[STUMP]:[66,78,50],[PALI]:[160,110,60],[GATE]:[160,110,60],[SAND]:[112,104,78],[FIELD]:[92,84,56]};
+function drawMini(){
+  const d=mimg.data;for(let i=0;i<W*H;i++){const c=explored[i]?MCOL[tiles[i]]:[12,14,12];const k=explored[i]&&!visible[i]?.7:1;d[i*4]=c[0]*k;d[i*4+1]=c[1]*k;d[i*4+2]=c[2]*k;d[i*4+3]=255;}
+  mctx.putImageData(mimg,0,0);
+  if(base){mctx.fillStyle='#c4533f';mctx.fillRect(base.x-2,base.y-2,5,5);}
+  mctx.fillStyle='#79a0b4';for(const f of followers)mctx.fillRect(Math.floor(f.x),Math.floor(f.y),2,2);
+  if(crate){mctx.fillStyle='#86a56f';mctx.fillRect(Math.floor(crate.x)-1,Math.floor(crate.y)-1,3,3);}
+  if(surv&&surv.hp>0){mctx.fillStyle='#e0b24c';mctx.fillRect(Math.floor(surv.x)-1,Math.floor(surv.y)-1,3,3);}
+  const vwT=vw/(cam.zoom*TS),vhT=vh/(cam.zoom*TS);mctx.strokeStyle='rgba(220,214,195,.6)';mctx.lineWidth=1;mctx.strokeRect(Math.round(cam.x-vwT/2)+.5,Math.round(cam.y-vhT/2)+.5,Math.round(vwT),Math.round(vhT));
+}
+
+// ---------- side panel ----------
+function setBar(id,v){const el=$(id);el.firstElementChild.style.width=Math.max(0,Math.min(100,v))+'%';el.classList.toggle('low',v<30);}
+function whereIs(s){for(const t of towns)if(Math.hypot(t.x-s.x,t.y-s.y)<13)return t.name;if(base&&distBase(s)<7)return base.name;for(const b of buildings)if(b.type==='barn'&&Math.hypot(b.x-s.x,b.y-s.y)<8)return'Farmland';for(const b of buildings)if(b.type==='military'&&Math.hypot(b.x-s.x,b.y-s.y)<9)return'Army checkpoint';
+  const t=tileAt(Math.floor(s.x),Math.floor(s.y));if(t===WATER)return'Swimming';let trees=0;for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++)if(tileAt(Math.floor(s.x)+dx,Math.floor(s.y)+dy)===TREE)trees++;return trees>6?'Deep woods':t===ROAD?'On the road':'Open country';}
+function updatePanel(){
+  $('hClock').textContent=fmtClock();$('hDay').textContent=`Day ${dayNum()} · ${isNight()?'Night':hour()<11?'Morning':hour()<17?'Afternoon':'Evening'}`;
+  const s=surv;
+  if(s){
+    $('sName').textContent=s.name;$('feedName').textContent=s.name;
+    const alive=(time-s.born)/DAY;$('sAlive').textContent=`${alive.toFixed(1)} days alive${legacy?' · successor '+legacy:''}`;
+    $('sWeather').textContent=weather==='Rain'?'Raining':isNight()?'Dark':'Clear';$('sWhere').textContent=s.hp>0?whereIs(s):'—';
+    const g=s.goal;let st='Idle',cls='';
+    if(s.hp<=0){st='Dead';cls='danger';}else if(s.sleeping){st='Asleep';cls='rest';}
+    else if(g){const t=g.type==='fight'?'fight':g.type==='flee'?'flee':g.key;
+      if(t==='fight'){st='Fighting';cls='danger';}else if(t==='flee'){st='Fleeing';cls='danger';}
+      else if(/^loot/.test(t)){st='Scavenging';cls='work';}else if(/^chop/.test(t)){st='Gathering';cls='work';}else if(/^build|establish/.test(t)){st='Building';cls='work';}
+      else if(/^explore/.test(t)){st='Exploring';}else if(t==='sleep'||t==='hide'||t==='watch'){st='Resting';cls='rest';}else if(/water|food|drink|eat|heal|pills/.test(t)){st='Tending needs';}
+      else if(t==='deposit'){st='Hauling';cls='work';}else if(t==='crate'){st='Supply run';cls='work';}else if(t==='home'){st='Heading home';}else st='Busy';}
+    const p=$('sState');p.textContent=st;p.className='pill '+cls;
+    $('sThought').textContent=s.hp>0?(s.sick>0?'Feverish. ':'')+(s.thought||''):'';
+    setBar('bHp',s.hp);setBar('bFood',s.food);setBar('bWater',s.water);setBar('bEnergy',s.energy);
+    $('vHp').textContent=Math.max(0,Math.round(s.hp));$('vFood').textContent=Math.round(s.food);$('vWater').textContent=Math.round(s.water);$('vEnergy').textContent=Math.round(s.energy);
+    $('sWeapon').textContent=WEAP[s.melee].n+(s.rifle?' + rifle':'');$('sAmmo').textContent=s.rifle?s.ammo:'—';$('sKills').textContent=s.kills;
+    $('sCarry').textContent=`${matCount(s)} / ${CARRY} materials`;
+    const inv=Object.entries(s.inv).filter(([,q])=>q>0);
+    $('inv').innerHTML=inv.length?inv.map(([k,q])=>`<span class="chip">${ITEMS[k].n}<b>${q}</b></span>`).join(''):'<span class="none">Empty pockets.</span>';
+  }
+  if(base){
+    $('bName').textContent=base.name;$('bPop').textContent=`${1+followers.length} / ${popCap()+1} people`;
+    const st=Object.entries(base.stock).filter(([,q])=>q>0);
+    $('stock').innerHTML=st.length?st.map(([k,q])=>`<span class="chip">${ITEMS[k].n}<b>${q}</b></span>`).join(''):'<span class="none">Stockpile is empty.</span>';
+    let nextShown=0;
+    $('proj').innerHTML=PROJECTS.map(p=>{if(base.built[p.id])return`<li class="done"><i class="mk"></i><div class="nm">${p.n}</div></li>`;
+      const show=nextShown<2;nextShown++;
+      return`<li class="${show?'next':''}"><i class="mk"></i><div><div class="nm">${p.n}</div>${show?`<div class="need">${Object.entries(p.need).map(([m,n])=>{const h=Math.min(n,haveMat(m));return`<span class="${h>=n?'ok':''}">${ITEMS[m].n.toLowerCase()} ${h}/${n}</span>`;}).join('')}</div>`:''}</div></li>`;}).join('');
+    $('people').innerHTML=followers.map(f=>`<span class="chip">${f.name}<b style="color:var(--sky)">${ROLE_N[f.role]}</b></span>`).join('');
+  }else{$('bName').textContent='No settlement yet';$('bPop').textContent='';$('stock').innerHTML='<span class="none">Still wandering. Looking for a place to settle.</span>';$('proj').innerHTML='';$('people').innerHTML='';}
+  let ex=0;for(let i=0;i<W*H;i++)ex+=explored[i];$('mapInfo').textContent=`${Math.round(ex/(W*H)*100)}% explored · ${towns.filter(t=>t.found).length}/${towns.length} towns`;
+  const dCool=Math.max(0,DAY-(time-lastDrop)),hCool=Math.max(0,DAY*.5-(time-lastHorde));
+  const db=$('drop'),hb=$('horde');db.disabled=dCool>0||over;hb.disabled=hCool>0||over;
+  db.textContent=dCool>0?`Airdrop · ${Math.ceil(dCool/DAY*24)}h`:'Airdrop';hb.textContent=hCool>0?`Send horde · ${Math.ceil(hCool/DAY*24)}h`:'Send horde';
+  // journal
+  if(journalDirty.length){const ol=$('journal');
+    for(const e of journalDirty){const li=document.createElement('li');li.className=e.tone;li.innerHTML=`<time>Day ${e.day} · ${e.clock}</time>`;li.appendChild(document.createTextNode(e.text));ol.insertBefore(li,ol.firstChild);}
+    while(ol.children.length>120)ol.removeChild(ol.lastChild);journalDirty=[];$('jCount').textContent=`${logBuf.length} entries`;}
+  drawMini();
+}
+
+// ---------- main loop ----------
+function step(dt){
+  time+=dt;
+  const h=hour();if(prevHr<6&&h>=6)dawn();if(prevHr<12&&h>=12)noon();if(prevHr<21&&h>=21)dusk();prevHr=h;
+  if(Math.floor((time-dt)/(DAY/24))!==Math.floor(time/(DAY/24))){if(weather==='Rain'?rnd()<.3:rnd()<.05){weather=weather==='Rain'?'Clear':'Rain';if(base&&base.built.rain&&weather==='Rain')base.stock.water=(base.stock.water||0)+1;}}
+  if(surv&&surv.hp>0)survivorUpdate(surv,dt);
+  else if(surv&&!surv.dead)die(surv);
+  for(const f of followers.slice())updFollower(f,dt);
+  for(const z of zombies.slice())updZombie(z,dt);
+  spawner(dt);
+  if(crate&&!crate.landed){crate.t+=dt;if(crate.t>=3)crate.landed=true;}
+  if(surv){surv.swing=Math.max(0,(surv.swing||0)-dt);}for(const f of followers)f.swing=Math.max(0,(f.swing||0)-dt);
+  revealT-=dt;if(revealT<=0){revealT=.2;reveal();}
+}
+function startWorld(){genWorld();spawnNewSurvivor();reveal();cam.x=surv.x;cam.y=surv.y;cam.follow=true;syncFollow();$('journal').innerHTML='';journalDirty=logBuf.slice();}
+let last=performance.now(),panelT=0;
+function frame(now){
+  const rdt=Math.min(.1,(now-last)/1000);last=now;
+  if(!over&&speed>0){let t=rdt*speed;while(t>0){const d=Math.min(.05,t);step(d);t-=d;}}
+  for(const f of fx)f.t+=rdt;fx=fx.filter(f=>f.t<1.2);for(const s of shots)s.t+=rdt;shots=shots.filter(s=>s.t<.15);
+  if(cam.follow&&surv&&surv.hp>0){cam.x+=(surv.x-cam.x)*Math.min(1,rdt*4);cam.y+=(surv.y-cam.y)*Math.min(1,rdt*4);}
+  render();
+  panelT-=rdt;if(panelT<=0){panelT=.25;updatePanel();}
+  requestAnimationFrame(frame);
+}
+rain=Array.from({length:140},()=>({x:Math.random(),y:Math.random(),s:.7+Math.random()*.6}));
+window.addEventListener('resize',resize);
+resize();cam.zoom=Math.max(1,Math.min(2.2,vw/(TS*42)));
+startWorld();setSpeed(2);
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
