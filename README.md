@@ -7,3 +7,4 @@
 - On the Netlify site it is served at `/wasteland/`.
 - Camera: drag to orbit, scroll or pinch to zoom, keys `1`-`4` switch follow / cinematic / free-fly / overhead. `Space` pauses, `H` hides the HUD.
 - Add `#s12345` to the URL to replay a specific world seed.
+- Phones start in Low quality, which renders without post-processing. If a device loses its graphics context or post effects fail, the page drops to that mode by itself and says so on screen.
