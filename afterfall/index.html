@@ -131,7 +131,10 @@ body{font-family:var(--f-ui);color:var(--ink);-webkit-font-smoothing:antialiased
 .keys{font:500 11.5px/1.7 var(--f-mono);color:var(--dim);margin-top:18px}
 #loading{position:absolute;inset:0;display:grid;place-items:center;background:var(--bg);z-index:5;transition:opacity .6s}
 #lost{position:absolute;inset:0;display:grid;place-items:center;padding:16px;background:rgba(6,7,6,.92);z-index:6}
-#loading div{font:600 12px/1 var(--f-mono);letter-spacing:.2em;color:var(--dim);text-transform:uppercase}
+#loading .lbox{max-width:34ch;text-align:center;padding:16px}
+#loaderr{font:400 15px/1.45 var(--f-ui);color:var(--ink);letter-spacing:0;text-transform:none;margin:14px 0 0}
+#lostdiag{font:500 11px/1.5 var(--f-mono);color:var(--dim);margin-top:14px;word-break:break-word}
+#loading #loadmsg{font:600 12px/1 var(--f-mono);letter-spacing:.2em;color:var(--dim);text-transform:uppercase}
 #loading.gone{opacity:0;pointer-events:none}
 
 @media (max-width:760px){
@@ -232,8 +235,8 @@ body{font-family:var(--f-ui);color:var(--ink);-webkit-font-smoothing:antialiased
       <div class="keys">1–4 cameras · drag to orbit · scroll to zoom · space pause · H hide HUD</div>
     </div>
   </div>
-  <div id="loading"><div>Generating Zelenogorye…</div></div>
-  <div id="lost" hidden><div class="introcard"><div class="kicker">Graphics stopped</div><p>Your device's graphics chip couldn't keep up. Restarting with lighter graphics usually fixes this.</p><div class="row"><button id="lostbtn">Restart with lighter graphics</button></div></div></div>
+  <div id="loading"><div class="lbox"><div id="loadmsg">Generating Zelenogorye…</div><p id="loaderr" hidden></p></div></div>
+  <div id="lost" hidden><div class="introcard"><div class="kicker">Graphics stopped</div><p>Your device's graphics chip couldn't keep up. Restarting with lighter graphics usually fixes this. If it keeps happening, fully close the Claude app, then reopen it.</p><div class="row"><button id="lostbtn">Restart with lighter graphics</button></div><p id="lostdiag"></p></div></div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.158.0/three.min.js"></script>
@@ -290,7 +293,12 @@ function tfbm(x,y,per,oct=4,s=0){ let a=0,amp=.5,f=1; for(let o=0;o<oct;o++){ a+
    ========================================================= */
 const canvas = $('#c');
 const LITE = Math.min(innerWidth, innerHeight) < 620 || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || (navigator.maxTouchPoints>1 && /Macintosh/.test(navigator.userAgent));
-const renderer = new THREE.WebGLRenderer({ canvas, antialias:!LITE, powerPreference:LITE?'default':'high-performance' });
+let bootStage='renderer';
+function showFatal(msg){ const l=$('#loading'); if(!l) return; l.classList.remove('gone'); $('#loadmsg').textContent='Afterfall can\'t start'; const e=$('#loaderr'); e.hidden=false; e.textContent=msg; }
+addEventListener('error', e=>{ if($('#loading') && !$('#loading').classList.contains('gone')) showFatal(`Something failed while ${bootStage}: ${e.message}`); });
+let renderer;
+try { renderer = new THREE.WebGLRenderer({ canvas, antialias:!LITE, powerPreference:LITE?'default':'high-performance' }); if(renderer.getContext().isContextLost()) throw new Error('context lost'); }
+catch(err){ showFatal('Your phone has paused 3D graphics for this page after the last crash. Fully close the Claude app (swipe it away), reopen it, and open Afterfall again. It will start in Safe mode.'); try{ localStorage.setItem('afterfall-q','safe'); }catch(e){} return; }
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
@@ -299,8 +307,8 @@ renderer.shadowMap.type = LITE ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
 const MAXANISO = Math.min(LITE?2:16, renderer.capabilities.getMaxAnisotropy());
 
 const isSmall = LITE;
-const QUALITY = { safe:{pr:.75, shadow:0, grass:1500, label:'Safe'}, low:{pr:1, shadow:1024, grass:LITE?4000:9000, label:'Low'}, high:{pr:1.5, shadow:2048, grass:32000, label:'High'}, ultra:{pr:2, shadow:4096, grass:64000, label:'Ultra'} };
-let quality = LITE ? 'low' : 'ultra';
+const QUALITY = { safe:{pr:.75, shadow:0, grass:0, label:'Safe'}, low:{pr:1, shadow:1024, grass:LITE?4000:9000, label:'Low'}, high:{pr:1.5, shadow:2048, grass:32000, label:'High'}, ultra:{pr:2, shadow:4096, grass:64000, label:'Ultra'} };
+let quality = LITE ? 'safe' : 'ultra';
 
 const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0x9aa7ad, 0.0045);
@@ -1678,13 +1686,21 @@ function drawMinimap(){ const S2=mm.width, sc=S2/WORLD; const P=(x,z)=>[(x+HALF)
    ========================================================= */
 function resize(){ const w=innerWidth, h=innerHeight; renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); }
 addEventListener('resize',resize);
-canvas.addEventListener('webglcontextlost', e=>{ e.preventDefault(); $('#lost').hidden=false; setSpeed(0); });
+let ctxLost=false, framesDrawn=0, lastInfo='';
+function glName(){ try{ const gl=renderer.getContext(), x=gl.getExtension('WEBGL_debug_renderer_info'); return x? gl.getParameter(x.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER); }catch(e){ return '?'; } }
+canvas.addEventListener('webglcontextlost', e=>{ e.preventDefault(); ctxLost=true; $('#lost').hidden=false; setSpeed(0); try{ localStorage.setItem('afterfall-lost', quality); }catch(err){}
+  $('#lostdiag').textContent=`${QUALITY[quality].label} · stage ${bootStage} · ${framesDrawn} frames · ${lastInfo} · ${glName()} · WebGL${renderer.capabilities.isWebGL2?2:1} · ${innerWidth}×${innerHeight}@${devicePixelRatio}`; });
 $('#lostbtn').addEventListener('click',()=>{ const next = (quality==='low'||quality==='safe') ? 'safe' : 'low'; try{ localStorage.setItem('afterfall-q',next); }catch(e){} location.reload(); });
 let perfT=0, hudT=0, mapT=0, env={night:0};
-function start(){
-  buildTextures(); buildMaterials(); buildRoadField(); buildHeights(); buildTerrain(); buildRoads(); buildSettlements();
-  scene.add(bakeStatic(world)); world.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); world.clear();
-  if(quality==='safe'){ for(const k in VEG_R) VEG_R[k]*=.7; }
+const nextTick = () => new Promise(r=>setTimeout(r,20));
+async function stage(label, msg, fn){ bootStage=label; const m=$('#loadmsg'); if(m) m.textContent=msg; await nextTick(); fn(); }
+async function start(){
+  await stage('textures','Painting textures…',()=>{ buildTextures(); buildMaterials(); });
+  await stage('terrain','Raising terrain…',()=>{ buildRoadField(); buildHeights(); buildTerrain(); buildRoads(); });
+  await stage('towns','Building Staroye…',()=>{ buildSettlements();
+  scene.add(bakeStatic(world)); world.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); world.clear(); });
+  bootStage='forests'; $('#loadmsg').textContent='Planting forests…'; await nextTick();
+  if(quality==='safe'){ for(const k in VEG_R) VEG_R[k]*=.6; }
   renderer.shadowMap.enabled = QUALITY[quality].shadow>0;
   buildVegetation(); buildSky(); buildRain(); buildCrows();
   muzzle = LITE ? { intensity:0, position:new THREE.Vector3(), userData:{t:0} } : new THREE.PointLight(0xffc27a,0,18,2); muzzle.userData.t=0; if(!LITE) scene.add(muzzle);
@@ -1695,15 +1711,19 @@ function start(){
   const zc = LITE? 14 : 28; for(let i=0;i<zc;i++){ const z=makeZombie(); spawnZombie(z,true); Z.push(z); }
   buildMinimap(); applyQuality(); resize();
   camTarget.set(S.x,groundY(S.x,S.z)+1.3,S.z); lookAt.copy(camTarget);
-  $('#loading').classList.add('gone'); setTimeout(()=>$('#loading').remove(),700);
+  updateCamera(.016); refreshCull(camera.position.x,camera.position.z,true); updateSky(.016,.016,camTarget);
+  bootStage='shaders'; $('#loadmsg').textContent='Preparing graphics…'; await nextTick();
+  try{ if(renderer.compileAsync && renderer.extensions.has('KHR_parallel_shader_compile')) await renderer.compileAsync(scene,camera); else renderer.compile(scene,camera); }catch(e){}
+  bootStage='running'; if(ctxLost) return;
+  $('#loading').classList.add('gone'); setTimeout(()=>{ const l=$('#loading'); if(l&&l.classList.contains('gone')) l.remove(); },700);
   let last=performance.now();
-  function frame(now){ requestAnimationFrame(frame); const rdt=Math.min(.1,(now-last)/1000); last=now; perfT+=rdt;
+  function frame(now){ if(ctxLost) return; requestAnimationFrame(frame); const rdt=Math.min(.1,(now-last)/1000); last=now; perfT+=rdt;
     const simDt=rdt*timeScale; const steps=Math.max(1,Math.ceil(simDt/.05)); const sdt=simDt/steps; if(simDt>0) for(let i=0;i<steps;i++) simulate(sdt);
     if(S.dead){ if(S.deadT>14 && !S._fading){ S._fading=true; $('#fade').style.opacity=1; setTimeout(()=>{ respawn(); $('#fade').style.opacity=0; },1700); } }
     env=updateSky(simDt>0?Math.max(rdt*.3,simDt):rdt*.3, rdt, camTarget);
     updateVisuals(rdt, simDt, env); updateCamera(rdt);
     refreshCull((camera.position.x+camTarget.x)/2,(camera.position.z+camTarget.z)/2);
-    renderer.render(scene,camera);
+    renderer.render(scene,camera); framesDrawn++; if(framesDrawn%30===1) lastInfo=`${Math.round(renderer.info.render.triangles/1000)}k tris, ${renderer.info.render.calls} draws`;
     updateFloaters(rdt);
     hudT-=rdt; if(hudT<=0){ hudT=.2; updateHud(); Audio.ambient(env); }
     mapT-=rdt; if(mapT<=0){ mapT=.1; drawMinimap(); }
@@ -1714,7 +1734,8 @@ function start(){
 function closeIntro(sound){ $('#intro').classList.add('gone'); if(sound) Audio.toggle(true); }
 $('#startbtn').addEventListener('click',()=>closeIntro(false));
 $('#startsnd').addEventListener('click',()=>closeIntro(true));
-setTimeout(()=>{ try{ const hot=window.claude&&window.claude.hot; if(hot&&hot.ready) hot.ready(()=>start()); else start(); }catch(e){ console.error(e); start(); } }, 30);
+const boot=()=>start().catch(e=>{ console.error(e); showFatal(`Something failed while ${bootStage}: ${e.message}`); });
+setTimeout(()=>{ try{ const hot=window.claude&&window.claude.hot; if(hot&&hot.ready) hot.ready(boot); else boot(); }catch(e){ console.error(e); boot(); } }, 30);
 })();
 </script>
 
