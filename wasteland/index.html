@@ -1007,6 +1007,14 @@ const ASSETS = {
     for (let i = 0; i < p.count; i++) if (p.getZ(i) > zmax - 0.012) { ys += p.getY(i); n++; }
     return new THREE.Vector3(0, n ? ys / n : 0, zmax);
   },
+  /* motion clips retargeted onto the game's rigs (blender/make_anims.py): people and animals */
+  async loadAnims(progress) {
+    if (window.__wlNoAnims) return false; // test hook
+    const got = await this.loadGroup('animations', { a: () => fetch(`${this.base}models/anims.json`).then(r => { if (!r.ok) throw new Error('missing anims.json'); return r.json(); }) }, progress);
+    if (!got) return false;
+    try { animLoad(got.a); } catch (e) { console.warn('[wasteland] animation clips unreadable:', e.message); for (const k of Object.keys(CLIPS)) CLIPS[k] = null; return false; }
+    return true;
+  },
   /* building and street kits: Poly Haven pieces sharing one atlas per kit (see blender/make_kit.py) */
   async loadKit(progress) {
     if (window.__wlNoModels || window.__wlNoKit) return false; // test hooks
@@ -3613,16 +3621,19 @@ class Humanoid {
     this.weaponKind = kind;
     if (!kind || kind === 'fists' || kind === 'claws') return;
     this.weapon = weaponModel(kind === 'machete' ? 'machete' : WEAPONS[kind]?.model || kind);
-    if (kind === 'machete') this.hand[0].add(this.weapon); else this.gunMount.add(this.weapon);
+    if (CLIPS.human && (kind === 'pistol' || kind === 'machete')) { this.hand[0].add(this.weapon); clipGrip(this.weapon, kind); } // in the fist for the motion clips
+    else if (kind === 'machete') this.hand[0].add(this.weapon); else this.gunMount.add(this.weapon);
   }
   setTool(kind) {
     if (this.toolKind === kind) return;
     if (this.tool) { this.tool.parent.remove(this.tool); this.tool = null; }
     this.toolKind = kind; if (!kind) return;
-    this.tool = weaponModel(kind); this.hand[0].add(this.tool); this.tool.rotation.x = -0.2;
+    this.tool = weaponModel(kind); this.hand[0].add(this.tool);
+    if (CLIPS.human) clipGrip(this.tool, kind); else this.tool.rotation.x = -0.2;
   }
   /* st: {speed, action, aimYaw (relative), lookYaw, dt} */
   animate(dt, st) {
+    if (CLIPS.human) return this.animateClips(dt, st); // retargeted motion clips (09c_anim.js)
     const P = this.pose, a = st.action || 'idle', sp = st.speed || 0;
     this.t += dt;
     const run = sp > 3.2, stride = run ? 2.3 : 1.35;
@@ -3658,7 +3669,7 @@ class Humanoid {
         if (!this.weapon || this.weaponKind !== 'machete') { T.sh[1] = [lerp(-0.4, -1.5, 1 - s), 0, -0.2]; T.el[1] = -1.4; }
         break;
       }
-      case 'loot': {
+      case 'loot': case 'harvest': {
         T.hipsY = 0.58; T.hip[0] = [-1.5, 0.1]; T.hip[1] = [-0.3, -0.1]; T.kn[0] = 1.9; T.kn[1] = 2.3; T.an[0] = -0.4; T.an[1] = 0.6; T.spineX = 0.55; T.headX = 0.3;
         const rum = Math.sin(this.t * 7) * 0.25; T.sh[0] = [-1.0 + rum, 0, 0.1]; T.sh[1] = [-1.1 - rum, 0, -0.1]; T.el[0] = -0.6; T.el[1] = -0.5; T.gun = 1.4;
         break;
@@ -3784,6 +3795,7 @@ class Quadruped {
     root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
   }
   animate(dt, st) {
+    if (CLIPS[this.kind]) return this.animateClips(dt, st); // retargeted animal clips (09c_anim.js)
     const D = this.D, sp = st.speed || 0; this.t += dt;
     const stride = this.kind === 'cattle' ? 1.6 : this.kind === 'hound' ? 1.3 : 0.6;
     this.phase += sp / stride * Math.PI * dt;
@@ -3901,6 +3913,247 @@ class Stalker {
     this.tail.forEach((t, i) => { t.rotation.y = Math.sin(this.t * 2 + i * 0.6) * 0.2; t.rotation.x = 0.12; });
   }
 }
+/* ============================================================
+   CLIP ANIMATION: CC0 motion from Quaternius' Universal Animation Library 1 and 2 (people) and his
+   Ultimate Animated Animal Pack (hounds, brahmin, burrowers), retargeted in Blender onto the game's own
+   joints (blender/make_anims.py). Clips hold per-joint local rotations at 30 fps; walking and running
+   are phase-matched and blended by speed, arms layer on top for aiming and carrying guns, one-shots
+   cover strikes, hits and deaths. Characters fall back to the procedural animation if the file is missing.
+   ============================================================ */
+const CLIPS = { human: null, hound: null, cattle: null, burrower: null };
+function animLoad(data) {
+  const b64 = (s) => { const t = atob(s), u = new Uint8Array(t.length); for (let i = 0; i < t.length; i++) u[i] = t.charCodeAt(i); return u.buffer; };
+  for (const [kind, rig] of Object.entries(data)) {
+    const J = rig.joints.length;
+    for (const c of Object.values(rig.clips)) {
+      const q = new Int16Array(b64(c.q)), p = new Int16Array(b64(c.p));
+      c.q = new Float32Array(q.length); for (let i = 0; i < q.length; i++) c.q[i] = q[i] / 32767;
+      c.p = new Float32Array(p.length); for (let i = 0; i < p.length; i++) c.p[i] = p[i] / 16384;
+      c.J = J; c.fps = rig.fps; c.dur = c.loop ? c.n / rig.fps : (c.n - 1) / rig.fps;
+    }
+    CLIPS[kind] = rig;
+  }
+}
+/* add weight w of clip c's pose at time t (seconds) into the accumulators; mask limits the joints */
+function clipAdd(c, t, w, acc, accP, mask) {
+  if (!c || w <= 0) return;
+  const J = c.J, n = c.n;
+  let f = t * c.fps, i0, i1;
+  if (c.loop) { f = ((f % n) + n) % n; i0 = Math.floor(f); i1 = (i0 + 1) % n; } else { f = Math.min(Math.max(f, 0), n - 1); i0 = Math.floor(f); i1 = Math.min(i0 + 1, n - 1); }
+  const a = f - i0, b = 1 - a, q = c.q, o0 = i0 * J * 4, o1 = i1 * J * 4;
+  for (let j = 0; j < J; j++) {
+    if (mask && !mask[j]) continue;
+    const k0 = o0 + j * 4, k1 = o1 + j * 4, k = j * 4;
+    let x = q[k0] * b + q[k1] * a, y = q[k0 + 1] * b + q[k1 + 1] * a, z = q[k0 + 2] * b + q[k1 + 2] * a, ww = q[k0 + 3] * b + q[k1 + 3] * a;
+    const s = (x * acc[k] + y * acc[k + 1] + z * acc[k + 2] + ww * acc[k + 3]) < 0 ? -w : w; // same hemisphere as what is already there
+    acc[k] += x * s; acc[k + 1] += y * s; acc[k + 2] += z * s; acc[k + 3] += ww * s;
+  }
+  if (accP) { const p = c.p; for (let i = 0; i < 3; i++) accP[i] += (p[i0 * 3 + i] * b + p[i1 * 3 + i] * a) * w; }
+}
+function poseNorm(acc) {
+  for (let k = 0; k < acc.length; k += 4) {
+    const l = Math.hypot(acc[k], acc[k + 1], acc[k + 2], acc[k + 3]);
+    if (l < 1e-6) { acc[k] = acc[k + 1] = acc[k + 2] = 0; acc[k + 3] = 1; } else { acc[k] /= l; acc[k + 1] /= l; acc[k + 2] /= l; acc[k + 3] /= l; }
+  }
+}
+/* dst = nlerp(dst, src, w) per joint (only masked joints) */
+function poseMix(dst, src, w, mask) {
+  if (w <= 0) return;
+  for (let k = 0, j = 0; k < dst.length; k += 4, j++) {
+    if (mask && !mask[j]) continue;
+    const s = (dst[k] * src[k] + dst[k + 1] * src[k + 1] + dst[k + 2] * src[k + 2] + dst[k + 3] * src[k + 3]) < 0 ? -w : w;
+    for (let i = 0; i < 4; i++) dst[k + i] = dst[k + i] * (1 - w) + src[k + i] * s;
+    const l = Math.hypot(dst[k], dst[k + 1], dst[k + 2], dst[k + 3]) || 1; for (let i = 0; i < 4; i++) dst[k + i] /= l;
+  }
+}
+/* pre-multiply joint j of a pose by a rotation about a parent-space axis: turns the joint within its parent */
+const _aq = new THREE.Quaternion(), _bq = new THREE.Quaternion(), _axX = new THREE.Vector3(1, 0, 0), _axY = new THREE.Vector3(0, 1, 0), _axZ = new THREE.Vector3(0, 0, 1);
+function poseTurn(pose, j, axis, ang) {
+  if (!ang) return;
+  const k = j * 4; _aq.setFromAxisAngle(axis, ang); _bq.set(pose[k], pose[k + 1], pose[k + 2], pose[k + 3]).premultiply(_aq);
+  pose[k] = _bq.x; pose[k + 1] = _bq.y; pose[k + 2] = _bq.z; pose[k + 3] = _bq.w;
+}
+const smooth01 = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+/* speed-matched playback rate: part stride, part cadence, so feet slide little and legs don't blur */
+const gaitRate = (sp, v, k = 0.6) => Math.min(2.2, Math.max(0.5, Math.pow(Math.max(sp, 0.05) / v, k)));
+
+/* ---------------- people ---------------- */
+// joint order of the clips: hips spine chest neck head, right arm (sh el hand), left arm, right leg (hip kn an), left leg
+const HUP = new Uint8Array([0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0]); // spine up and both arms
+const HUPH = new Uint8Array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0]); // the same with the hips (hit reactions)
+Humanoid.prototype.clipInit = function () {
+  const J = 17, A = this.A = {
+    joints: [this.hips, this.spine, this.chest, this.neck, this.head, this.sh[0], this.el[0], this.hand[0], this.sh[1], this.el[1], this.hand[1], this.hip[0], this.kn[0], this.an[0], this.hip[1], this.kn[1], this.an[1]],
+    base: new Float32Array(J * 4), up: new Float32Array(J * 4), from: new Float32Array(J * 4), out: new Float32Array(J * 4), bp: new Float32Array(3), op: new Float32Array(3), fp: new Float32Array(3),
+    hipsRest: this.hips.position.clone(), hipH: this.hips.position.y, phase: Math.random(), t: Math.random() * 10, actT: 0, key: '', fadeT: 1, fadeDur: 0.22,
+    shootT: 99, hitT: 99, hitClip: 'hitChest', meleeT: 99, meleeClip: null, deathT: 0, dead: false, wakeT: 99, lastRecoil: 0, lastSwing: 0, hurtOn: false, started: false,
+  };
+  for (let k = 3; k < J * 4; k += 4) A.out[k] = A.from[k] = 1;
+  return A;
+};
+Humanoid.prototype.animateClips = function (dt, st) {
+  const A = this.A || this.clipInit(), C = CLIPS.human.clips, a = st.action || 'idle', sp = st.speed || 0, ghoul = this.kind === 'ghoul';
+  A.t += dt; A.actT += dt; A.shootT += dt; A.hitT += dt; A.meleeT += dt; A.wakeT += dt; this.t += dt; // this.t times the tasks' hammer blows
+  if (a !== A.action) { A.action = a; A.actT = 0; }
+  // one-shot triggers from the combat code: a shot (recoil set), a strike (swing reset), a hit (hurtT set)
+  if (this.recoil > A.lastRecoil + 0.2) A.shootT = 0;
+  this.recoil = Math.max(0, this.recoil - dt * 6); A.lastRecoil = this.recoil;
+  if (this.swing < A.lastSwing - 0.3) { A.meleeT = 0; A.meleeClip = this.weaponKind === 'machete' ? ['sword', 'swordA', 'swordB'][(Math.random() * 3) | 0] : ['jab', 'cross', 'hook'][(Math.random() * 3) | 0]; A.fadeT = 0; A.from.set(A.out); A.fp.set(A.op); }
+  A.lastSwing = this.swing;
+  if (this.hurtT > 0 && !A.hurtOn) { A.hitT = 0; A.hitClip = Math.random() < 0.5 ? 'hitHead' : 'hitChest'; }
+  A.hurtOn = this.hurtT > 0; if (this.hurtT > 0) this.hurtT -= dt;
+  const base = A.base, bp = A.bp; base.fill(0); bp.fill(0);
+  let key, upClip = null, upT = 0, upW = 0, look = !st.dead;
+  A.hunch = 0;
+  const gun = this.weapon && this.weaponKind !== 'machete';
+  // ---- the full-body layer
+  if (st.dead) {
+    if (!A.dead) { A.dead = true; A.deathT = 0; }
+    A.deathT += dt; key = 'death'; look = false;
+    clipAdd(C.death, Math.min(A.deathT, C.death.dur), 1, base, bp);
+  } else {
+    if (A.dead) { A.dead = false; if (A.started) A.wakeT = 0; } // a dormant ghoul getting up
+    if (A.wakeT < C.wake.dur) { key = 'wake'; clipAdd(C.wake, A.wakeT, 1, base, bp); look = false; }
+    else {
+      const full = (name, t) => { key = name; clipAdd(C[name], t ?? A.actT, 1, base, bp); look = false; };
+      switch (a) {
+        case 'loot': full('kneel'); break;
+        case 'build': if (st.low) full('kneel'); else full('chop'); break;
+        case 'chop': full('chop'); break;
+        case 'eat': case 'heal': full('eat'); break;
+        case 'sit': full('crouchIdle', A.t); break; // squatting by the campfire
+        case 'harvest': full('harvest'); break;
+        case 'talk': full('talk'); break;
+        case 'sleep': full('wake', 0); break; // the lying pose that starts the get-up clip
+        case 'attack': if (ghoul) { full('zScratch', A.actT % C.zScratch.dur); break; } // fall through for anyone else
+        // falls through
+        default: key = this.clipLoco(dt, sp, st, base, bp);
+      }
+    }
+    // ---- arms and spine on top: aiming, shots, strikes on the move, carrying a gun
+    if (a === 'melee' && A.meleeClip && A.meleeT < C[A.meleeClip].dur) {
+      if (sp > 0.6) { upClip = A.meleeClip; upT = A.meleeT; upW = 1; } else { base.fill(0); bp.fill(0); clipAdd(C[A.meleeClip], A.meleeT, 1, base, bp); key = 'melee'; }
+    } else if (a === 'melee' && this.weaponKind === 'machete' && sp < 0.6) { base.fill(0); bp.fill(0); clipAdd(C.swordIdle, A.t, 1, base, bp); key = 'swordIdle'; }
+    else if ((a === 'aim' || a === 'shoot') && key !== 'wake') { upClip = A.shootT < C.shoot.dur ? 'shoot' : 'aim'; upT = A.shootT < C.shoot.dur ? A.shootT : 0; upW = 1; }
+    else if (gun && look && key !== 'melee' && key !== 'swordIdle' && !(this.kind === 'trader' && sp < 0.3)) { upClip = 'pistolIdle'; upT = A.t; upW = sp > 3 ? 0.75 : 1; }
+  }
+  poseNorm(base);
+  if (upClip) {
+    const up = A.up; up.fill(0); clipAdd(C[upClip], upT, 1, up, null, HUP); poseNorm(up); poseMix(base, up, upW, HUP);
+    key += '|' + (upClip === 'shoot' ? 'aim' : upClip);
+  }
+  // hit reactions blend over the top and fade
+  if (A.hitT < C[A.hitClip].dur && !st.dead) {
+    const up = A.up; up.fill(0); clipAdd(C[A.hitClip], A.hitT, 1, up, null, HUPH); poseNorm(up); poseMix(base, up, 0.8 * Math.sqrt(1 - A.hitT / C[A.hitClip].dur), HUPH);
+  }
+  // procedural touches: turn the torso toward the target, the head toward what it watches, hunch the ghouls
+  const aimYaw = Math.max(-1.2, Math.min(1.2, st.aimYaw || 0));
+  if (upClip === 'aim' || upClip === 'shoot') { poseTurn(base, 1, _axY, aimYaw * 0.5); poseTurn(base, 2, _axY, aimYaw * 0.3); }
+  else if (look) poseTurn(base, 4, _axY, a === 'idleLook' ? Math.sin(A.t * 0.7) * 0.9 : Math.max(-1.1, Math.min(1.1, st.lookYaw || 0)) * 0.7);
+  if (ghoul && A.hunch > 0) { poseTurn(base, 1, _axX, 0.3 * A.hunch); poseTurn(base, 4, _axX, -0.25 * A.hunch); } // feral ghouls run bent double
+  // crossfade whenever the layers change
+  if (key !== A.key) { if (A.started) { A.from.set(A.out); A.fp.set(A.op); A.fadeT = 0; A.fadeDur = key === 'death' ? 0.12 : 0.22; } A.key = key; }
+  A.fadeT += dt;
+  const out = A.out, op = A.op;
+  out.set(base); op.set(bp);
+  if (A.fadeT < A.fadeDur) {
+    const w = smooth01(0, A.fadeDur, A.fadeT);
+    out.set(A.from); poseMix(out, base, w); for (let i = 0; i < 3; i++) op[i] = A.fp[i] + (bp[i] - A.fp[i]) * w;
+  }
+  A.started = true;
+  // apply to the joints
+  for (let j = 0; j < 17; j++) A.joints[j].quaternion.set(out[j * 4], out[j * 4 + 1], out[j * 4 + 2], out[j * 4 + 3]);
+  this.hips.position.set(A.hipsRest.x + op[0] * A.hipH, A.hipsRest.y + op[1] * A.hipH, A.hipsRest.z + op[2] * A.hipH);
+  this.clipHeld(a, upClip, key);
+};
+/* locomotion: idle, walk, jog and sprint (crouched when sneaking, shambling for ghouls), phase-matched */
+Humanoid.prototype.clipLoco = function (dt, sp, st, base, bp) {
+  const A = this.A, C = CLIPS.human.clips, ghoul = this.kind === 'ghoul', sneak = !!st.sneak && sp < 2.8;
+  const idle = C[ghoul ? 'zIdle' : sneak ? 'crouchIdle' : this.kind === 'trader' && st.action === 'idle' ? 'foldArms' : 'idle'];
+  const walk = C[ghoul ? 'zWalk' : sneak ? 'crouchWalk' : 'walk'], jog = C.jog, sprint = C.sprint;
+  const move = smooth01(0.12, 0.45, sp), t1 = sneak ? 0 : smooth01(2.5, 3.1, sp), t2 = smooth01(6.2, 7.2, sp);
+  const ws = [move * (1 - t1), move * t1 * (1 - t2), move * t1 * t2], clips = [walk, jog, sprint];
+  let rate = 0, wsum = 0;
+  for (let i = 0; i < 3; i++) if (ws[i] > 0) { rate += ws[i] * gaitRate(sp, clips[i].v * A.hipH) / clips[i].dur; wsum += ws[i]; }
+  if (wsum > 0) A.phase = (A.phase + dt * rate / wsum) % 1;
+  clipAdd(idle, A.t, 1 - move, base, bp);
+  for (let i = 0; i < 3; i++) clipAdd(clips[i], A.phase * clips[i].dur, ws[i], base, bp);
+  if (ghoul) A.hunch = move * t1;
+  return move > 0.5 ? (sneak ? 'sneak' : 'move') : (sneak ? 'crouch' : 'idle');
+};
+/* where the held gun or tool sits: pistols and blades in the right fist, long guns braced at the chest */
+Humanoid.prototype.clipHeld = function (a, upClip, key) {
+  const w = this.weapon;
+  if (w && w.parent === this.gunMount) {
+    const aim = upClip === 'aim' || upClip === 'shoot', busy = !aim && (['kneel', 'chop', 'eat', 'crouchIdle', 'harvest', 'talk', 'wake', 'death'].includes(key) || (this.kind === 'trader' && key === 'idle')); // slung
+    this.gunMount.rotation.x = busy ? 1.5 : aim ? 0 : 0.75;
+    this.gunMount.position.set(-0.07, busy ? 0.05 : aim ? 0.2 : 0.12, busy ? 0.16 : aim ? 0.22 : 0.24);
+  }
+};
+const _gripQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, Math.PI, 0, 'XYZ')); // handle forward out of the fist, edge down
+const _pistolQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 2); // barrel along the fingers, top toward the thumb
+function clipGrip(obj, kind) {
+  if (kind === 'pistol') { obj.quaternion.copy(_pistolQ); obj.position.set(0.012, -0.075, 0.012); }
+  else { obj.quaternion.copy(_gripQ); obj.position.set(0.004, -0.08, 0.014); }
+}
+
+/* ---------------- quadrupeds ---------------- */
+Quadruped.prototype.clipInit = function () {
+  const J = 14, A = this.A = {
+    base: new Float32Array(J * 4), up: new Float32Array(J * 4), from: new Float32Array(J * 4), out: new Float32Array(J * 4), bp: new Float32Array(3), op: new Float32Array(3), fp: new Float32Array(3),
+    phase: Math.random(), t: Math.random() * 10, actT: 0, key: '', fadeT: 1, fadeDur: 0.25, hitT: 99, hurtOn: false, deathT: 0, dead: false, started: false,
+  };
+  for (let k = 3; k < J * 4; k += 4) A.out[k] = A.from[k] = 1;
+  return A;
+};
+Quadruped.prototype.animateClips = function (dt, st) {
+  const A = this.A || this.clipInit(), R = CLIPS[this.kind], C = R.clips, D = this.D, sp = st.speed || 0, act = st.action;
+  A.t += dt; A.actT += dt; A.hitT += dt; this.t += dt;
+  if (this.hurtT > 0 && !A.hurtOn) A.hitT = 0;
+  A.hurtOn = this.hurtT > 0; if (this.hurtT > 0) this.hurtT -= dt;
+  const base = A.base, bp = A.bp; base.fill(0); bp.fill(0);
+  let key, jaw = 0.05, lookW = 1;
+  if (st.dead) {
+    if (!A.dead) { A.dead = true; A.deathT = 0; }
+    A.deathT += dt; key = 'death'; lookW = 0; jaw = 0.4;
+    clipAdd(C.death, Math.min(A.deathT, C.death.dur), 1, base, bp);
+  } else {
+    A.dead = false;
+    if (act === 'bite' || act === 'attack') { key = 'attack'; const t = A.actT % C.attack.dur; clipAdd(C.attack, t, 1, base, bp); jaw = 0.1 + Math.max(0, Math.sin(t / C.attack.dur * TAU)) * 0.6; lookW = 0.3; }
+    else if (act === 'graze') { key = 'eat'; clipAdd(C.eat, A.actT, 1, base, bp); jaw = Math.abs(Math.sin(this.t * 3)) * 0.2; lookW = 0; }
+    else {
+      const idle = C.idle, walk = C.walk, run = C.run, leg = D.up + D.lo;
+      const [r0, r1] = this.kind === 'cattle' ? [1.8, 2.6] : this.kind === 'hound' ? [3.0, 4.0] : [2.3, 3.1];
+      const move = smooth01(0.1, 0.4, sp), t1 = smooth01(r0, r1, sp), ws = [move * (1 - t1), move * t1], clips = [walk, run];
+      let rate = 0, wsum = 0;
+      for (let i = 0; i < 2; i++) if (ws[i] > 0) { rate += ws[i] * gaitRate(sp, clips[i].v * leg, 0.7) / clips[i].dur; wsum += ws[i]; }
+      if (wsum > 0) A.phase = (A.phase + dt * rate / wsum) % 1;
+      clipAdd(idle, A.t, 1 - move, base, bp);
+      for (let i = 0; i < 2; i++) clipAdd(clips[i], A.phase * clips[i].dur, ws[i], base, bp);
+      key = move > 0.5 ? 'move' : 'idle';
+      if (act === 'howl') { key = 'howl'; jaw = 0.6; }
+    }
+  }
+  poseNorm(base);
+  if (A.hitT < C.hit.dur && !st.dead) { const up = A.up; up.fill(0); clipAdd(C.hit, A.hitT, 1, up, null); poseNorm(up); poseMix(base, up, 0.75 * Math.sqrt(1 - A.hitT / C.hit.dur)); }
+  if (key === 'howl') { poseTurn(base, 1, _axX, -0.7); poseTurn(base, 2, _axX, -0.4); }
+  poseTurn(base, 1, _axY, (st.lookYaw || 0) * 0.5 * lookW);
+  if (key !== A.key) { if (A.started) { A.from.set(A.out); A.fp.set(A.op); A.fadeT = 0; A.fadeDur = key === 'death' ? 0.15 : 0.25; } A.key = key; A.actT = 0; }
+  A.fadeT += dt;
+  const out = A.out, op = A.op; out.set(base); op.set(bp);
+  if (A.fadeT < A.fadeDur) { const w = smooth01(0, A.fadeDur, A.fadeT); out.set(A.from); poseMix(out, base, w); for (let i = 0; i < 3; i++) op[i] = A.fp[i] + (bp[i] - A.fp[i]) * w; }
+  A.started = true;
+  const q = (j, o) => o.quaternion.set(out[j * 4], out[j * 4 + 1], out[j * 4 + 2], out[j * 4 + 3]);
+  q(0, this.body);
+  this.body.position.set(op[0] * D.H, D.H + op[1] * D.H - (1 - this.emerge) * (D.H + D.br * 2 + 0.3), op[2] * D.H);
+  this.heads.forEach((h, i) => {
+    q(1, h.neck); q(2, h.head);
+    if (this.heads.length > 1) h.neck.quaternion.premultiply(_aq.setFromAxisAngle(_axY, Math.sin(this.t * 0.8 + i * 2) * 0.35)); // the brahmin's heads look about on their own
+  });
+  this.legs.forEach((l, i) => { q(3 + i * 2, l.hip); q(4 + i * 2, l.knee); });
+  this.tail.forEach((t, i) => { q(11 + i, t); if (key === 'move' || key === 'idle') t.quaternion.premultiply(_aq.setFromAxisAngle(_axY, Math.sin(this.t * (sp > 0.5 ? 9 : 3) + i) * 0.2)); });
+  this.jaws.forEach(j => { j.rotation.x = jaw; });
+};
 
 /* ============================================================
    EFFECTS: particles, tracers, muzzle flashes, pooled lights, labels, decals
@@ -4200,7 +4453,7 @@ class Enemy extends Agent {
         if (this.dest && !this.navigate(this.dest.x, this.dest.z, D.walk, dt, 2.5)) sp = this.speedNow; else this.arrivedDest = true;
         break;
       }
-      case 'camp': { if (s && !s.dead && ds < 14) this.faceTo(s.pos.x, s.pos.z, dt, 3); break; }
+      case 'camp': { if (s && !s.dead && ds < 14) { this.faceTo(s.pos.x, s.pos.z, dt, 3); if (ds < 5) action = 'talk'; } break; } // haggling with the dweller
       case 'follow': { // pack animal trailing its owner
         const L = this.leader; if (!L || L.dead) { this.setState('wander'); this.home = { x: this.pos.x, z: this.pos.z }; break; }
         const dl = this.distTo(L);
@@ -4671,7 +4924,7 @@ class Survivor extends Agent {
     if (st.speed > 3.5 && Math.random() < dt * 4) FX.dust(this.pos.x, this.pos.y + 0.05, this.pos.z, 2, 0.4);
     this.flash.intensity = damp(this.flash.intensity, isNight() || ENV.dayLight < 0.25 ? 55 : 0, 3, dt);
     this.syncRoot();
-    this.rig.animate(dt, { speed: st.speed ?? this.speedNow, action: st.action, lookYaw: this.lookYaw, aimYaw: this.aimYaw });
+    this.rig.animate(dt, { speed: st.speed ?? this.speedNow, action: st.action, lookYaw: this.lookYaw, aimYaw: this.aimYaw, sneak: st.sneak, low: st.low });
     if (this.barkT <= 0 && this.task && this.task.kind === 'travel') { this.barkT = 50 + Math.random() * 60; if (Math.random() < 0.5) this.say(isNight() ? quip('night') : quip('travel'), 'good'); }
   }
   perceive() {
@@ -5003,6 +5256,7 @@ class CombatTask extends Task {
     if (this.t - (this.lastGain ?? 0) > 25 && this.t - (this.lastLos ?? 0) > 10) { e.avoidUntil = S.simTime + 60; if (s.threat === e) s.threat = null; return 'fail'; }
     const stalking = e.hostile && !e.aware;
     if (stalking) s.stealthT = S.simTime + 1.5;
+    st.sneak = stalking; // creeps up crouched
     if (D.melee) {
       s.cover = null;
       if (d > D.range) { s.navigate(e.pos.x, e.pos.z, (stalking && d > 6 ? 1.8 : 4.6) * s.p.speed, dt, D.range * 0.8); st.speed = s.speedNow; }
@@ -5133,7 +5387,7 @@ class HarvestTask extends Task {
   update(dt, st) {
     const s = this.s, g = BASE.gardenPos();
     if (!this.arrived) { if (this.go(g.x, g.z, st, dt, 1.4)) { this.arrived = true; this.t = 0; } return; }
-    st.action = 'loot'; this.t += dt; if (this.t > 3) { const n = BASE.harvest(s); s.add(n % 2 ? 'corn' : 'tato', n); log('Harvested ' + n + ' vegetables from the garden.', 'good'); return 'done'; }
+    st.action = 'harvest'; this.t += dt; if (this.t > 3) { const n = BASE.harvest(s); s.add(n % 2 ? 'corn' : 'tato', n); log('Harvested ' + n + ' vegetables from the garden.', 'good'); return 'done'; }
   }
 }
 class ChopTask extends Task {
@@ -5162,7 +5416,7 @@ class SalvageTask extends Task {
       if (noProgress(this, s, this.spot.x, this.spot.z, dt)) { c.bad = true; c.scrap = 0; return 'fail'; }
       if (this.go(this.spot.x, this.spot.z, st, dt, 0.9)) { this.arrived = true; this.t = 0; } return;
     }
-    s.faceTo(c.x, c.z, dt); st.action = 'build'; s.rig.setTool('hammer'); this.t += dt;
+    s.faceTo(c.x, c.z, dt); st.action = 'build'; st.low = true; s.rig.setTool('hammer'); this.t += dt; // kneels at the wreck
     if (Math.random() < dt * 3) { FX.impact(_v1.set(c.x + (Math.random() - .5), groundHeight(c.x, c.z) + 0.8, c.z + (Math.random() - .5)), 'spark'); AUDIO.clank(s.pos); }
     if (this.t > 6) { const n = Math.min(c.scrap, 3 + (Math.random() < 0.5 ? 1 : 0)); c.scrap -= n; s.add('scrap', n); if (Math.random() < 0.3) s.add('screws', 1); FX.label('+' + n + ' Scrap Metal', _v1.copy(s.pos).setY(s.pos.y + 2), 'good', 2, 0.8); log('Stripped ' + n + ' scrap metal from a rusted car.', ''); return 'done'; }
   }
@@ -5831,6 +6085,7 @@ function buildPieceModel(id) {
   g.userData.parts = parts; g.userData.t = 0;
   return g;
 }
+const LOW_PIECES = new Set(['campfire', 'bedroll', 'workbench', 'foundation', 'bed', 'water', 'garden', 'garden2', 'turret', 'lights', 'rack']); // built kneeling
 class BuildTask extends Task {
   constructor(s, piece) { super(s, 'Building: ' + piece.name, 'build'); this.piece = piece; this.paid = false; if (Math.random() < 0.5) s.say(quip('build')); }
   update(dt, st) {
@@ -5840,7 +6095,7 @@ class BuildTask extends Task {
     if (!this.arrived) { if (this.go(stand.x, stand.z, st, dt, 1.2)) { this.arrived = true; } return; }
     if (!BASE.paid.has(p.id)) { if (BASE.missing(p, s)) return 'fail'; BASE.pay(p, s); log('Started building: ' + p.name + '.', ''); }
     const spot = BASE.local(p.spot[0], p.spot[1]); s.faceTo(spot.x, spot.z, dt);
-    st.action = 'build'; s.rig.setTool('hammer');
+    st.action = 'build'; st.low = LOW_PIECES.has(p.id); s.rig.setTool('hammer');
     const ph = s.rig.swingPhase(1.7); if (ph > 0.95 && !this.hitNow) { this.hitNow = true; AUDIO.hammer(s.pos); } else if (ph < 0.5) this.hitNow = false;
     if (BASE.progress(p, dt, s)) return 'done';
   }
@@ -6705,7 +6960,7 @@ function setupComposer() {
 function updateGfxInfo() {
   let gpu = '';
   try { const gl = renderer.getContext(), ext = gl.getExtension('WEBGL_debug_renderer_info'); gpu = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : ''; } catch (e) { }
-  const el = $('gfxInfo'); if (el) el.textContent = `Renderer: WebGL2${gpu ? ' · ' + String(gpu).slice(0, 48) : ''} · ${composer ? 'post effects on' : 'direct (safe) mode'} · ${renderer.getPixelRatio().toFixed(2)}x · Blender ${ASSETS.blenderTex ? 'materials' : 'materials missing'}, ${ASSETS.models ? 'models' : 'models missing'}, ${ASSETS.chars ? 'characters' : 'characters missing'}, ${ASSETS.creatures ? 'creatures' : 'creatures missing'}, ${ASSETS.props ? 'props' : 'props missing'}, ${ASSETS.kit ? 'building kit' : 'building kit missing'}`;
+  const el = $('gfxInfo'); if (el) el.textContent = `Renderer: WebGL2${gpu ? ' · ' + String(gpu).slice(0, 48) : ''} · ${composer ? 'post effects on' : 'direct (safe) mode'} · ${renderer.getPixelRatio().toFixed(2)}x · Blender ${ASSETS.blenderTex ? 'materials' : 'materials missing'}, ${ASSETS.models ? 'models' : 'models missing'}, ${ASSETS.chars ? 'characters' : 'characters missing'}, ${ASSETS.creatures ? 'creatures' : 'creatures missing'}, ${ASSETS.props ? 'props' : 'props missing'}, ${ASSETS.kit ? 'building kit' : 'building kit missing'}, ${CLIPS.human ? 'motion clips' : 'motion clips missing'}`;
 }
 let issueT = 0;
 function reportIssue(msg, sticky = false) {
@@ -6888,10 +7143,11 @@ async function start(data = {}) {
     bootLog('Loading materials and models built in Blender', 8); await nextFrame();
     const prog = {}, bar = () => { const v = Object.values(prog); $('bootfill').style.width = (8 + v.reduce((a, p) => a + p[0], 0) / Math.max(1, v.reduce((a, p) => a + p[1], 0)) * 14) + '%'; };
     const track = (k) => (d, t) => { prog[k] = [d, t]; bar(); };
-    const [baked, models, chars, creatures, props, kit] = await Promise.all([
+    const [baked, models, chars, creatures, props, kit, anims] = await Promise.all([
       ASSETS.loadTextures(track('tex')), ASSETS.loadModels(track('models')), ASSETS.loadChars(track('chars')), ASSETS.loadCreatures(track('creatures')), ASSETS.loadProps(track('props')),
-      ASSETS.loadKit(track('kit')),
+      ASSETS.loadKit(track('kit')), ASSETS.loadAnims(track('anims')),
     ]);
+    if (anims) bootLog('Motion clips for people and animals ready', 21);
     if (props) bootLog('Photo-scanned props and weapons from Poly Haven ready', 21);
     if (kit) bootLog('Fire escapes, shutters, street lamps and power poles ready', 21);
     if (creatures) bootLog('Hounds, brahmin, mole rats, radroaches and the stalker sculpted in Blender', 21);

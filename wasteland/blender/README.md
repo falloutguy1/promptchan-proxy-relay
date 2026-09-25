@@ -16,6 +16,7 @@ These scripts build the game's textures and models in Blender 4.5 LTS. Each one 
 | `fetch_phm.py`, `make_props.py` | Download Poly Haven glTF props and turn them into light game props (decimated, grounded, lids kept separate, tools hung from the grip). Also the weapons: the Poly Haven pistol, rifle and machete, plus a shotgun and a pipe rifle kitbashed from the rifle (its stock cut down, with new barrels, rusty pipes and tape), each turned barrel-forward with its origin at the grip. | `prop_NAME.glb`, `prop_NAME_{c,n,orm}_SIZE.png` (weapons are `prop_g_KIND`) |
 | `make_kit.py` | The building and street kits from Poly Haven models. `kitw`: two fire-escape levels assembled from the modular fire escape (the second with stairs down to the first, the first with a drop ladder), an air-con unit, plain and graffiti roller shutters for doors and windows, downpipe parts and a wall lamp. `kits`: a street lamp, a fire hydrant, a utility box, a manhole cover, two wooden power poles and a stone fire pit. The pieces of a kit share one baked atlas, so they batch into one draw call. | `kitw.glb`, `kits.glb`, `KIT_{c,n,orm}_{1024,512}.png` |
 | `make_bus.py` | The 1950s school bus. | `bus.glb` |
+| `make_anims.py` | Retargets CC0 animation libraries onto the game's rigs: Quaternius' Universal Animation Library 1 and 2 onto the 17-joint people rig, and his Ultimate Animated Animal Pack (wolf, cow, fox) onto the hound, brahmin and burrower rigs, with the animals' legs placed by two-bone IK. Clips are 30 fps int16 quaternions per joint plus the root offset, and locomotion clips record their natural speed so the game can match playback to movement. | `anims.json` |
 | `preview.py`, `preview_glb.py`, `preview_char.py`, `preview_cr.py`, `preview_props.py`, `preview_guns.py`, `preview_kit.py` | Contact sheets and Cycles previews for checking the output. | PNG |
 | `to_webp.sh` | Converts the PNGs to the WebP files the game loads. Requires `cwebp`. | `*.webp` |
 | `glb_to_json.py` | Wraps each `.glb` as base64 inside JSON, because some hosts (claude.ai artifacts among them) don't serve `.glb`. The page loads these wrappers. | `*.glb.json` |
@@ -32,6 +33,11 @@ python3 fetch_phm.py 1k barrel_stove Barrel_01 wooden_crate_01 ammo_box old_tyre
 python3 fetch_phm.py 1k service_pistol bolt_action_rifle_7_62 machete modular_fire_escape rollershutter_door rollershutter_window_02 exterior_aircon_unit modular_metal_gutter security_light street_lamp_01 fire_hydrant utility_box_02 water_manhole_cover modular_electricity_poles stone_fire_pit
 blender -b --factory-startup --python make_props.py -- phm models tex   # the kitbashed guns also read ph/rust_coarse_01 and ph/hessian_230
 blender -b --factory-startup --python make_kit.py -- phm models tex
+# motion clips (CC0): download into anim/ first
+#   anim/universal_animation_librarystandard.zip   https://opengameart.org/content/universal-animation-library   (unzip in place)
+#   anim/x_ual2_standard/...                       https://opengameart.org/content/universal-animation-library-2 (unzip into x_ual2_standard/)
+#   anim/uaa/{Wolf,Cow,Fox}.gltf                   https://quaternius.com/packs/ultimateanimatedanimals.html (glTF folder)
+blender -b --factory-startup --python make_anims.py -- anim ../assets/models/anims.json
 for k in hound cattle burrower roach stalker; do blender -b --factory-startup --python make_creatures.py -- $k models tex; done
 blender -b --factory-startup --python make_bus.py -- models
 blender -b --factory-startup --python make_rocks.py -- models

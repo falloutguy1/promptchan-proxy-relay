@@ -78,6 +78,16 @@ Downloaded as 1k glTF with `fetch_phm.py`; assembled, decimated and baked into t
 
 The survivor, raiders, traders and ghouls are generated with MPFB 2.0.17 in Blender (`make_humans.py`) from the CC0 "MakeHuman system assets" pack (base mesh, skins, eyes, hair `short01`/`short02`, casual suits 01 and 05, `shoes03`, `fedora01`), "suits02" (`matcreator_mc-skinsuit_2022`, recoloured into the vault suit) and "pants01" (`cortu_cargo_pants`). MPFB itself is GPL-3.0 software; models made with it and the listed asset packs are CC0.
 
+## Motion: [Quaternius](https://quaternius.com) (CC0)
+
+| Used for | Source | Clips |
+| --- | --- | --- |
+| people | [Universal Animation Library](https://opengameart.org/content/universal-animation-library) (Standard) | idle, walk, jog, sprint, crouch idle and walk, pistol idle, aim and shot, sword idle and attack, jab, cross, kneeling repair, hit reactions, death, talking |
+| people | [Universal Animation Library 2](https://opengameart.org/content/universal-animation-library-2) (Standard) | sword swings, hook punch, tree chopping, harvesting, eating, getting up from lying down, folded arms, zombie idle, walk and scratch (feral ghouls) |
+| hounds, brahmin, burrowers | [Ultimate Animated Animal Pack](https://quaternius.com/packs/ultimateanimatedanimals.html) (wolf, cow, fox) | idle, sniffing, walk, gallop, attack, eating, hit reaction, death |
+
+`make_anims.py` retargets them onto the game's own skeletons: each joint copies its source bone's rotation from rest (with the library's T-pose arms turned down onto the game's arms-down rest), and the animals' legs are placed with two-bone IK from the source paws, scaled to each creature.
+
 ## Made in Blender for this game
 
 - Cars (sedan, van, burnt-out wreck) and the school bus: `make_cars.py`, `make_bus.py`.
