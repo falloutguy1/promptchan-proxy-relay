@@ -19,6 +19,7 @@ These scripts build the game's textures and models in Blender 4.5 LTS. Each one 
 | `preview.py`, `preview_glb.py`, `preview_char.py`, `preview_cr.py`, `preview_props.py`, `preview_guns.py`, `preview_kit.py` | Contact sheets and Cycles previews for checking the output. | PNG |
 | `to_webp.sh` | Converts the PNGs to the WebP files the game loads. Requires `cwebp`. | `*.webp` |
 | `glb_to_json.py` | Wraps each `.glb` as base64 inside JSON, because some hosts (claude.ai artifacts among them) don't serve `.glb`. The page loads these wrappers. | `*.glb.json` |
+| `pack_textures.py` | Bundles `../assets/tex/*.webp` into a few base64 JSON packs per resolution tier (`hi` for 1024-px desktops, `lo` for phones and Low quality) for hosts that cap the number of files; the claude.ai artifact build of the page reads `pack/manifest.json`, while `index.html` loads the WebP files directly. | `pack/manifest.json`, `pack/{hi,lo}_N.json` |
 
 Rebuild everything:
 

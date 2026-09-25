@@ -799,13 +799,37 @@ const ASSETS = {
   },
   small: { bark: true, cloth: true }, // baked at half size
   texSize() { return IS_MOBILE || S.quality === 'low' ? 512 : 1024; },
+  /* Hosts that cap the number of files (claude.ai artifacts) get the textures bundled into a few JSON packs,
+     one set per resolution tier, listed in pack/manifest.json. Without a manifest each texture is its own file. */
+  packs: null, usePacks: false, // build.py switches usePacks on for the artifact page
+  texSource(url) {
+    if (!this.usePacks && !window.__wlPacks) return Promise.resolve(url);
+    if (!this.packs) this.packs = fetch(`${this.base}pack/manifest.json`).then(r => r.ok ? r.json() : null).catch(() => null).then(man => {
+      if (!man || !man[this.texSize() >= 1024 ? 'hi' : 'lo']) return null;
+      return Promise.all(man[this.texSize() >= 1024 ? 'hi' : 'lo'].map(f => fetch(`${this.base}pack/${f}`).then(r => { if (!r.ok) throw new Error('missing pack ' + f); return r.json(); }))).then(parts => {
+        const urls = new Map();
+        for (const part of parts) for (const [name, b64] of Object.entries(part.files)) {
+          const s = atob(b64), bytes = new Uint8Array(s.length);
+          for (let i = 0; i < s.length; i++) bytes[i] = s.charCodeAt(i);
+          urls.set(name, URL.createObjectURL(new Blob([bytes], { type: 'image/webp' })));
+        }
+        return urls;
+      });
+    });
+    return this.packs.then(urls => {
+      if (!urls) return url;
+      const u = urls.get(url.split('/').pop());
+      if (!u) throw new Error('missing ' + url + ' in the texture packs');
+      return u;
+    });
+  },
   loadTexture(url, srgb, clamp = false) {
-    return new Promise((resolve, reject) => {
-      new THREE.TextureLoader().load(url, (t) => {
+    return this.texSource(url).then(src => new Promise((resolve, reject) => {
+      new THREE.TextureLoader().load(src, (t) => {
         t.wrapS = t.wrapT = clamp ? THREE.ClampToEdgeWrapping : THREE.RepeatWrapping; t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
         t.anisotropy = Math.min(8, renderer ? renderer.capabilities.getMaxAnisotropy() : 4); t.needsUpdate = true; resolve(t);
       }, undefined, () => reject(new Error('missing ' + url)));
-    });
+    }));
   },
   /* resolves true when every set loaded; progress(done, total) */
   async loadTextures(progress) {
