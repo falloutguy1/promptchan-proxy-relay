@@ -12,6 +12,7 @@ These scripts build the game's textures and models in Blender 4.5 LTS. Each one 
 | `make_cars.py` | 1950s sedan, delivery van and a burnt-out wreck. Bodies are lofted from cross-sections, with wheel wells, tail fins, chrome trim, glass, lamps and wheels. Parts are grouped by material, and each car has a lower-detail copy for distance. | `cars.glb` with meshes named `KIND__MATERIAL` and `KIND__MATERIAL__lo` |
 | `preview.py`, `preview_glb.py` | Contact sheets and Cycles previews for checking the output. | PNG |
 | `to_webp.sh` | Converts the PNGs to the WebP files the game loads. Requires `cwebp`. | `*.webp` |
+| `glb_to_json.py` | Wraps each `.glb` as base64 inside JSON, because some hosts (claude.ai artifacts among them) don't serve `.glb`. The page loads these wrappers. | `*.glb.json` |
 
 Rebuild everything:
 
@@ -21,6 +22,7 @@ blender -b --factory-startup --python make_rocks.py -- models
 blender -b --factory-startup --python make_branch.py -- models
 blender -b --factory-startup --python make_cars.py -- models
 sh to_webp.sh tex ../assets/tex && sh to_webp.sh models ../assets/tex && cp models/*.glb ../assets/models/
+python3 glb_to_json.py ../assets/models/cars.glb ../assets/models/rocks.glb
 ```
 
 The game's code maps the model files onto its own materials, so the GLBs carry geometry, normals and

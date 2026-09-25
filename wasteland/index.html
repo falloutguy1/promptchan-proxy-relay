@@ -851,7 +851,12 @@ const ASSETS = {
     const loader = new GLTFLoader(), jobs = [];
     let done = 0;
     const job = (pr) => { const j = pr.then(v => { progress?.(++done, jobs.length); return v; }); jobs.push(j); return j; };
-    const glb = (name) => job(new Promise((res, rej) => loader.load(`${this.base}models/${name}.glb`, res, undefined, () => rej(new Error('missing ' + name + '.glb')))));
+    // models ship as base64-wrapped GLB (.glb.json) because some hosts only serve web data types
+    const glb = (name) => job(fetch(`${this.base}models/${name}.glb.json`).then(r => { if (!r.ok) throw new Error('missing ' + name + '.glb.json'); return r.json(); }).then(j => {
+      const s = atob(j.glb), bytes = new Uint8Array(s.length);
+      for (let i = 0; i < s.length; i++) bytes[i] = s.charCodeAt(i);
+      return new Promise((res, rej) => loader.parse(bytes.buffer, '', res, rej));
+    }));
     const tex = (name, srgb) => job(this.loadTexture(T(name), srgb, true));
     glb('cars'); glb('rocks');
     tex(`rocks_c_${size}`, true); tex(`rocks_n_${size}`, false); tex(`rocks_orm_${size}`, false);
