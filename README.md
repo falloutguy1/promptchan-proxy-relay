@@ -2,7 +2,7 @@
 
 ## Wasteland Survivor Feed
 
-`wasteland/index.html` is a self-contained 3D spectator game (Three.js, loaded from jsDelivr). You watch an AI vault dweller scavenge a post-apocalyptic world, fight raiders and mutated creatures, collect a hammer, saw and axe, pick a homestead site and build it piece by piece.
+`wasteland/index.html` is a 3D spectator game (Three.js, loaded from jsDelivr) with textures and models in `wasteland/assets/`. You watch an AI vault dweller scavenge a post-apocalyptic world, fight raiders and mutated creatures, collect a hammer, saw and axe, pick a homestead site and build it piece by piece.
 
 No two runs play out the same:
 
@@ -12,6 +12,13 @@ No two runs play out the same:
 - Random events interrupt the plan: supply drops, trader caravans (sometimes selling a missing tool), road ambushes and distress calls that may be real, too late, or a trap.
 - Homesteads come in three styles: log cabin with a palisade in the woods, plank farmhouse with a rail fence on farmland, and a scrap-metal shack near town or on high ground.
 - The STAT tab shows the dweller's personality; DATA shows what it remembers.
+
+Graphics built in Blender:
+
+- The ground, buildings, metal, wood, cloth and roads use 13 PBR material sets (colour, normal, roughness, metalness and ambient occlusion) baked in Blender. Desktop loads them at 1024 px and phones at 512 px.
+- The boulders are sculpted and baked in Blender. The sedans, delivery vans and burnt-out wrecks are modelled there too, and each has a lower-detail version for distance. The pine trees' branch cards are rendered from a modelled fir branch.
+- The files are in `wasteland/assets/`. The scripts that make them, and the steps to rebuild them, are in `wasteland/blender/`. The `.glb` models are plain glTF 2.0, so Unreal Engine 5 and other engines can import them.
+- If the asset files can't be loaded, the page falls back to its built-in procedural textures and models.
 
 Saving:
 

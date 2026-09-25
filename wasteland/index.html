@@ -330,6 +330,7 @@ import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 /* ============================================================
    CORE: rng, noise, math helpers, shared state
@@ -783,6 +784,118 @@ function genSignTextures() {
     g.fillStyle = '#9c2a1e'; g.font = `800 40px ${DISPLAY_FONT}`; g.fillText('FOR THE FUTURE', w / 2, 330); grime(g, w, h, 2, 14);
   });
 }
+/* ============================================================
+   BLENDER ASSETS: PBR texture sets baked in Blender and models built there (see blender/ in the
+   repo), loaded as WebP / GLB next to the page. If anything fails, the procedural versions take over.
+   ============================================================ */
+const ASSETS = {
+  base: 'assets/', blenderTex: false, models: null,
+  // set name -> maps. Terrain sets pack roughness in albedo.a and height in normal.a
+  sets: {
+    dirt: ['c', 'n'], cracked: ['c', 'n'], grass: ['c', 'n'], rock: ['c', 'n'],
+    concrete: ['c', 'n', 'orm'], brick: ['c', 'n', 'orm'], corrugated: ['c', 'n', 'orm'], wood: ['c', 'n', 'orm'],
+    bark: ['c', 'n', 'orm'], cloth: ['c', 'n', 'orm'], road: ['c', 'n', 'orm'], rust: ['c', 'n', 'orm'],
+    paint: ['c', 'c_teal', 'c_cream', 'c_yellow', 'n', 'orm'],
+  },
+  small: { bark: true, cloth: true }, // baked at half size
+  texSize() { return IS_MOBILE || S.quality === 'low' ? 512 : 1024; },
+  loadTexture(url, srgb, clamp = false) {
+    return new Promise((resolve, reject) => {
+      new THREE.TextureLoader().load(url, (t) => {
+        t.wrapS = t.wrapT = clamp ? THREE.ClampToEdgeWrapping : THREE.RepeatWrapping; t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+        t.anisotropy = Math.min(8, renderer ? renderer.capabilities.getMaxAnisotropy() : 4); t.needsUpdate = true; resolve(t);
+      }, undefined, () => reject(new Error('missing ' + url)));
+    });
+  },
+  /* resolves true when every set loaded; progress(done, total) */
+  async loadTextures(progress) {
+    const size = this.texSize(), jobs = [], out = {};
+    let done = 0;
+    for (const [name, keys] of Object.entries(this.sets)) {
+      out[name] = {};
+      const sz = this.small[name] ? size / 2 : size;
+      for (const k of keys) jobs.push(this.loadTexture(`${this.base}tex/${name}_${k}_${sz}.webp`, k.startsWith('c')).then(t => { out[name][k] = t; progress?.(++done, jobs.length); }));
+    }
+    const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timed out')), 30000));
+    try { await Promise.race([Promise.all(jobs), timeout]); }
+    catch (e) {
+      console.warn('[wasteland] Blender textures unavailable, using procedural ones:', e.message);
+      for (const set of Object.values(out)) for (const t of Object.values(set)) t.dispose();
+      return false;
+    }
+    const set = (name, c = 'c') => ({ map: out[name][c], normalMap: out[name].n, orm: out[name].orm });
+    for (const n of ['dirt', 'cracked', 'grass', 'rock', 'concrete', 'brick', 'corrugated', 'wood', 'bark', 'cloth', 'road', 'rust']) TEX[n] = set(n);
+    TEX.metalRed = set('paint'); TEX.metalTeal = set('paint', 'c_teal'); TEX.metalCream = set('paint', 'c_cream'); TEX.metalYellow = set('paint', 'c_yellow');
+    this.blenderTex = true;
+    return true;
+  },
+  /* glTF geometry -> the game's conventions: world transform baked in, only position/normal/uv,
+     and v flipped back to Blender's (the textures load with flipY like every other map here) */
+  prepGeo(mesh, scale = 1, uvScale = 1) {
+    mesh.updateMatrixWorld(true);
+    const g = mesh.geometry.clone(); g.applyMatrix4(mesh.matrixWorld);
+    if (scale !== 1) g.scale(scale, scale, scale);
+    for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal' && k !== 'uv') g.deleteAttribute(k);
+    const uv = g.attributes.uv;
+    if (uv) for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * uvScale, (1 - uv.getY(i)) * uvScale);
+    else g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
+    if (!g.attributes.normal) g.computeVertexNormals();
+    g.computeBoundingSphere();
+    return g;
+  },
+  /* cars (sedan / van / wreck with distant LODs), three boulders with baked atlases, the fir branch card.
+     Resolves true when everything arrived; progress(done, total) */
+  async loadModels(progress) {
+    if (window.__wlNoModels) return false; // test hook: compare against the procedural models
+    const size = this.texSize(), T = (name) => `${this.base}tex/${name}.webp`;
+    const loader = new GLTFLoader(), jobs = [];
+    let done = 0;
+    const job = (pr) => { const j = pr.then(v => { progress?.(++done, jobs.length); return v; }); jobs.push(j); return j; };
+    const glb = (name) => job(new Promise((res, rej) => loader.load(`${this.base}models/${name}.glb`, res, undefined, () => rej(new Error('missing ' + name + '.glb')))));
+    const tex = (name, srgb) => job(this.loadTexture(T(name), srgb, true));
+    glb('cars'); glb('rocks');
+    tex(`rocks_c_${size}`, true); tex(`rocks_n_${size}`, false); tex(`rocks_orm_${size}`, false);
+    tex('rocks1_c_256', true); tex('rocks1_n_256', false); tex(`branch_c_${size}`, true);
+    const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timed out')), 30000));
+    let got;
+    try { got = await Promise.race([Promise.all(jobs), timeout]); }
+    catch (e) {
+      console.warn('[wasteland] Blender models unavailable, using procedural ones:', e.message);
+      jobs.forEach(j => j.then(v => v?.dispose?.(), () => { }));
+      return false;
+    }
+    const [cars, rocks, rc, rn, ro, r1c, r1n, branch] = got;
+    const byName = (gltf) => { const m = {}; gltf.scene.traverse(o => { if (o.isMesh) m[o.name] = o; }); return m; };
+    const CAR_MAT = { paint: 'carPaint', glass: 'glass', chrome: 'chrome', tire: 'tire', dark: 'carDark', taillight: 'redLight', lens: 'carLens', rust: 'wreckRust' };
+    const cm = byName(cars), out = { cars: {}, rocks: [] };
+    for (const kind of ['sedan', 'van', 'wreck']) {
+      const hi = [], lo = [];
+      for (const [name, mesh] of Object.entries(cm)) {
+        const [k, m, l] = name.split('__');
+        if (k !== kind || !CAR_MAT[m]) continue;
+        (l === 'lo' ? lo : hi).push({ mat: CAR_MAT[m], geo: this.prepGeo(mesh, 1, m === 'rust' ? 2.2 : 1), tint: m === 'paint' });
+      }
+      if (!hi.length || !lo.length) { console.warn('[wasteland] cars.glb is missing', kind); return false; }
+      out.cars[kind] = { hi, lo };
+    }
+    const rm = byName(rocks);
+    for (let v = 0; v < 3; v++) {
+      if (!rm[`rock${v}_0`] || !rm[`rock${v}_1`]) { console.warn('[wasteland] rocks.glb is missing rock', v); return false; }
+      out.rocks.push([this.prepGeo(rm[`rock${v}_0`], 1.2), this.prepGeo(rm[`rock${v}_1`], 1.2)]);
+    }
+    out.rockTex = { map: rc, normalMap: rn, orm: ro };
+    out.rockTexLo = { map: r1c, normalMap: r1n };
+    out.branch = branch;
+    this.models = out;
+    return true;
+  },
+};
+/* the terrain's large-scale variation map is still generated here (it isn't part of the Blender set) */
+function genMacroTexture() {
+  const fm = new TileFbm(51, 4, 5), mac = new Uint8Array(256 * 256 * 4);
+  for (let y = 0; y < 256; y++) for (let x = 0; x < 256; x++) { const i = (y * 256 + x) * 4, v = fm.get(x / 256, y / 256) * 255; mac[i] = v; mac[i + 1] = fm.get(y / 256, x / 256) * 255; mac[i + 2] = v; mac[i + 3] = 255; }
+  TEX.macro = dataTex(mac, 256, false);
+}
 
 /* ============================================================
    WORLD LAYOUT + TERRAIN
@@ -999,6 +1112,7 @@ function buildTerrainMesh() {
     tDirt: { value: TEX.dirt.map }, tCrack: { value: TEX.cracked.map }, tGrass: { value: TEX.grass.map }, tRock: { value: TEX.rock.map },
     nDirt: { value: TEX.dirt.normalMap }, nCrack: { value: TEX.cracked.normalMap }, nGrass: { value: TEX.grass.normalMap }, nRock: { value: TEX.rock.normalMap },
     tMacro: { value: TEX.macro }, uWet: { value: 0 }, uTime: { value: 0 }, uRadColor: { value: new THREE.Color(0.45, 1.0, 0.2) },
+    uHOff: { value: ASSETS.blenderTex ? 0.3 : 0.0 }, uHMul: { value: ASSETS.blenderTex ? 0.55 / 0.7 : 0.55 }, // Blender sets store height in 0.3..1
   };
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, mat.userData.uniforms);
@@ -1008,7 +1122,7 @@ function buildTerrainMesh() {
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
 uniform sampler2D tDirt, tCrack, tGrass, tRock, nDirt, nCrack, nGrass, nRock, tMacro;
-uniform float uWet, uTime; uniform vec3 uRadColor;
+uniform float uWet, uTime, uHOff, uHMul; uniform vec3 uRadColor;
 varying vec4 vSplat; varying vec2 vExtra; varying vec3 vWPos;`)
       .replace('#include <map_fragment>', `
 vec2 uvA = vWPos.xz * 0.16;
@@ -1019,7 +1133,7 @@ vec4 cD = mix(texture2D(tDirt, uvA), texture2D(tDirt, uvB), 0.4);
 vec4 cC = mix(texture2D(tCrack, uvA * 0.7), texture2D(tCrack, uvB * 0.9), 0.3);
 vec4 cG = mix(texture2D(tGrass, uvA * 1.4), texture2D(tGrass, uvB * 1.7), 0.35);
 vec4 cR = mix(texture2D(tRock, uvA * 0.6), texture2D(tRock, uvB * 0.5), 0.4);
-vec4 hb = vSplat + vec4(hD.a, hC.a, hG.a, hR.a) * 0.55;
+vec4 hb = vSplat + (vec4(hD.a, hC.a, hG.a, hR.a) - uHOff) * uHMul;
 float hmx = max(max(hb.x, hb.y), max(hb.z, hb.w)) - 0.22;
 vec4 ww = max(hb - hmx, 0.0); ww /= (ww.x + ww.y + ww.z + ww.w + 1e-4);
 cG.rgb *= mix(vec3(1.0), vec3(0.52, 0.8, 0.36), vExtra.x);
@@ -1337,9 +1451,10 @@ function strikeLightning(focus) {
 const MAT = {};
 function texMat(set, o = {}) {
   const m = new THREE.MeshStandardMaterial({
-    map: set.map, normalMap: set.normalMap, roughnessMap: set.orm, metalnessMap: set.orm, aoMap: set.orm,
+    map: set.map, normalMap: set.normalMap,
     roughness: o.rough ?? 1, metalness: o.metal ?? 1, color: o.color ?? 0xffffff, side: o.side ?? THREE.FrontSide,
   });
+  if (set.orm) m.roughnessMap = m.metalnessMap = m.aoMap = set.orm; // AO in R, roughness in G, metal in B
   m.normalScale.set(o.ns ?? 1, o.ns ?? 1);
   if (o.emissive) { m.emissive = new THREE.Color(o.emissive); m.emissiveIntensity = o.ei ?? 1; }
   return m;
@@ -1367,6 +1482,13 @@ function buildMaterials() {
   MAT.fire = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.2, 1.4, 0.35), transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending, fog: true, toneMapped: true });
   MAT.dirtPile = texMat(TEX.dirt, { metal: 0 });
   MAT.rockMat = texMat(TEX.rock, { metal: 0 });
+  MAT.carLens = new THREE.MeshStandardMaterial({ color: 0xe6e1d2, roughness: 0.12, metalness: 0.25 });
+  MAT.carDark = new THREE.MeshStandardMaterial({ color: 0x1b1a19, roughness: 0.8, metalness: 0.15 }); // grille, underbody, empty window frames
+  MAT.wreckRust = texMat(TEX.rust, { color: 0x9a8a7e }); // burnt-out shells: darker than fresh rust
+  if (ASSETS.models) { // boulders sculpted and baked in Blender: one atlas per LOD
+    MAT.rockBaked = texMat(ASSETS.models.rockTex, { metal: 0 });
+    MAT.rockBakedLo = texMat(ASSETS.models.rockTexLo, { metal: 0, rough: 0.9 });
+  }
   MAT.hay = new THREE.MeshStandardMaterial({ color: 0xa88f4a, roughness: 1, map: TEX.grass.map });
   MAT.foliage = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0, side: THREE.DoubleSide, normalMap: TEX.grass.normalMap, normalScale: new THREE.Vector2(0.9, 0.9) });
   MAT.grassBlade = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0, side: THREE.DoubleSide });
@@ -2564,22 +2686,31 @@ function quarryExtras() {
 function defineInstKinds() {
   for (let v = 0; v < 3; v++) defineInst('pine' + v, pineParts(100 + v, false), pineParts(100 + v, true), { lodDist: 150, chunk: 90 });
   for (let v = 0; v < 3; v++) defineInst('dead' + v, deadTreeParts(200 + v, false), deadTreeParts(200 + v, true), { lodDist: 140, chunk: 130 });
-  for (let v = 0; v < 3; v++) defineInst('rock' + v, [{ mat: 'rockMat', geo: rockGeo(300 + v, 4) }], [{ mat: 'rockMat', geo: rockGeo(300 + v, 1) }], { lodDist: 120, chunk: 130 });
+  const BM = ASSETS.models; // Blender-built models, when they loaded
+  for (let v = 0; v < 3; v++) {
+    if (BM) defineInst('rock' + v, [{ mat: 'rockBaked', geo: BM.rocks[v][0] }], [{ mat: 'rockBakedLo', geo: BM.rocks[v][1] }], { lodDist: 120, chunk: 130 });
+    else defineInst('rock' + v, [{ mat: 'rockMat', geo: rockGeo(300 + v, 4) }], [{ mat: 'rockMat', geo: rockGeo(300 + v, 1) }], { lodDist: 120, chunk: 130 });
+  }
   defineInst('grass', [{ mat: 'grassBlade', geo: grassClumpGeo(1, 11, 1.1) }], null, { maxDist: 90, cast: false, colors: true, density: true, chunk: 45 });
   defineInst('drygrass', [{ mat: 'grassBlade', geo: grassClumpGeo(2, 7, 0.7) }], null, { maxDist: 85, cast: false, colors: true, density: true, chunk: 45 });
   defineInst('barrel', [{ mat: 'rust', geo: cleanGeo(barrelGeo()) }], null, { chunk: 150 });
   defineInst('wbarrel', [{ mat: 'metalYellow', geo: cleanGeo(barrelGeo()) }], null, { chunk: 150 });
-  const tintBody = (parts) => { parts.forEach(p => { if (p.mat === 'carPaint') p.tint = true; }); return parts; };
-  defineInst('sedan', tintBody(carKit('carPaint', 'sedan', 4).merged()), null, { chunk: 170 });
-  defineInst('wreck', tintBody(carKit('carPaint', 'sedan', 1).merged()), null, { chunk: 170 });
-  defineInst('van', tintBody(carKit('carPaint', 'van', 3).merged()), null, { chunk: 170 });
+  if (BM) for (const kind of ['sedan', 'van', 'wreck']) defineInst(kind, BM.cars[kind].hi, BM.cars[kind].lo, { chunk: 100, lodDist: 60 });
+  else {
+    const tintBody = (parts) => { parts.forEach(p => { if (p.mat === 'carPaint') p.tint = true; }); return parts; };
+    defineInst('sedan', tintBody(carKit('carPaint', 'sedan', 4).merged()), null, { chunk: 170 });
+    defineInst('wreck', tintBody(carKit('carPaint', 'sedan', 1).merged()), null, { chunk: 170 });
+    defineInst('van', tintBody(carKit('carPaint', 'van', 3).merged()), null, { chunk: 170 });
+  }
 }
+const WRECK_GRIME = new THREE.Color(0x5a4636);
 function placeCar(x, z, rot, rng, y = null, lootable = true) {
   const paint = new THREE.Color(rng.pick([0xb04a3a, 0x5fa39a, 0xe0d6b8, 0xd8a640, 0x7a8fb0, 0x9a9a8e]));
   const r = rng.next(), kind = r < 0.15 ? 'van' : r < 0.55 ? 'wreck' : 'sedan';
   const wreck = kind === 'wreck';
   const gy = y ?? groundHeight(x, z);
   const tilt = wreck ? rng.range(-0.08, 0.08) : 0;
+  if (wreck) paint.lerp(WRECK_GRIME, 0.45).multiplyScalar(0.85); // sun-faded, sooty paint on the burnt-out shells
   instAdd(kind, M4(x, gy + (wreck ? -0.18 : -0.02), z, tilt, rot, wreck ? rng.range(-0.06, 0.06) : 0), paint);
   if (y === null) {
     addBox(x, z, 2.7, 1.05, rot + Math.PI / 2 - Math.PI / 2, true, 1.5);
@@ -6312,8 +6443,20 @@ async function start(data = {}) {
     bootLog('Establishing uplink to exterior cameras', 5);
     try { await Promise.race([document.fonts.load('800 40px "Big Shoulders Stencil Display"'), new Promise(r => setTimeout(r, 1500))]); } catch (e) { }
     setupRenderer();
-    bootLog('Synthesizing terrain textures', 10); await nextFrame(); genTerrainTextures();
-    bootLog('Weathering concrete, brick and steel', 20); await nextFrame(); genMaterialTextures(); genSignTextures(); genBranchTexture();
+    bootLog('Loading materials and models built in Blender', 8); await nextFrame();
+    const prog = [0, 1, 0, 1], bar = () => { $('bootfill').style.width = (8 + (prog[0] + prog[2]) / (prog[1] + prog[3]) * 14) + '%'; };
+    const [baked, models] = await Promise.all([
+      ASSETS.loadTextures((d, t) => { prog[0] = d; prog[1] = t; bar(); }),
+      ASSETS.loadModels((d, t) => { prog[2] = d; prog[3] = t; bar(); }),
+    ]);
+    if (models) bootLog('Blender cars, boulders and fir branches ready', 20);
+    if (baked) { bootLog('Blender materials ready', 22); genMacroTexture(); }
+    else {
+      bootLog('Synthesizing terrain textures', 10); await nextFrame(); genTerrainTextures();
+      bootLog('Weathering concrete, brick and steel', 20); await nextFrame(); genMaterialTextures();
+    }
+    genSignTextures();
+    if (ASSETS.models) TEX.branch = ASSETS.models.branch; else genBranchTexture();
     buildMaterials(); buildSignMaterials(); buildCharMaterials(); creatureMats();
     const hs = /^#s(\d{1,10})$/.exec(location.hash || '');
     await buildWorld(hs ? +hs[1] : data.seed ?? ((Math.random() * 1e9) | 0));
@@ -6330,7 +6473,7 @@ async function start(data = {}) {
     $('bootErr').textContent = 'Feed failed to start: ' + (err && err.message ? err.message : err) + '. A browser with WebGL2 is required.';
   }
 }
-window.__wl = { EVENTS, DANGER, SITES, PIECES, TRAITS, STYLE, LOGQ, siteFeatures, SAVES, SAVEUI, snapshotGame, loadGame, TREES_: () => TREES, cullActors, ENV, HUD, FX, VAULT, get camera() { return camera; }, get composer() { return composer; }, updateChunks, updateEnvironment, S, get SURV() { return SURV; }, BASE, ENEMIES, CONTAINERS, POIS, step, setSpeed, CAM, NAV, findPath, walkClear, losClear, COLL, TREES, CARS, LAYOUT, groundHeight, get scene() { return scene; }, get renderer() { return renderer; } };
+window.__wl = { ASSETS_: ASSETS, EVENTS, DANGER, SITES, PIECES, TRAITS, STYLE, LOGQ, siteFeatures, SAVES, SAVEUI, snapshotGame, loadGame, TREES_: () => TREES, cullActors, ENV, HUD, FX, VAULT, get camera() { return camera; }, get composer() { return composer; }, updateChunks, updateEnvironment, S, get SURV() { return SURV; }, BASE, ENEMIES, CONTAINERS, POIS, step, setSpeed, CAM, NAV, findPath, walkClear, losClear, COLL, TREES, CARS, LAYOUT, groundHeight, get scene() { return scene; }, get renderer() { return renderer; } };
 window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
 </script>
 </body>
