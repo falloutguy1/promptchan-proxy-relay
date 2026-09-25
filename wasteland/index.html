@@ -123,6 +123,19 @@ select{background:var(--panel-solid);}
 #settings label{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:18px;}
 #settings .row{display:flex;gap:6px;flex-wrap:wrap;}
 #settings .hint{font-size:15px;opacity:.7;line-height:1.2;}
+#savePanel{box-sizing:border-box;position:absolute;right:var(--gutter);top:calc(var(--top-h,64px) + 18px + env(safe-area-inset-top,0px));width:min(390px,calc(100% - 2*var(--gutter)));max-height:calc(100% - var(--top-h,64px) - 40px);overflow:auto;padding:12px 14px;display:grid;gap:10px;z-index:3;}
+#savePanel h2{font-family:var(--f-display);font-weight:800;letter-spacing:.1em;font-size:22px;margin:0;}
+#savePanel label{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:18px;}
+#savePanel .row{display:flex;gap:6px;flex-wrap:wrap;}
+#savePanel .hint{font-size:15px;opacity:.7;line-height:1.2;margin:0;}
+#saveSlots{display:grid;gap:8px;}
+.slot{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;border-top:1px dashed var(--pip-dim);padding-top:8px;}
+.slot .m{font-size:17px;line-height:1.15;min-width:0;overflow-wrap:anywhere;}
+.slot .m b{font-family:var(--f-display);font-weight:700;letter-spacing:.1em;}
+.slot .m small{display:block;opacity:.7;font-size:15px;}
+.slot .b{display:flex;gap:4px;}
+#saveStatus{font-size:16px;min-height:1.2em;margin:0;}
+#saveToast{box-sizing:border-box;position:absolute;left:50%;transform:translateX(-50%);top:calc(var(--top-h,64px) + 74px + env(safe-area-inset-top,0px));width:max-content;max-width:calc(100% - 2*var(--gutter));display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;padding:8px 12px;font-size:18px;z-index:5;}
 #hudToggleWrap{position:absolute;right:var(--gutter);bottom:calc(14px + env(safe-area-inset-bottom,0px));display:none;}
 #hud.hidden #hudToggleWrap{display:block;}
 #endcard{position:absolute;inset:0;display:grid;place-items:center;background:radial-gradient(ellipse at center,rgba(40,0,0,.35),rgba(0,0,0,.8));z-index:4;padding-inline:var(--gutter);}
@@ -164,6 +177,7 @@ select{background:var(--panel-solid);}
   #minimapWrap{width:112px;bottom:auto;}
   #minimapWrap .cap{display:none;}
   #banner{top:30%;}
+  #saveToast{top:auto;bottom:calc(78px + env(safe-area-inset-bottom,0px));}
 }
 @media (prefers-reduced-motion:reduce){
   .rec,.bars .crit{animation:none;}
@@ -204,6 +218,7 @@ select{background:var(--panel-solid);}
         <div class="grp">
           <button id="btnSound" aria-pressed="false" title="Sound">SOUND</button>
           <button id="btnHud" title="Hide HUD (H)">HUD</button>
+          <button id="btnSave" aria-pressed="false" title="Save or load a game">SAVE</button>
           <button id="btnSettings" aria-pressed="false" title="Settings">SET</button>
         </div>
       </nav>
@@ -264,6 +279,16 @@ select{background:var(--panel-solid);}
       <p class="hint">Drag to orbit, scroll to zoom. Keys: 1–4 camera, Space pause, H hide HUD, WASD in free cam. Low quality skips post effects and is the safest choice on phones.</p>
       <p class="hint" id="gfxInfo"></p>
     </div>
+    <div id="savePanel" class="crt" hidden>
+      <h2>SAVE / LOAD</h2>
+      <div id="saveSlots"></div>
+      <p id="saveStatus" role="status"></p>
+      <label for="setAutosave">Autosave every morning <select id="setAutosave"><option value="on">On</option><option value="off">Off</option></select></label>
+      <div class="row"><button id="btnExport">Export file</button><button id="btnImport">Import file</button></div>
+      <p class="hint" id="saveWhere"></p>
+      <input type="file" id="importFile" accept=".json,application/json" hidden>
+    </div>
+    <div id="saveToast" class="crt" hidden><span id="toastText"></span><button id="toastContinue">CONTINUE</button><button id="toastDismiss" aria-label="Dismiss">✕</button></div>
     <div id="hudToggleWrap"><button id="btnHudShow" class="crt">SHOW HUD</button></div>
   </div>
 
@@ -272,7 +297,7 @@ select{background:var(--panel-solid);}
       <h2>SIGNAL LOST</h2>
       <div id="endText">The survivor did not make it.</div>
       <div class="stats" id="endStats"></div>
-      <div class="row"><button id="btnNextDweller">Send the next dweller</button><button id="btnEndNewWorld">New world</button></div>
+      <div class="row"><button id="btnEndLoad" hidden>Load last save</button><button id="btnNextDweller">Send the next dweller</button><button id="btnEndNewWorld">New world</button></div>
       <div id="endAuto" style="opacity:.7;font-size:16px"></div>
     </div>
   </div>
@@ -1997,10 +2022,20 @@ function vaultEntrance() {
   VAULT.spawn = new THREE.Vector3(x, y0, zf - 5);
   navClearCircle(x, zf + 1, 2.5);
 }
+/* once someone has walked out, the tunnel behind them is off limits */
+function sealVaultTunnel() {
+  for (let z = VAULT.front - 22; z < VAULT.front - 0.5; z++) for (let x = -4; x <= 4; x++) { const i = navI(VAULT.spawn.x + x), j = navI(z); if (navInside(i, j)) NAV.block[j * NAV.N + i] = 1; }
+}
+/* put the door straight into its rolled-open pose (used when restoring a save) */
+function openVaultInstant() {
+  VAULT.openT = 1; const d = VAULT.door, st = VAULT.doorStart;
+  d.position.set(st.x + 7.8, st.y, st.z + 1.25); d.rotation.z = -7.8 / 3.4;
+  VAULT.doorColl.hw = 0; VAULT.doorColl.hd = 0; sealVaultTunnel();
+}
 function overpass() {
   const z = HIGHWAY_Z, seg = 24, k = new Kit();
   const deckY = (x) => { let s = 0; for (let i = -3; i <= 3; i++) s += broadHeight(x + i * 12, z); return s / 7 + HIGHWAY_Y; };
-  const wrecks = [];
+  const wrecks = [], wr = new RNG(S.seed + 83); // seeded so a world rebuilt from its seed (loading a save) matches exactly
   for (let x0 = -468; x0 < 468; x0 += seg) {
     const xc = x0 + seg / 2, y = deckY(xc);
     if (xc > 60 && xc < 84) continue; // missing span
@@ -2013,7 +2048,7 @@ function overpass() {
     k.box('concrete', seg - 0.2, 1.1, 13, xc, y, 0, 0, 0, 0, 3);
     k.add('road', (() => { const g = new THREE.PlaneGeometry(seg - 0.2, 12); g.rotateX(-Math.PI / 2); const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getY(i), uv.getX(i) * 3); return g; })(), M4(xc, y + 0.56, 0));
     for (const s of [-1, 1]) k.box('concreteDark', seg - 0.2, 0.9, 0.45, xc, y + 1.0, s * 6.3, 0, 0, 0, 3);
-    if (Math.random() < 0.3) wrecks.push([xc + (Math.random() - 0.5) * 14, y + 0.55, (Math.random() - 0.5) * 7]);
+    if (wr.chance(0.3)) wrecks.push([xc + (wr.next() - 0.5) * 14, y + 0.55, (wr.next() - 0.5) * 7]);
   }
   for (let x0 = -468; x0 <= 468; x0 += seg) { // pillars at joints
     if (x0 > 60 && x0 < 108) { if (x0 === 84) { const gy = groundHeight(84, z); k.box('concrete', 1.4, 3, 1.4, 84, gy + 1.2, -4, 0.3, 0, 0.4, 2); } continue; }
@@ -3962,7 +3997,7 @@ const quip = (k) => S.rng.pick(QUIPS[k]);
 const first = (s) => s.name.split(' ')[0];
 
 class Survivor extends Agent {
-  constructor(spawn) {
+  constructor(spawn, quiet = false) {
     super(new Humanoid('survivor', S.seed + S.stats.dwellerNo), { hp: 100, radius: 0.34 });
     const r = new RNG(S.seed * 7 + S.stats.dwellerNo);
     this.name = r.pick(FIRST) + ' ' + r.pick(LAST); this.tag = 'Dweller #113-' + String(r.int(10, 99));
@@ -3982,7 +4017,7 @@ class Survivor extends Agent {
     this.flashTarget = new THREE.Object3D(); this.flashTarget.position.set(0, 0.6, 8); this.root.add(this.flash); this.root.add(this.flashTarget); this.flash.target = this.flashTarget;
     this.stats = { looted: 0, kills: 0, built: 0 };
     initBeliefs(this);
-    log(first(this) + '\'s file: ' + this.traits.map(t => TRAITS[t].name).join(', ') + '.', 'good');
+    if (!quiet) log(first(this) + '\'s file: ' + this.traits.map(t => TRAITS[t].name).join(', ') + '.', 'good');
   }
   get maxHpNow() { return Math.max(10, 100 + (this.p ? this.p.hpBonus : 0) + (this.level - 1) * 5 - this.rads / 10); }
   hasTrait(t) { return this.traits.includes(t); }
@@ -4296,7 +4331,7 @@ class IntroTask extends Task {
     if (this.stage === 0 && this.t > 1.5) { this.stage = 1; VAULT.openT = 0; log('Vault door override accepted. Opening...', 'warn'); AUDIO.siren(); }
     if (this.stage === 1) { st.action = 'idleLook'; if (VAULT.openT >= 1) { this.stage = 2; this.label = s.goalText = 'Stepping outside'; VAULT.doorColl.hw = 0; VAULT.doorColl.hd = 0; s.say(INTRO_LINES[s.traits[0]] || 'So that\'s what the sun looks like.'); } }
     if (this.stage === 2) { if (this.go(VAULT.spawn.x + 1, VAULT.front + 9, st, dt, 1)) { this.stage = 3; this.t = 0; this.label = 'Taking in the view'; } }
-    if (this.stage === 3) { st.action = 'idleLook'; if (this.t > 3.5) { for (let z = VAULT.front - 22; z < VAULT.front - 0.5; z++) for (let x = -4; x <= 4; x++) { const i = navI(VAULT.spawn.x + x), j = navI(z); if (navInside(i, j)) NAV.block[j * NAV.N + i] = 1; } s.story = 'scavenge'; s.goal = 'Scavenge supplies and find tools (hammer, saw, axe)'; showBanner('OBJECTIVE', 'Survive. Find tools to build a home.'); log('Objective: find a hammer, a saw and an axe.', 'good'); return 'done'; } }
+    if (this.stage === 3) { st.action = 'idleLook'; if (this.t > 3.5) { sealVaultTunnel(); s.story = 'scavenge'; s.goal = 'Scavenge supplies and find tools (hammer, saw, axe)'; showBanner('OBJECTIVE', 'Survive. Find tools to build a home.'); log('Objective: find a hammer, a saw and an axe.', 'good'); return 'done'; } }
   }
 }
 class IdleTask extends Task {
@@ -4927,12 +4962,19 @@ const BASE = {
   },
   total() { return this.plan ? this.plan.length : PIECES.filter(p => !p.opt).length; },
   chooseSite(site, s) {
-    this.site = site; this.style = site.kind === 'woods' ? 'log' : site.kind === 'farm' ? 'plank' : 'scrap';
-    if (s && s.hasTrait('handy') && this.style === 'scrap') this.style = 'plank';
-    const st = STYLE[this.style]; PIECE.walls.name = st.walls; PIECE.fence.name = st.fence;
-    this.plan = this.makePlan(s);
-    this.rot = Math.atan2(LAYOUT.lake.x - site.x, LAYOUT.lake.z - site.z);
-    if (dist2(site.x, site.z, LAYOUT.lake.x, LAYOUT.lake.z) > 260) this.rot = S.rng.range(0, TAU);
+    let style = site.kind === 'woods' ? 'log' : site.kind === 'farm' ? 'plank' : 'scrap';
+    if (s && s.hasTrait('handy') && style === 'scrap') style = 'plank';
+    const plan = this.makePlan(s);
+    let rot = Math.atan2(LAYOUT.lake.x - site.x, LAYOUT.lake.z - site.z);
+    if (dist2(site.x, site.z, LAYOUT.lake.x, LAYOUT.lake.z) > 260) rot = S.rng.range(0, TAU);
+    this.setupSite(site, style, plan, rot);
+    showBanner('HOMESTEAD SITE CHOSEN', site.name); log('Planted a stake at the ' + site.name + '. Home starts here.', 'good');
+    log((s ? first(s) : 'The dweller') + ' sketches plans for a ' + STYLE[style].name + (this.planNote ? ': ' + this.planNote : '') + '.', '');
+  },
+  /* lay out the site and every piece model (hidden until built); shared by new games and loaded saves */
+  setupSite(site, style, plan, rot) {
+    this.site = site; this.style = style; this.plan = plan; this.rot = rot;
+    const st = STYLE[style]; PIECE.walls.name = st.walls; PIECE.fence.name = st.fence;
     this.group = new THREE.Group(); this.group.position.set(site.x, groundHeight(site.x, site.z), site.z); this.group.rotation.y = this.rot; scene.add(this.group);
     for (const p of PIECES) { const m = buildPieceModel(p.id); m.visible = false; this.group.add(m); this.models[p.id] = m; }
     navClearCircle(site.x, site.z, site.r);
@@ -4941,8 +4983,12 @@ const BASE = {
     const cl = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.35), new THREE.MeshStandardMaterial({ color: 0xd8a73a, side: THREE.DoubleSide, roughness: 0.9 })); cl.position.set(0.3, 1.8, 0); fl.add(cl);
     this.stake = fl; this.stake.position.set(0, 0, 2.5); this.group.add(fl);
     this.fire.g.position.copy(this.local(0, 6.4)); this.fire.x = this.fire.g.position.x; this.fire.z = this.fire.g.position.z; this.fire.lit = false;
-    showBanner('HOMESTEAD SITE CHOSEN', site.name); log('Planted a stake at the ' + site.name + '. Home starts here.', 'good');
-    log((s ? first(s) : 'The dweller') + ' sketches plans for a ' + st.name + (this.planNote ? ': ' + this.planNote : '') + '.', '');
+  },
+  /* show a half-finished piece as it was when the game was saved */
+  restoreProgress(p, t) {
+    const m = this.models[p.id], parts = m.userData.parts; m.visible = true; m.userData.t = clamp(t, 0, p.time * 0.99);
+    const shown = Math.floor(m.userData.t / p.time * parts.length);
+    for (let i = 0; i < shown; i++) { const q = parts[i]; q.visible = true; q.userData.pop = 1; q.position.copy(q.userData.fp); q.scale.copy(q.userData.fs); }
   },
   local(lx, lz, y = null) { const [x, z] = lw(this.site.x, this.site.z, this.rot, lx, lz); return new THREE.Vector3(x, y ?? groundHeight(x, z), z); },
   nextPiece() { if (!this.site || !this.plan) return null; for (const id of this.plan) if (!this.built.has(id)) return PIECE[id]; return null; },
@@ -4968,13 +5014,13 @@ const BASE = {
   gardenPos() { return this.local(-4.6, -2); },
   harvestReady() { return this.built.has('garden') && this.crops >= 1; },
   harvest(s) { this.crops = 0; return Math.round((3 + Math.floor(Math.random() * 3)) * (this.built.has('garden2') ? 1.8 : 1) * (s ? s.p.crops : 1)); },
-  complete(p, s) {
-    this.built.add(p.id); S.stats.built++; s.stats.built++; s.gainXp(18);
+  complete(p, s, quiet = false) {
+    this.built.add(p.id); if (!quiet) { S.stats.built++; s.stats.built++; s.gainXp(18); }
     const m = this.models[p.id]; m.visible = true; m.userData.parts.forEach(q => { q.visible = true; q.position.copy(q.userData.fp); q.scale.copy(q.userData.fs); });
-    log('Built: ' + p.name + '.', 'good');
+    if (!quiet) log('Built: ' + p.name + '.', 'good');
     const lines = { campfire: 'Fire. The oldest kind of safety.', foundation: 'Solid ground. Nobody can take this.', walls: 'Four walls. First time since the vault.', roof: 'A roof. Rain can do what it likes now.', fence: 'Let them come.', turret: 'Say hello to my little friend.', lights: 'Lights on. Anyone out there, this is home.', garden2: 'More greens. Might even have some to trade.', shed: 'A place for everything.', rack: 'Jerky for the lean days.' };
-    if (lines[p.id]) s.say(lines[p.id]);
-    if (['foundation', 'walls', 'roof', 'fence', 'turret', 'lights'].includes(p.id)) showBanner('HOMESTEAD', p.name + ' built');
+    if (lines[p.id] && !quiet) s.say(lines[p.id]);
+    if (['foundation', 'walls', 'roof', 'fence', 'turret', 'lights'].includes(p.id) && !quiet) showBanner('HOMESTEAD', p.name + ' built');
     const L = (lx, lz) => lw(this.site.x, this.site.z, this.rot, lx, lz);
     const box = (lx, lz, hw, hd, h = 3) => { const [x, z] = L(lx, lz); this.colls.push(addBox(x, z, hw, hd, this.rot, true, h)); };
     if (p.id === 'campfire') { this.fire.lit = true; const [x, z] = L(0, 6.4); addCircle(x, z, 0.7, false); }
@@ -5227,8 +5273,13 @@ class BuildTask extends Task {
   }
   end() { this.s.rig.setTool(null); }
 }
-function felltree(t, s) {
+/* remove a tree and leave a stump; felltree adds the falling animation on top */
+function fellTreeInstant(t) {
   t.alive = false; if (t.coll) t.coll.r = 0; navClearCircle(t.x, t.z, 0.9); hideTreeInstance(t);
+  const stump = new THREE.Mesh(cylG(0.26 * t.s, 0.32 * t.s, 0.5, 10), MAT.bark); stump.position.set(t.x, groundHeight(t.x, t.z) + 0.1, t.z); stump.castShadow = true; scene.add(stump);
+}
+function felltree(t, s) {
+  fellTreeInstant(t);
   const pivot = new THREE.Group(); const parts = INST.kinds['pine' + t.v].hi;
   const e = t.m4.elements; pivot.position.set(e[12], e[13], e[14]);
   const inner = new THREE.Group(); const pos = new THREE.Vector3(), q = new THREE.Quaternion(), sc = new THREE.Vector3(); t.m4.decompose(pos, q, sc); inner.quaternion.copy(q); inner.scale.copy(sc);
@@ -5237,7 +5288,6 @@ function felltree(t, s) {
   const dx = t.x - s.pos.x, dz = t.z - s.pos.z, l = Math.hypot(dx, dz) || 1;
   const axis = new THREE.Vector3(dz / l, 0, -dx / l);
   FALLING.push({ pivot, axis, t: 0, tip: { x: t.x + dx / l * 10, z: t.z + dz / l * 10 } });
-  const stump = new THREE.Mesh(cylG(0.26 * t.s, 0.32 * t.s, 0.5, 10), MAT.bark); stump.position.set(t.x, groundHeight(t.x, t.z) + 0.1, t.z); stump.castShadow = true; scene.add(stump);
   log('Timber! Felled a pine for wood.', '');
   return 5 + Math.floor(Math.random() * 3);
 }
@@ -5384,7 +5434,7 @@ const HUD = {
     document.querySelectorAll('[data-speed]').forEach(b => b.addEventListener('click', () => setSpeed(+b.dataset.speed)));
     $('btnHud').addEventListener('click', () => $('hud').classList.add('hidden'));
     $('btnHudShow').addEventListener('click', () => $('hud').classList.remove('hidden'));
-    $('btnSettings').addEventListener('click', () => { const s = $('settings'); s.hidden = !s.hidden; $('btnSettings').setAttribute('aria-pressed', String(!s.hidden)); });
+    $('btnSettings').addEventListener('click', () => { const s = $('settings'); s.hidden = !s.hidden; $('btnSettings').setAttribute('aria-pressed', String(!s.hidden)); if (!s.hidden) SAVEUI.toggle(false); });
     $('btnSound').addEventListener('click', () => { const on = AUDIO.toggle(); $('btnSound').setAttribute('aria-pressed', String(on)); });
     $('pipCollapse').addEventListener('click', () => { $('pip').classList.toggle('collapsed'); $('pipCollapse').textContent = $('pip').classList.contains('collapsed') ? '▴' : '▾'; });
     $('setQuality').addEventListener('change', (e) => setQuality(e.target.value));
@@ -5618,6 +5668,396 @@ const AUDIO = {
     }
   },
 };
+/* ============================================================
+   SAVE GAME: snapshot the simulation, restore it onto a world rebuilt from the same seed
+   ============================================================ */
+const SAVE_VERSION = 1;
+const SAVE_SLOTS = ['slot1', 'slot2', 'slot3'];
+const rd = (v, k = 100) => Math.round((+v || 0) * k) / k;
+const num = (v, d = 0) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
+const str = (v, max = 160) => String(v ?? '').replace(/[<>&"]/g, '').slice(0, max);
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' })[c]);
+function canSaveNow() { return !!SURV && !SURV.dead && !S.loading && !!S.gen; }
+/* find world objects by position instead of list order, so tiny float differences between browsers can't shift them */
+function nearIndex(list, xz, cell = 2) {
+  const m = new Map(), key = (i, j) => i + ',' + j;
+  for (const o of list) { const [x, z] = xz(o), k = key(Math.floor(x / cell), Math.floor(z / cell)); if (!m.has(k)) m.set(k, []); m.get(k).push(o); }
+  return (x, z, r, ok) => {
+    const ci = Math.floor(x / cell), cj = Math.floor(z / cell); let best = null, bd = r;
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (const o of m.get(key(ci + i, cj + j)) || []) { const [ox, oz] = xz(o), d = Math.hypot(ox - x, oz - z); if (d <= bd && (!ok || ok(o))) { bd = d; best = o; } }
+    return best;
+  };
+}
+
+function snapshotGame() {
+  const s = SURV, keep = ENEMIES.filter(e => !e.dead || e.corpseT < 400), idx = new Map(keep.map((e, i) => [e, i]));
+  const en = keep.map(e => {
+    const o = { t: e.type, x: rd(e.pos.x), z: rd(e.pos.z), yw: rd(e.yaw), hp: rd(e.hp, 10), st: e.state, hx: rd(e.home.x), hz: rd(e.home.z) };
+    if (e.aware) o.aw = 1; if (e.group) o.g = e.group; if (e.sentry) { o.sn = 1; o.y = rd(e.pos.y); } if (e.ambusher) o.am = 1; if (e.weapon) o.w = e.weapon;
+    if (e.avoidUntil) o.av = rd(e.avoidUntil, 1); if (e.seenOnce) o.se = 1; if (e.alertPos) o.al = [rd(e.alertPos.x), rd(e.alertPos.z)];
+    if (e.stateT) o.stt = rd(e.stateT, 10); if (e.dead) { o.dd = 1; o.ct = rd(e.corpseT, 1); }
+    if (e.pack) o.pk = 1; if (e.leader && idx.has(e.leader)) o.ld = idx.get(e.leader);
+    if (e.type === 'trader') { o.stock = e.stock || {}; o.dest = e.dest ? [rd(e.dest.x), rd(e.dest.z)] : null; o.campT = rd(e.campT, 1); if (e.leaving) o.lv = 1; }
+    return o;
+  });
+  const cont = CONTAINERS.map(c => {
+    const o = { id: c.id, ty: c.type, x: rd(c.x), z: rd(c.z), y: rd(c.y), r: rd(c.obj ? c.obj.rotation.y : 0) };
+    if (!c.looted && Object.keys(c.loot).length) o.lt = c.loot;
+    if (c.name !== CONTAINER_NAMES[c.type]) o.n = c.name;
+    if (c.looted) o.l = 1; if (c.known) o.k = 1; if (c.unreachable) o.u = 1; if (c.corpse) o.co = 1; if (c.drop) o.dr = 1; if (c.poiKind) o.pk = c.poiKind;
+    return o;
+  });
+  const genN = S.gen.pois, dv = [];
+  DANGER.v.forEach((v, i) => { if (v > 0.02) dv.push(i, rd(v)); });
+  const g = EVENTS.signal, m = BASE.site ? BASE.built.size + '/' + BASE.total() : '';
+  return {
+    game: 'wasteland-feed', v: SAVE_VERSION, seed: S.seed,
+    meta: { name: s.name, tag: s.tag, traits: s.traits, day: S.day, clock: clockString(), story: s.story, site: BASE.site ? BASE.site.name : '', built: m, savedAt: Date.now() },
+    w: { gm: rd(S.gameMinutes), day: S.day, st: rd(S.simTime), weather: { ...S.weather }, stats: { ...S.stats },
+      flags: { toolSpots: S.flags.toolSpots, stalkerLair: S.flags.stalkerLair, substitute: !!S.flags.substitute },
+      dir: { t: rd(DIRECTOR.t, 1), enc: rd(DIRECTOR.encounterT, 1), raid: DIRECTOR.nightRaidDone }, vault: VAULT.openT >= 1 ? 1 : 0, genPois: genN, genCid: S.gen.cid },
+    s: { no: S.stats.dwellerNo, name: s.name, tag: s.tag, traits: s.traits, p: s.p, x: rd(s.pos.x), z: rd(s.pos.z), yw: rd(s.yaw),
+      hp: rd(s.hp, 10), food: rd(s.food, 10), water: rd(s.water, 10), rest: rd(s.rest, 10), rads: rd(s.rads, 10), level: s.level, xp: rd(s.xp, 1),
+      inv: s.inv, weapons: [...s.weapons], wpn: s.weaponId, story: s.story, goal: s.goal, thought: s.thought, seen: s.sitesSeen, plan: (s.sitePlan || []).map(q => q.id),
+      vc: s.visitedCount, nag: s.settleNag ? 1 : 0, searchT: rd(s.searchT, 1), stats: s.stats, lastTrade: rd(s.lastTrade, 1), noShelter: rd(s.noShelterUntil, 1),
+      noted: [...s.noted].filter(k => !/^(amb|avoid|cover)/.test(k)),
+      belief: [...s.belief].map(([p, b]) => [POIS.indexOf(p), rd(b.hammer, 1000), rd(b.saw, 1000), rd(b.axe, 1000)]) },
+    en, cont,
+    poi: { v: POIS.slice(0, genN).map(p => (p.visited ? 1 : 0)).join(''), d: POIS.slice(0, genN).map(p => (p.discovered ? 1 : 0)).join(''),
+      x: POIS.slice(genN).map(p => ({ n: p.name, x: rd(p.x), z: rd(p.z), r: p.r, k: p.kind, val: p.value, v: p.visited ? 1 : 0, d: p.discovered ? 1 : 0 })) },
+    trees: TREES.filter(t => !t.alive).map(t => [rd(t.x), rd(t.z)]),
+    cars: CARS.map(c => [rd(c.x), rd(c.z), c.scrap]),
+    dg: { v: dv, n: DANGER.notes.map(q => ({ text: q.text, x: rd(q.x), z: rd(q.z), t: rd(q.t, 1) })) },
+    b: BASE.site ? { site: BASE.site.id, rot: rd(BASE.rot, 1e4), style: BASE.style, plan: BASE.plan, built: [...BASE.built], paid: [...BASE.paid], crops: rd(BASE.crops, 1e3),
+      prog: Object.fromEntries(PIECES.filter(p => !BASE.built.has(p.id) && BASE.models[p.id] && BASE.models[p.id].userData.t > 0).map(p => [p.id, rd(BASE.models[p.id].userData.t, 10)])) } : null,
+    ev: { next: rd(EVENTS.nextT, 1), last: EVENTS.last, hist: EVENTS.history.slice(-40),
+      tr: idx.has(EVENTS.trader) ? idx.get(EVENTS.trader) : -1, pk: idx.has(EVENTS.pack) ? idx.get(EVENTS.pack) : -1,
+      drops: EVENTS.drops.map(d => ({ c: d.c.id, x: rd(d.x), z: rd(d.z), gy: rd(d.gy), h: rd(d.h), ld: d.landed ? 1 : 0, t: rd(d.t, 10), lt: rd(d.landT, 10) })),
+      sig: g ? { x: rd(g.x), z: rd(g.z), poi: POIS.indexOf(g.poi), body: g.body.id, out: g.outcome, t: rd(g.t, 1), res: g.resolved ? 1 : 0, ver: g.verdict || null } : null },
+    log: [...[...document.querySelectorAll('#log p')].map(p => ({ c: p.className, t: p.querySelector('.ts')?.textContent || '', m: p.lastChild?.textContent || '' })), ...LOGQ.map(l => ({ c: l.cls, t: l.t, m: l.msg }))].slice(-9),
+    trail: HUD.trail.filter((_, i, a) => i % 2 === 0 || i === a.length - 1).map(([x, z]) => [Math.round(x), Math.round(z)]),
+  };
+}
+
+function validateSave(d) {
+  if (!d || typeof d !== 'object' || d.game !== 'wasteland-feed') return 'That is not a Wasteland save.';
+  if (num(d.v) > SAVE_VERSION) return 'That save comes from a newer version of the game.';
+  if (d.v !== SAVE_VERSION || !Number.isFinite(d.seed) || !d.s || !d.w || !Array.isArray(d.cont) || !Array.isArray(d.en) || !d.poi) return 'That save file is damaged.';
+  return null;
+}
+
+/* copy numeric personality values over the freshly rolled ones, ignoring anything malformed */
+function mergeNumbers(dst, src) {
+  if (!src || typeof src !== 'object') return;
+  for (const k of Object.keys(dst)) {
+    if (typeof dst[k] === 'number' && Number.isFinite(src[k])) dst[k] = src[k];
+    else if (dst[k] && typeof dst[k] === 'object' && src[k] && typeof src[k] === 'object') {
+      for (const [kk, vv] of Object.entries(src[k])) if (Number.isFinite(vv) && kk.length < 24) dst[k][kk] = vv;
+    }
+  }
+}
+
+function applySave(d) {
+  const W = d.w;
+  // clock, weather, counters
+  S.gameMinutes = num(W.gm, S.gameMinutes); S.day = num(W.day, 1); S.simTime = num(W.st, 0);
+  const wk = ['clear', 'dust', 'rain', 'radstorm'];
+  const ww = W.weather || {}; S.weather = { kind: wk.includes(ww.kind) ? ww.kind : 'clear', t: num(ww.t), next: num(ww.next, 300), intensity: clamp(num(ww.intensity), 0, 1), target: num(ww.target), pending: wk.includes(ww.pending) ? ww.pending : null };
+  for (const k of Object.keys(S.stats)) S.stats[k] = num((W.stats || {})[k], S.stats[k]);
+  S.stats.sneaks = num((W.stats || {}).sneaks); S.stats.covers = num((W.stats || {}).covers);
+  const fl = W.flags || {}; S.flags = { toolSpots: fl.toolSpots && typeof fl.toolSpots === 'object' ? fl.toolSpots : S.flags.toolSpots, stalkerLair: str(fl.stalkerLair, 20) || S.flags.stalkerLair, substitute: !!fl.substitute };
+  const dir = W.dir || {}; DIRECTOR.t = num(dir.t); DIRECTOR.encounterT = num(dir.enc, 240); DIRECTOR.nightRaidDone = num(dir.raid, -1);
+  ENV.lastEnvKey = '';
+  if (S.gen.pois !== W.genPois || S.gen.cid !== W.genCid) console.warn('[wasteland] save was made on a different world layout; restoring what matches');
+  // felled trees, stripped cars
+  const treeAt = nearIndex(TREES, t => [t.x, t.z]);
+  for (const q of d.trees || []) { const t = Array.isArray(q) && treeAt(num(q[0]), num(q[1]), 0.6, o => o.alive); if (t) fellTreeInstant(t); }
+  const carAt = nearIndex(CARS, c => [c.x, c.z]);
+  for (const q of d.cars || []) { const c = Array.isArray(q) && carAt(num(q[0]), num(q[1]), 1); if (c) c.scrap = Math.max(0, Math.round(num(q[2], c.scrap))); }
+  // places: world-generated flags, then graves and signals added during play
+  const pv = String(d.poi.v || ''), pd = String(d.poi.d || '');
+  for (let i = 0; i < Math.min(W.genPois, POIS.length); i++) { POIS[i].visited = pv[i] === '1'; POIS[i].discovered = pd[i] === '1'; }
+  for (const p of d.poi.x || []) { const q = addPOI(str(p.n, 60), num(p.x), num(p.z), num(p.r, 8), str(p.k, 20), num(p.val, 1)); q.visited = !!p.v; q.discovered = !!p.d; }
+  // containers: match world-generated ones by id, recreate the rest (corpses, drops, relocated loot)
+  const genAt = nearIndex(CONTAINERS.filter(c => c.id < S.gen.cid), c => [c.x, c.z]), used = new Set(), byOld = new Map();
+  for (const sc of d.cont) {
+    if (!CONTAINER_NAMES[sc.ty]) continue;
+    let c = sc.id < W.genCid ? genAt(num(sc.x), num(sc.z), 0.6, q => q.type === sc.ty && !used.has(q)) : null;
+    if (c) used.add(c);
+    else c = addContainer(sc.ty, num(sc.x), num(sc.z), num(sc.r), { y: num(sc.y, groundHeight(num(sc.x), num(sc.z))), poiKind: sc.pk ? str(sc.pk, 20) : null });
+    c.loot = {}; for (const [id, n] of Object.entries(sc.lt || {})) if (ITEMS[id] && Number.isFinite(n) && n > 0) c.loot[id] = Math.min(999, Math.round(n));
+    if (sc.n) c.name = str(sc.n, 60);
+    c.looted = !!sc.l; c.known = !!sc.k; c.unreachable = !!sc.u; c.corpse = !!sc.co; c.drop = !!sc.dr;
+    if (c.looted && c.pivot) { c.open = 1; c.pivot.rotation[c.axis] = c.ang; }
+    byOld.set(sc.id, c);
+  }
+  // danger memory
+  DANGER.v.fill(0); const dv = (d.dg && d.dg.v) || [];
+  for (let i = 0; i + 1 < dv.length; i += 2) if (dv[i] >= 0 && dv[i] < DANGER.v.length) DANGER.v[dv[i]] = clamp(num(dv[i + 1]), 0, 12);
+  DANGER.notes.length = 0; for (const n of ((d.dg && d.dg.n) || []).slice(0, 6)) DANGER.notes.push({ text: str(n.text, 80), x: num(n.x), z: num(n.z), t: num(n.t) });
+  if (W.vault) openVaultInstant();
+  // the survivor
+  const sv = d.s, stories = ['intro', 'scavenge', 'settle', 'build', 'homestead'];
+  S.stats.dwellerNo = Math.max(1, Math.round(num(sv.no, 1)));
+  scene.remove(SURV.root);
+  const s = SURV = new Survivor({ x: num(sv.x, VAULT.spawn.x), z: num(sv.z, VAULT.front + 2) }, true);
+  s.name = str(sv.name, 40) || s.name; s.tag = str(sv.tag, 30) || s.tag;
+  const tr = (Array.isArray(sv.traits) ? sv.traits : []).filter(t => TRAITS[t]); if (tr.length) s.traits = tr;
+  mergeNumbers(s.p, sv.p); s.dangerW = 0.6 * s.p.dangerAversion;
+  s.level = Math.max(1, Math.round(num(sv.level, 1))); s.xp = num(sv.xp);
+  s.food = clamp(num(sv.food, 80), 0, 100); s.water = clamp(num(sv.water, 80), 0, 100); s.rest = clamp(num(sv.rest, 80), 0, 100); s.rads = clamp(num(sv.rads), 0, 1000);
+  s.hp = clamp(num(sv.hp, 100), 1, s.maxHpNow);
+  s.inv = {}; for (const [id, n] of Object.entries(sv.inv || {})) if (ITEMS[id] && Number.isFinite(n) && n > 0) s.inv[id] = Math.min(9999, Math.round(n));
+  s.weapons = new Set(['fists', ...(Array.isArray(sv.weapons) ? sv.weapons : []).filter(w => WEAPONS[w])]);
+  s.equip(s.weapons.has(sv.wpn) ? sv.wpn : s.weapons.has('pistol') ? 'pistol' : 'fists');
+  s.story = stories.includes(sv.story) ? sv.story : 'scavenge'; s.goal = str(sv.goal, 120) || s.goal; s.thought = str(sv.thought, 160) || s.thought;
+  s.sitesSeen = {}; for (const [id, v] of Object.entries(sv.seen || {})) if (SITES.find(q => q.id === id) && v) s.sitesSeen[id] = { score: num(v.score), text: str(v.text, 120) };
+  const plan = (Array.isArray(sv.plan) ? sv.plan : []).map(id => SITES.find(q => q.id === id)).filter(Boolean); if (plan.length) s.sitePlan = plan;
+  s.visitedCount = num(sv.vc); s.settleNag = !!sv.nag; s.searchT = num(sv.searchT); s.lastTrade = num(sv.lastTrade); s.noShelterUntil = num(sv.noShelter);
+  for (const k of Object.keys(s.stats)) s.stats[k] = num((sv.stats || {})[k], s.stats[k]);
+  s.noted = new Set((Array.isArray(sv.noted) ? sv.noted : []).map(k => str(k, 60)));
+  if (Array.isArray(sv.belief)) { s.belief = new Map(); for (const [i, h, sa, a] of sv.belief) { const p = POIS[i]; if (p) s.belief.set(p, { hammer: clamp(num(h), 0, 1), saw: clamp(num(sa), 0, 1), axe: clamp(num(a), 0, 1) }); } }
+  s.yaw = num(sv.yw); s.syncRoot();
+  if (s.story === 'intro') {
+    const sp = W.vault ? { x: VAULT.spawn.x, z: VAULT.front + 1.2 } : VAULT.spawn;
+    s.place(sp.x, sp.z); s.task = new IntroTask(s); s.task.key = 'intro'; s.task.prio = 200;
+  } else { s.task = null; s.decideT = 0; }
+  // everything alive (and fresh corpses) out in the world
+  for (const e of ENEMIES) scene.remove(e.root); ENEMIES.length = 0;
+  const made = d.en.map(se => (EDEF[se.t] ? restoreEnemy(se) : null));
+  made.forEach((e, i) => { const se = d.en[i]; if (e && Number.isInteger(se.ld) && made[se.ld]) e.leader = made[se.ld]; });
+  // the homestead
+  const b = d.b, site = b && SITES.find(q => q.id === b.site);
+  if (site) {
+    const planB = (Array.isArray(b.plan) ? b.plan : []).filter(id => PIECE[id]);
+    BASE.setupSite(site, STYLE[b.style] ? b.style : 'log', planB.length ? planB : PIECES.filter(p => !p.opt).map(p => p.id), num(b.rot));
+    for (const id of b.built || []) if (PIECE[id] && !BASE.built.has(id)) BASE.complete(PIECE[id], s, true);
+    for (const id of b.paid || []) if (PIECE[id]) BASE.paid.add(id);
+    for (const [id, t] of Object.entries(b.prog || {})) if (PIECE[id] && !BASE.built.has(id)) BASE.restoreProgress(PIECE[id], num(t));
+    BASE.crops = clamp(num(b.crops), 0, 1);
+  }
+  // world events in flight
+  const ev = d.ev || {};
+  EVENTS.nextT = num(ev.next, 400); EVENTS.last = str(ev.last, 12) || null; EVENTS.history.length = 0; for (const h of (ev.hist || []).slice(-40)) EVENTS.history.push(str(h, 12));
+  EVENTS.trader = made[ev.tr] || null; EVENTS.pack = made[ev.pk] || null;
+  for (const sd of ev.drops || []) {
+    const c = byOld.get(sd.c); if (!c) continue;
+    const drop = { c, x: num(sd.x), z: num(sd.z), gy: num(sd.gy), h: num(sd.h), chute: null, landed: !!sd.ld, t: num(sd.t), landT: num(sd.lt), smokeT: 0 };
+    if (!drop.landed) { drop.chute = makeChute(); scene.add(drop.chute); c.obj.position.y = drop.gy + drop.h; drop.chute.position.set(drop.x, drop.gy + drop.h + 3.3, drop.z); }
+    else addCircle(drop.x, drop.z, 0.75, false);
+    EVENTS.drops.push(drop);
+  }
+  const sg = ev.sig;
+  if (sg && POIS[sg.poi] && byOld.get(sg.body)) EVENTS.signal = { x: num(sg.x), z: num(sg.z), poi: POIS[sg.poi], body: byOld.get(sg.body), outcome: ['trap', 'cache', 'beasts'].includes(sg.out) ? sg.out : 'cache', t: num(sg.t), resolved: !!sg.res, verdict: sg.ver && typeof sg.ver === 'object' ? { go: !!sg.ver.go, want: num(sg.ver.want), t: num(sg.ver.t) } : null };
+  // terminal, map trail, camera
+  LOGQ.length = 0; const box = $('log'); box.innerHTML = '';
+  for (const l of (d.log || []).slice(-8)) { const p = document.createElement('p'); if (['good', 'warn', 'danger', 'rad'].includes(l.c)) p.className = l.c; const ts = document.createElement('span'); ts.className = 'ts'; ts.textContent = str(l.t, 8); p.appendChild(ts); p.appendChild(document.createTextNode(str(l.m, 200))); box.appendChild(p); }
+  log('Feed restored: ' + s.name + ', day ' + S.day + '.', 'good');
+  HUD.trail = (d.trail || []).filter(q => Array.isArray(q) && Number.isFinite(q[0]) && Number.isFinite(q[1])).slice(-600);
+  HUD.traitsFor = null; FX.clearLabels();
+  CAM.setMode(s.story === 'intro' ? 'cinema' : 'follow'); CAM.autoIntro = s.story === 'intro';
+  CAM.pos.set(s.pos.x - Math.sin(s.yaw) * 7, s.pos.y + 3.5, s.pos.z - Math.cos(s.yaw) * 7); CAM.look.set(s.pos.x, s.pos.y + 1.4, s.pos.z);
+  camera.position.copy(CAM.pos); camera.lookAt(CAM.look);
+  updateEnvironment(0.016, 0, s.pos); updateChunks(camera.position); cullActors(camera.position);
+}
+
+function restoreEnemy(se) {
+  const st0 = se.dd ? 'wander' : se.st === 'roar' ? 'chase' : se.st === 'follow' ? 'follow' : se.st;
+  const e = new Enemy(se.t, num(se.x), num(se.z), { state: typeof st0 === 'string' ? st0 : 'wander', group: se.g ? str(se.g, 24) : null });
+  e.yaw = num(se.yw); e.hp = clamp(num(se.hp, e.maxHp), 1, e.maxHp); e.home = { x: num(se.hx, e.pos.x), z: num(se.hz, e.pos.z) };
+  e.aware = !!se.aw; e.avoidUntil = num(se.av); e.seenOnce = !!se.se;
+  if (se.w && WEAPONS[se.w] && e.type === 'raider') { e.weapon = se.w; e.rig.setWeapon(se.w); }
+  if (se.am) e.ambusher = true;
+  if (se.pk) { e.pack = true; e.D = { ...EDEF.cattle, name: 'Pack Brahmin' }; addPackBags(e); }
+  if (e.type === 'trader') { e.stock = {}; for (const [k, v] of Object.entries(se.stock || {})) if (TOOLS_NEEDED.includes(k) && Number.isFinite(v)) e.stock[k] = v; e.dest = Array.isArray(se.dest) ? { x: num(se.dest[0]), z: num(se.dest[1]) } : null; e.campT = num(se.campT); e.leaving = !!se.lv; }
+  if (se.sn) { e.sentry = true; e.state = 'sentry'; e.pos.y = num(se.y, e.pos.y); }
+  if (se.dd) { e.dead = true; e.hp = 0; e.state = 'dead'; e.speedNow = 0; e.corpseT = num(se.ct); if ('deadT' in e.rig) e.rig.deadT = 1; }
+  else if (e.state === 'investigate') e.alertPos = Array.isArray(se.al) ? { x: num(se.al[0]), z: num(se.al[1]) } : { x: e.pos.x, z: e.pos.z };
+  else if (e.state === 'flee') e.fleeFrom = SURV;
+  if (!e.dead) e.stateT = num(se.stt);
+  e.syncRoot();
+  return e;
+}
+
+async function loadGame(data) {
+  const err = validateSave(data); if (err) { SAVEUI.status(err); return false; }
+  if (S.loading) return false;
+  S.loading = true; SAVEUI.toggle(false); $('saveToast').hidden = true; $('endcard').hidden = true; S.flags.endShown = false;
+  $('loader').classList.remove('done'); bootLines.length = 0; bootLog('Restoring saved feed: ' + str(data.meta && data.meta.name, 40) + ', day ' + num(data.meta && data.meta.day, 1), 6); await nextFrame();
+  try {
+    if (SURV) scene.remove(SURV.root);
+    scene.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+    resetWorldState();
+    await buildWorld(data.seed);
+    bootLog('Replaying the last recorded state', 94); await nextFrame();
+    applySave(data);
+    setupComposer(); onResize();
+  } catch (e) {
+    console.error(e); S.loading = false;
+    reportIssue('That save could not be restored, so a new world was started instead.', false);
+    await restart(true); return false;
+  }
+  S.loading = false; $('loader').classList.add('done');
+  return true;
+}
+
+/* ---------- where saves live: the viewer's claude.ai account when available, this browser always ---------- */
+const SAVES = {
+  db: null, uid: null, dl: null, meta: {}, cloudMeta: {}, auto: true, lastAutoT: -1e9, chain: Promise.resolve(), cloudReady: false,
+  get cloud() { return !!(this.db && this.uid); },
+  localMeta() { try { return JSON.parse(localStorage.getItem('wl_savemeta') || '{}') || {}; } catch (e) { return {}; } },
+  async init() {
+    try { this.auto = localStorage.getItem('wl_autosave') !== 'off'; } catch (e) { }
+    this.meta = this.localMeta(); SAVEUI.render();
+    const c = window.claude;
+    if (c && typeof c.use === 'function') {
+      try {
+        const [db, user, dl] = await Promise.all([c.use('db'), c.use('user'), c.use('downloads')]);
+        this.dl = dl || null;
+        const uid = db && user ? await user.id() : null;
+        if (db && uid) {
+          this.db = db; this.uid = uid;
+          const snap = await this.ref('index').get().catch(() => null), cm = snap && snap.exists ? (snap.data().slots || {}) : {};
+          for (const [k, m] of Object.entries(cm)) if (m && typeof m === 'object') { this.cloudMeta[k] = m; if (!this.meta[k] || num(m.savedAt) > num(this.meta[k].savedAt)) this.meta[k] = m; }
+        }
+      } catch (e) { this.db = null; }
+    }
+    this.cloudReady = true; SAVEUI.render(); SAVEUI.offerContinue();
+  },
+  ref(name) { return this.db.doc('data/users/' + this.uid + '/' + name); },
+  queue(fn) { const p = this.chain.then(fn, fn); this.chain = p.catch(() => { }); return p; },
+  async write(slot, data) {
+    const json = JSON.stringify(data), meta = data.meta; let local = false, cloud = false;
+    try { localStorage.setItem('wl_save_' + slot, json); const lm = this.localMeta(); lm[slot] = meta; localStorage.setItem('wl_savemeta', JSON.stringify(lm)); local = true; } catch (e) { }
+    if (this.cloud) {
+      cloud = await this.queue(async () => {
+        const CH = 120000, parts = []; for (let i = 0; i < json.length; i += CH) parts.push(json.slice(i, i + CH));
+        for (let i = 0; i < parts.length; i++) await this.ref(slot + '-p' + i).set({ d: parts[i] });
+        await this.ref(slot).set({ meta, parts: parts.length });
+        this.cloudMeta[slot] = meta; await this.ref('index').set({ slots: { ...this.cloudMeta } });
+        return true;
+      }).catch((e) => { console.warn('[wasteland] cloud save failed', e && e.code); return false; });
+    }
+    if (local || cloud) this.meta[slot] = meta;
+    return { local, cloud };
+  },
+  async read(slot) {
+    let best = null;
+    try { const j = localStorage.getItem('wl_save_' + slot); if (j) best = JSON.parse(j); } catch (e) { best = null; }
+    if (this.cloud) {
+      try {
+        const head = await this.ref(slot).get();
+        if (head.exists) {
+          const h = head.data(), n = Math.min(40, num(h.parts));
+          if (!best || num(h.meta && h.meta.savedAt) > num(best.meta && best.meta.savedAt)) {
+            let json = ''; for (let i = 0; i < n; i++) { const p = await this.ref(slot + '-p' + i).get(); json += p.exists ? String(p.data().d || '') : ''; }
+            best = JSON.parse(json);
+          }
+        }
+      } catch (e) { console.warn('[wasteland] cloud load failed', e && e.code); }
+    }
+    return best;
+  },
+  async remove(slot) {
+    try { localStorage.removeItem('wl_save_' + slot); const lm = this.localMeta(); delete lm[slot]; localStorage.setItem('wl_savemeta', JSON.stringify(lm)); } catch (e) { }
+    delete this.meta[slot];
+    if (this.cloud) await this.queue(async () => {
+      const head = await this.ref(slot).get(); const n = head.exists ? Math.min(40, num(head.data().parts)) : 0;
+      for (let i = 0; i < n; i++) await this.ref(slot + '-p' + i).delete();
+      await this.ref(slot).delete(); delete this.cloudMeta[slot]; await this.ref('index').set({ slots: { ...this.cloudMeta } });
+    }).catch(() => { });
+  },
+  newest() { let best = null; for (const k of [...SAVE_SLOTS, 'auto']) { const m = this.meta[k]; if (m && (!best || num(m.savedAt) > num(best.m.savedAt))) best = { k, m }; } return best; },
+  autosave(force) {
+    if (!this.auto || !canSaveNow() || SURV.story === 'intro') return;
+    const now = performance.now(); if (!force && now - this.lastAutoT < 45000) return;
+    this.lastAutoT = now;
+    this.write('auto', snapshotGame()).then(r => { if (r.local || r.cloud) SAVEUI.flash('SAVED'); SAVEUI.render(); });
+  },
+};
+
+/* ---------- the SAVE panel, the continue prompt and the end-card shortcut ---------- */
+const SAVEUI = {
+  armed: null, armT: 0, flashT: 0,
+  init() {
+    $('btnSave').addEventListener('click', () => this.toggle());
+    $('saveSlots').addEventListener('click', (e) => { const b = e.target.closest('button[data-act]'); if (b) this.act(b.dataset.act, b.dataset.slot, b); });
+    $('setAutosave').value = SAVES.auto ? 'on' : 'off';
+    $('setAutosave').addEventListener('change', (e) => { SAVES.auto = e.target.value === 'on'; try { localStorage.setItem('wl_autosave', e.target.value); } catch (err) { } });
+    $('btnExport').addEventListener('click', () => this.exportNow());
+    $('btnImport').addEventListener('click', () => $('importFile').click());
+    $('importFile').addEventListener('change', (e) => this.importFile(e.target.files && e.target.files[0]));
+    $('toastContinue').addEventListener('click', () => { const n = SAVES.newest(); $('saveToast').hidden = true; if (n) this.loadFrom(n.k); });
+    $('toastDismiss').addEventListener('click', () => { $('saveToast').hidden = true; });
+    $('btnEndLoad').addEventListener('click', () => { const n = SAVES.newest(); if (n) this.loadFrom(n.k); });
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') SAVES.autosave(false); });
+  },
+  toggle(force) {
+    const p = $('savePanel'), open = force ?? p.hidden; p.hidden = !open; $('btnSave').setAttribute('aria-pressed', String(open));
+    if (open) { $('settings').hidden = true; $('btnSettings').setAttribute('aria-pressed', 'false'); this.status(''); this.render(); }
+  },
+  ago(t) { const m = (Date.now() - num(t)) / 60000; return m < 1 ? 'just now' : m < 60 ? Math.round(m) + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' d ago'; },
+  row(k, label) {
+    const m = SAVES.meta[k], canSave = k !== 'auto';
+    const info = m ? `<b>${label}</b> · ${esc(m.name)} · Day ${esc(m.day)} ${esc(m.clock)}<small>${m.site ? esc(m.site) + ' · ' + esc(m.built) : m.story === 'intro' ? 'Leaving the vault' : 'No homestead yet'} · ${this.ago(m.savedAt)}</small>` : `<b>${label}</b> · empty`;
+    return `<div class="slot"><div class="m">${info}</div><div class="b">${canSave ? `<button data-act="save" data-slot="${k}">SAVE</button>` : ''}${m ? `<button data-act="load" data-slot="${k}">LOAD</button><button data-act="del" data-slot="${k}" aria-label="Delete ${label}">✕</button>` : ''}</div></div>`;
+  },
+  render() {
+    if (!$('saveSlots')) return;
+    $('saveSlots').innerHTML = SAVE_SLOTS.map((k, i) => this.row(k, 'SLOT ' + (i + 1))).join('') + this.row('auto', 'AUTOSAVE');
+    $('saveWhere').textContent = SAVES.cloud ? 'Saves are stored in your Claude account, so they follow you to other devices. A copy also stays in this browser.'
+      : SAVES.cloudReady ? 'Saves are stored in this browser. Use Export to keep a copy or move a game to another device.' : 'Checking for saved games…';
+    $('btnEndLoad').hidden = !SAVES.newest();
+  },
+  status(t) { if ($('saveStatus')) $('saveStatus').textContent = t; },
+  flash(t) { const b = $('btnSave'); b.textContent = t; clearTimeout(this.flashT); this.flashT = setTimeout(() => { b.textContent = 'SAVE'; }, 1600); },
+  confirm(btn, text) {
+    if (this.armed === btn && performance.now() - this.armT < 4000) { this.armed = null; return true; }
+    this.armed = btn; this.armT = performance.now(); const old = btn.textContent; btn.textContent = text;
+    setTimeout(() => { if (btn.textContent === text) btn.textContent = old; }, 4000);
+    return false;
+  },
+  async act(act, slot, btn) {
+    if (act === 'save') {
+      if (!canSaveNow()) { this.status(SURV && SURV.dead ? 'The survivor is gone. Load a save or send the next dweller.' : 'Can\'t save right now.'); return; }
+      if (SAVES.meta[slot] && !this.confirm(btn, 'OVERWRITE?')) return;
+      this.status('Saving…'); const r = await SAVES.write(slot, snapshotGame());
+      this.status(r.cloud ? 'Saved.' : r.local ? (SAVES.cloud ? 'Saved in this browser. Your Claude account could not be reached.' : 'Saved in this browser.') : 'Could not save: storage is full or blocked here. Try Export instead.');
+      if (r.local || r.cloud) this.flash('SAVED'); this.render();
+    } else if (act === 'load') { if (this.confirm(btn, 'LOAD?')) await this.loadFrom(slot); }
+    else if (act === 'del') { if (this.confirm(btn, 'DELETE?')) { await SAVES.remove(slot); this.status('Deleted.'); this.render(); } }
+  },
+  async loadFrom(slot) {
+    this.status('Loading…'); const d = await SAVES.read(slot);
+    if (!d) { this.status('That save could not be found.'); return; }
+    await loadGame(d);
+  },
+  offerContinue() {
+    const n = SAVES.newest(); if (!n || S.loading) return;
+    $('toastText').textContent = 'Continue ' + str(n.m.name, 40) + '’s story? Day ' + num(n.m.day, 1) + (n.m.site ? ' · ' + str(n.m.site, 60) : '');
+    $('saveToast').hidden = false; setTimeout(() => { $('saveToast').hidden = true; }, 25000);
+  },
+  async exportNow() {
+    if (!canSaveNow()) { this.status('Nothing to export right now.'); return; }
+    const data = snapshotGame(), json = JSON.stringify(data), fn = 'wasteland-' + data.meta.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-day' + data.meta.day + '.json';
+    if (SAVES.dl) {
+      try { await SAVES.dl.save({ filename: fn, data: json }); this.status('Exported ' + fn + '.'); }
+      catch (e) { this.status(e && e.code === 'declined' ? 'Export cancelled.' : 'Export is not available here.'); }
+      return;
+    }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' })); a.download = fn;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    this.status('Exported ' + fn + '.');
+  },
+  async importFile(file) {
+    $('importFile').value = '';
+    if (!file) return;
+    if (file.size > 8e6) { this.status('That file is too big to be a save.'); return; }
+    let data; try { data = JSON.parse(await file.text()); } catch (e) { this.status('That file is not a Wasteland save.'); return; }
+    const err = validateSave(data); if (err) { this.status(err); return; }
+    await loadGame(data);
+  },
+};
 
 /* ============================================================
    MAIN: renderer, post-processing, boot, loop, restart
@@ -5756,6 +6196,7 @@ async function buildWorld(seed) {
   navInit();
   bootLog('Building ruins and landmarks', 52); await nextFrame();
   populateWorld((m) => bootLog(m));
+  S.gen = { pois: POIS.length, cid: CID }; // everything past these was added during play and goes into saves
   BASE.fire = fireBarrel(0, -600, false); BASE.fire.lit = false;
   bootLog('Waking the wasteland', 84); await nextFrame();
   spawnInitialEnemies();
@@ -5774,13 +6215,13 @@ async function buildWorld(seed) {
 async function restart(newWorld) {
   $('endcard').hidden = true; S.flags.endShown = false;
   if (newWorld) {
-    $('loader').classList.remove('done'); bootLines.length = 0; bootLog('Rebooting surveillance feed...', 5); await nextFrame();
+    S.loading = true; $('loader').classList.remove('done'); bootLines.length = 0; bootLog('Rebooting surveillance feed...', 5); await nextFrame();
     if (SURV) scene.remove(SURV.root);
     scene.traverse(o => { if (o.geometry) o.geometry.dispose(); });
     resetWorldState();
     await buildWorld((Math.random() * 1e9) | 0);
     setupComposer(); onResize();
-    $('loader').classList.add('done');
+    S.loading = false; $('loader').classList.add('done');
     CAM.setMode('cinema'); CAM.autoIntro = true;
     return;
   }
@@ -5822,7 +6263,7 @@ function step(dt) {
   S.simTime += dt;
   const gm = dt * GAME_MIN_PER_SEC; S.gameMinutes += gm;
   const day = Math.floor(S.gameMinutes / 1440) + 1;
-  if (day !== S.day) { S.day = day; S.stats.days = day; log('Day ' + day + ' begins.', 'good'); if (SURV && !SURV.dead && day > 1) showBanner('DAY ' + day, SURV.name + ' is still alive'); }
+  if (day !== S.day) { S.day = day; S.stats.days = day; log('Day ' + day + ' begins.', 'good'); if (SURV && !SURV.dead && day > 1) { showBanner('DAY ' + day, SURV.name + ' is still alive'); setTimeout(() => SAVES.autosave(false), 0); } }
   updateWeather(gm);
   if (SURV) SURV.update(dt);
   for (let i = ENEMIES.length - 1; i >= 0; i--) { const e = ENEMIES[i]; if (e) e.update(dt); }
@@ -5835,7 +6276,7 @@ function step(dt) {
 let lastNow = 0, slowT = 0, fastT = 0, chunkT = 0;
 function frame(now) {
   requestAnimationFrame(frame);
-  if (window.__wlPause) return;
+  if (window.__wlPause || S.loading) return;
   let rdt = lastNow ? (now - lastNow) / 1000 : 0.016; lastNow = now; rdt = Math.min(rdt, 0.1);
   const eff = Math.min(S.speed * (S.sleepBoost || 1), 60);
   const sim = rdt * eff;
@@ -5878,6 +6319,7 @@ async function start(data = {}) {
     await buildWorld(hs ? +hs[1] : data.seed ?? ((Math.random() * 1e9) | 0));
     setupComposer();
     HUD.init(); HUD.setPip(HUD.pip); HUD.syncSpeed(); CAM.init($('view')); CAM.setMode('cinema'); CAM.autoIntro = true;
+    SAVEUI.init(); SAVES.init();
     window.addEventListener('resize', onResize); onResize();
     bootLog('Feed live.', 100);
     setTimeout(() => $('loader').classList.add('done'), 350);
@@ -5888,7 +6330,7 @@ async function start(data = {}) {
     $('bootErr').textContent = 'Feed failed to start: ' + (err && err.message ? err.message : err) + '. A browser with WebGL2 is required.';
   }
 }
-window.__wl = { EVENTS, DANGER, SITES, PIECES, TRAITS, STYLE, LOGQ, siteFeatures, cullActors, ENV, HUD, FX, VAULT, get camera() { return camera; }, get composer() { return composer; }, updateChunks, updateEnvironment, S, get SURV() { return SURV; }, BASE, ENEMIES, CONTAINERS, POIS, step, setSpeed, CAM, NAV, findPath, walkClear, losClear, COLL, TREES, CARS, LAYOUT, groundHeight, get scene() { return scene; }, get renderer() { return renderer; } };
+window.__wl = { EVENTS, DANGER, SITES, PIECES, TRAITS, STYLE, LOGQ, siteFeatures, SAVES, SAVEUI, snapshotGame, loadGame, TREES_: () => TREES, cullActors, ENV, HUD, FX, VAULT, get camera() { return camera; }, get composer() { return composer; }, updateChunks, updateEnvironment, S, get SURV() { return SURV; }, BASE, ENEMIES, CONTAINERS, POIS, step, setSpeed, CAM, NAV, findPath, walkClear, losClear, COLL, TREES, CARS, LAYOUT, groundHeight, get scene() { return scene; }, get renderer() { return renderer; } };
 window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
 </script>
 </body>

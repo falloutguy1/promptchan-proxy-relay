@@ -13,6 +13,14 @@ No two runs play out the same:
 - Homesteads come in three styles: log cabin with a palisade in the woods, plank farmhouse with a rail fence on farmland, and a scrap-metal shack near town or on high ground.
 - The STAT tab shows the dweller's personality; DATA shows what it remembers.
 
+Saving:
+
+- The SAVE button opens three save slots plus an autosave. The autosave runs every in-game morning and when you switch away from the tab; you can turn it off in the same panel.
+- Loading rebuilds the world from its seed, then restores the survivor, homestead, loot, enemies, events and the survivor's memory as they were when saved.
+- When a saved game exists, reopening the page offers to continue it. If the survivor dies, the end screen offers to load the last save.
+- Export file / Import file moves a game between browsers or devices as a small `.json` file.
+- Inside claude.ai, saves also sync to your Claude account. The standalone page keeps saves in the browser's local storage.
+
 Controls and settings:
 
 - On the Netlify site it is served at `/wasteland/`.
