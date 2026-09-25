@@ -6268,7 +6268,7 @@ function setupComposer() {
 function updateGfxInfo() {
   let gpu = '';
   try { const gl = renderer.getContext(), ext = gl.getExtension('WEBGL_debug_renderer_info'); gpu = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : ''; } catch (e) { }
-  const el = $('gfxInfo'); if (el) el.textContent = `Renderer: WebGL2${gpu ? ' · ' + String(gpu).slice(0, 48) : ''} · ${composer ? 'post effects on' : 'direct (safe) mode'} · ${renderer.getPixelRatio().toFixed(2)}x`;
+  const el = $('gfxInfo'); if (el) el.textContent = `Renderer: WebGL2${gpu ? ' · ' + String(gpu).slice(0, 48) : ''} · ${composer ? 'post effects on' : 'direct (safe) mode'} · ${renderer.getPixelRatio().toFixed(2)}x · Blender ${ASSETS.blenderTex ? 'materials' : 'materials missing'}, ${ASSETS.models ? 'models' : 'models missing'}`;
 }
 let issueT = 0;
 function reportIssue(msg, sticky = false) {
