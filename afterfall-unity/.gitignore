@@ -1,0 +1,9 @@
+Library/
+Temp/
+Logs/
+UserSettings/
+AfterfallDownloads/
+Assets/Afterfall/ThirdParty/
+Assets/Afterfall/Generated/
+Assets/Afterfall/Resources/
+*.csproj.user
