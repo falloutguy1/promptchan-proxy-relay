@@ -843,36 +843,44 @@ const ASSETS = {
     g.computeBoundingSphere();
     return g;
   },
-  /* cars (sedan / van / wreck with distant LODs), three boulders with baked atlases, the fir branch card.
-     Resolves true when everything arrived; progress(done, total) */
-  async loadModels(progress) {
-    if (window.__wlNoModels) return false; // test hook: compare against the procedural models
-    const size = this.texSize(), T = (name) => `${this.base}tex/${name}.webp`;
-    const loader = new GLTFLoader(), jobs = [];
-    let done = 0;
-    const job = (pr) => { const j = pr.then(v => { progress?.(++done, jobs.length); return v; }); jobs.push(j); return j; };
-    // models ship as base64-wrapped GLB (.glb.json) because some hosts only serve web data types
-    const glb = (name) => job(fetch(`${this.base}models/${name}.glb.json`).then(r => { if (!r.ok) throw new Error('missing ' + name + '.glb.json'); return r.json(); }).then(j => {
+  /* models ship as base64-wrapped GLB (.glb.json) because some hosts only serve web data types */
+  glbJson(name) {
+    return fetch(`${this.base}models/${name}.glb.json`).then(r => { if (!r.ok) throw new Error('missing ' + name + '.glb.json'); return r.json(); }).then(j => {
       const s = atob(j.glb), bytes = new Uint8Array(s.length);
       for (let i = 0; i < s.length; i++) bytes[i] = s.charCodeAt(i);
-      return new Promise((res, rej) => loader.parse(bytes.buffer, '', res, rej));
-    }));
-    const tex = (name, srgb) => job(this.loadTexture(T(name), srgb, true));
-    glb('cars'); glb('rocks');
-    tex(`rocks_c_${size}`, true); tex(`rocks_n_${size}`, false); tex(`rocks_orm_${size}`, false);
-    tex('rocks1_c_256', true); tex('rocks1_n_256', false); tex(`branch_c_${size}`, true);
+      return new Promise((res, rej) => new GLTFLoader().parse(bytes.buffer, '', res, rej));
+    });
+  },
+  tex(name, srgb) { return this.loadTexture(`${this.base}tex/${name}.webp`, srgb, true); },
+  /* run named loaders together; resolves {name: result} or null if any failed or it took over 30 s */
+  async loadGroup(label, spec, progress) {
+    const keys = Object.keys(spec);
+    let done = 0;
+    const jobs = keys.map(k => spec[k]().then(v => { progress?.(++done, keys.length); return v; }));
     const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timed out')), 30000));
-    let got;
-    try { got = await Promise.race([Promise.all(jobs), timeout]); }
-    catch (e) {
-      console.warn('[wasteland] Blender models unavailable, using procedural ones:', e.message);
+    try {
+      const vals = await Promise.race([Promise.all(jobs), timeout]);
+      const out = {}; keys.forEach((k, i) => { out[k] = vals[i]; });
+      return out;
+    } catch (e) {
+      console.warn(`[wasteland] Blender ${label} unavailable, using procedural ones:`, e.message);
       jobs.forEach(j => j.then(v => v?.dispose?.(), () => { }));
-      return false;
+      return null;
     }
-    const [cars, rocks, rc, rn, ro, r1c, r1n, branch] = got;
+  },
+  /* cars (sedan / van / wreck with distant LODs), three boulders with baked atlases, the fir branch card */
+  async loadModels(progress) {
+    if (window.__wlNoModels) return false; // test hook: compare against the procedural models
+    const size = this.texSize();
+    const got = await this.loadGroup('models', {
+      cars: () => this.glbJson('cars'), rocks: () => this.glbJson('rocks'), bus: () => this.glbJson('bus'),
+      rc: () => this.tex(`rocks_c_${size}`, true), rn: () => this.tex(`rocks_n_${size}`, false), ro: () => this.tex(`rocks_orm_${size}`, false),
+      r1c: () => this.tex('rocks1_c_256', true), r1n: () => this.tex('rocks1_n_256', false), branch: () => this.tex(`branch_c_${size}`, true),
+    }, progress);
+    if (!got) return false;
     const byName = (gltf) => { const m = {}; gltf.scene.traverse(o => { if (o.isMesh) m[o.name] = o; }); return m; };
     const CAR_MAT = { paint: 'carPaint', glass: 'glass', chrome: 'chrome', tire: 'tire', dark: 'carDark', taillight: 'redLight', lens: 'carLens', rust: 'wreckRust' };
-    const cm = byName(cars), out = { cars: {}, rocks: [] };
+    const cm = byName(got.cars), out = { cars: {}, rocks: [] };
     for (const kind of ['sedan', 'van', 'wreck']) {
       const hi = [], lo = [];
       for (const [name, mesh] of Object.entries(cm)) {
@@ -883,16 +891,104 @@ const ASSETS = {
       if (!hi.length || !lo.length) { console.warn('[wasteland] cars.glb is missing', kind); return false; }
       out.cars[kind] = { hi, lo };
     }
-    const rm = byName(rocks);
+    const rm = byName(got.rocks);
     for (let v = 0; v < 3; v++) {
       if (!rm[`rock${v}_0`] || !rm[`rock${v}_1`]) { console.warn('[wasteland] rocks.glb is missing rock', v); return false; }
       out.rocks.push([this.prepGeo(rm[`rock${v}_0`], 1.2), this.prepGeo(rm[`rock${v}_1`], 1.2)]);
     }
-    out.rockTex = { map: rc, normalMap: rn, orm: ro };
-    out.rockTexLo = { map: r1c, normalMap: r1n };
-    out.branch = branch;
+    const BUS_MAT = { paint: 'metalYellow', glass: 'glass', chrome: 'chrome', tire: 'tire', dark: 'carDark', taillight: 'redLight', lens: 'carLens', stripe: 'carDark' };
+    out.bus = Object.entries(byName(got.bus)).filter(([n]) => BUS_MAT[n.split('__')[1]]).map(([n, mesh]) => ({ mat: BUS_MAT[n.split('__')[1]], geo: this.prepGeo(mesh) }));
+    out.rockTex = { map: got.rc, normalMap: got.rn, orm: got.ro };
+    out.rockTexLo = { map: got.r1c, normalMap: got.r1n };
+    out.branch = got.branch;
     this.models = out;
     return true;
+  },
+  /* people built from MakeHuman (CC0) in Blender and re-rigged onto the game's 17 joints */
+  CHAR_KINDS: ['survivor', 'raider', 'trader', 'ghoul'],
+  chars: null,
+  async loadChars(progress) {
+    if (window.__wlNoChars) return false;
+    const size = this.texSize(), spec = {};
+    for (const k of this.CHAR_KINDS) {
+      spec[k] = () => this.glbJson(`char_${k}`);
+      spec[k + '_c'] = () => this.tex(`char_${k}_c_${size}`, true);
+      spec[k + '_n'] = () => this.tex(`char_${k}_n_${size}`, false);
+    }
+    const got = await this.loadGroup('characters', spec, progress);
+    if (!got) return false;
+    const out = {};
+    for (const k of this.CHAR_KINDS) {
+      const c = this.prepChar(got[k]);
+      if (!c) { console.warn('[wasteland] no skinned mesh in char_' + k); return false; }
+      c.map = got[k + '_c']; c.normalMap = got[k + '_n'];
+      out[k] = c;
+    }
+    this.chars = out;
+    return true;
+  },
+  /* creatures modelled in Blender on the game's own creature skeletons */
+  CREATURE_KINDS: ['hound', 'cattle', 'burrower', 'roach', 'stalker'],
+  creatures: null,
+  async loadCreatures(progress) {
+    if (window.__wlNoChars) return false;
+    const size = this.texSize(), spec = {};
+    for (const k of this.CREATURE_KINDS) {
+      spec[k] = () => this.glbJson(`cr_${k}`);
+      spec[k + '_c'] = () => this.tex(`cr_${k}_c_${size}`, true);
+      spec[k + '_n'] = () => this.tex(`cr_${k}_n_${size}`, false);
+    }
+    const got = await this.loadGroup('creatures', spec, progress);
+    if (!got) return false;
+    const out = {};
+    for (const k of this.CREATURE_KINDS) {
+      const c = this.prepChar(got[k]);
+      if (!c) { console.warn('[wasteland] no skinned mesh in cr_' + k); return false; }
+      c.map = got[k + '_c']; c.normalMap = got[k + '_n'];
+      out[k] = c;
+    }
+    this.creatures = out;
+    return true;
+  },
+  /* Poly Haven (CC0) props converted in Blender: barrels, crates, tyres, barriers, logs, tools... */
+  PROP_NAMES: ['barrel', 'wbarrel', 'crate', 'ammo', 'tyre', 'barrier', 'trashcan', 'jerrycan', 'propane', 'log', 'log2', 'stump', 'tarpcar', 'generator', 'axe', 'hammer'],
+  props: null,
+  async loadProps(progress) {
+    if (window.__wlNoModels) return false;
+    const size = IS_MOBILE || S.quality === 'low' ? 256 : 512, spec = {};
+    for (const k of this.PROP_NAMES) {
+      spec[k] = () => this.glbJson(`prop_${k}`);
+      spec[k + '_c'] = () => this.tex(`prop_${k}_c_${size}`, true);
+      spec[k + '_n'] = () => this.tex(`prop_${k}_n_${size}`, false);
+      spec[k + '_o'] = () => this.tex(`prop_${k}_orm_${size}`, false);
+    }
+    const got = await this.loadGroup('props', spec, progress);
+    if (!got) return false;
+    const out = {};
+    for (const k of this.PROP_NAMES) {
+      let body = null, lid = null;
+      got[k].scene.traverse(o => { if (o.isMesh) { if (o.name.startsWith('lid')) lid = o; else if (!body) body = o; } });
+      if (!body) { console.warn('[wasteland] prop without a body mesh', k); return false; }
+      out[k] = { body: this.prepGeo(body), lid: lid ? this.prepGeo(lid) : null, tex: { map: got[k + '_c'], normalMap: got[k + '_n'], orm: got[k + '_o'] } };
+    }
+    this.props = out;
+    return true;
+  },
+  /* skinned geometry (bind pose in metres, y up, facing +z), joint names in skin order and rest positions */
+  prepChar(gltf) {
+    gltf.scene.updateMatrixWorld(true);
+    let sk = null;
+    gltf.scene.traverse(o => { if (o.isSkinnedMesh && !sk) sk = o; });
+    if (!sk) return null;
+    const g = sk.geometry;
+    for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'uv', 'skinIndex', 'skinWeight'].includes(k)) g.deleteAttribute(k);
+    const uv = g.attributes.uv;
+    for (let i = 0; i < uv.count; i++) uv.setY(i, 1 - uv.getY(i));
+    const joints = {};
+    for (const b of sk.skeleton.bones) joints[b.name] = b.getWorldPosition(new THREE.Vector3());
+    const e = sk.userData && sk.userData.eyes; // Blender coordinates (z up)
+    const eyes = Array.isArray(e) ? e.map(p => new THREE.Vector3(p[0], p[2], -p[1])) : null;
+    return { geo: g, names: sk.skeleton.bones.map(b => b.name), joints, eyes };
   },
 };
 /* the terrain's large-scale variation map is still generated here (it isn't part of the Blender set) */
@@ -1490,6 +1586,7 @@ function buildMaterials() {
   MAT.carLens = new THREE.MeshStandardMaterial({ color: 0xe6e1d2, roughness: 0.12, metalness: 0.25 });
   MAT.carDark = new THREE.MeshStandardMaterial({ color: 0x1b1a19, roughness: 0.8, metalness: 0.15 }); // grille, underbody, empty window frames
   MAT.wreckRust = texMat(TEX.rust, { color: 0x9a8a7e }); // burnt-out shells: darker than fresh rust
+  if (ASSETS.props) for (const [k, pr] of Object.entries(ASSETS.props)) MAT['p_' + k] = texMat(pr.tex); // ORM carries roughness and metalness
   if (ASSETS.models) { // boulders sculpted and baked in Blender: one atlas per LOD
     MAT.rockBaked = texMat(ASSETS.models.rockTex, { metal: 0 });
     MAT.rockBakedLo = texMat(ASSETS.models.rockTexLo, { metal: 0, rough: 0.9 });
@@ -1612,6 +1709,16 @@ function bakeSkinned(root, radius = 2.6, cy = 1, key = null) {
   sk.bind(new THREE.Skeleton(joints), sk.matrixWorld);
   sk.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, cy, 0), radius);
   return sk;
+}
+/* bind a Blender-built skinned body to a rig's joints (J: name -> joint), sharing geometry and material per kind */
+const MODEL_MAT = {};
+function attachModelBody(root, J, model, key, radius, cy, matOpts = {}) {
+  if (!MODEL_MAT[key]) MODEL_MAT[key] = new THREE.MeshStandardMaterial(Object.assign({ map: model.map, normalMap: model.normalMap, roughness: 0.75, metalness: 0 }, matOpts));
+  const body = new THREE.SkinnedMesh(model.geo, MODEL_MAT[key]); body.castShadow = true; body.receiveShadow = true;
+  root.add(body); root.updateMatrixWorld(true);
+  body.bind(new THREE.Skeleton(model.names.map(n => J[n])), body.matrixWorld);
+  body.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, cy, 0), radius);
+  return body;
 }
 /* ---------- static batching (chunked by 100m) ---------- */
 const SB = new Map();
@@ -2480,12 +2587,20 @@ function containerModel(type) {
   switch (type) {
     case 'crate': case 'woodpile': {
       if (type === 'woodpile') { for (let i = 0; i < 9; i++) mesh(cylG(0.14, 0.14, 1.5, 10, 1), 'bark', (i % 3) * 0.3 - 0.3, 0.15 + Math.floor(i / 3) * 0.26, 0, 0, 0, Math.PI / 2); break; }
+      const PR = ASSETS.props && ASSETS.props.crate;
+      if (PR && PR.lid) { // photo-scanned chest; its lid hinges at the back edge
+        mesh(PR.body, 'p_crate', 0, 0, 0);
+        const lb = PR.lid.boundingBox || (PR.lid.computeBoundingBox(), PR.lid.boundingBox);
+        pivot = new THREE.Group(); pivot.position.set(0, lb.min.y, lb.min.z); g.add(pivot);
+        mesh(PR.lid, 'p_crate', 0, -lb.min.y, -lb.min.z, 0, 0, 0, pivot); ang = -1.9; break;
+      }
       mesh(boxG(0.95, 0.62, 0.7, 1), 'wood', 0, 0.31, 0);
       for (const s of [-1, 1]) for (const t of [-1, 1]) mesh(boxG(0.06, 0.64, 0.06, 1), 'woodDark', s * 0.46, 0.32, t * 0.33);
       pivot = new THREE.Group(); pivot.position.set(0, 0.63, -0.35); g.add(pivot);
       mesh(boxG(0.97, 0.07, 0.72, 1), 'woodDark', 0, 0.02, 0.35, 0, 0, 0, pivot); ang = -1.9; break;
     }
     case 'ammo': {
+      if (ASSETS.props) { mesh(ASSETS.props.ammo.body, 'p_ammo', 0, 0, 0, 0, Math.PI / 2, 0); pivot = null; break; }
       mesh(boxG(0.62, 0.3, 0.3, 1), new THREE.MeshStandardMaterial({ color: 0x3f4a2c, roughness: 0.6, metalness: 0.5 }), 0, 0.15, 0);
       pivot = new THREE.Group(); pivot.position.set(0, 0.3, -0.15); g.add(pivot);
       mesh(boxG(0.64, 0.06, 0.32, 1), new THREE.MeshStandardMaterial({ color: 0x46522f, roughness: 0.6, metalness: 0.5 }), 0, 0.03, 0.15, 0, 0, 0, pivot);
@@ -2643,8 +2758,12 @@ function town() {
   }
   waterTower(T.x + 32, T.z + 32);
   // school bus + barricade at the crossroads
-  const bus = new Kit(); bus.box('metalYellow', 11, 2.6, 2.5, 0, 1.75, 0, 0, 0, 0, 2); for (let i = 0; i < 8; i++) for (const s of [-1, 1]) bus.box('glass', 0.9, 0.8, 0.04, -4.2 + i * 1.2, 2.3, s * 1.27);
-  bus.box('darkMetal', 11.2, 0.25, 2.55, 0, 1.2, 0); for (const [xx, s] of [[-3.5, -1], [-3.5, 1], [3.6, -1], [3.6, 1]]) bus.add('tire', new THREE.TorusGeometry(0.38, 0.17, 10, 20), M4(xx, 0.5, s * 1.1));
+  const bus = new Kit();
+  if (ASSETS.models && ASSETS.models.bus.length) for (const p of ASSETS.models.bus) bus.add(p.mat, p.geo); // modelled in Blender
+  else {
+    bus.box('metalYellow', 11, 2.6, 2.5, 0, 1.75, 0, 0, 0, 0, 2); for (let i = 0; i < 8; i++) for (const s of [-1, 1]) bus.box('glass', 0.9, 0.8, 0.04, -4.2 + i * 1.2, 2.3, s * 1.27);
+    bus.box('darkMetal', 11.2, 0.25, 2.55, 0, 1.2, 0); for (const [xx, s] of [[-3.5, -1], [-3.5, 1], [3.6, -1], [3.6, 1]]) bus.add('tire', new THREE.TorusGeometry(0.38, 0.17, 10, 20), M4(xx, 0.5, s * 1.1));
+  }
   placeStatic(bus, T.x - 20, roadZ(T.x - 20) + 1, 0.12, groundHeight(T.x - 20, T.z) - 0.1); addBox(T.x - 20, roadZ(T.x - 20) + 1, 5.6, 1.3, 0.12, true, 3);
   const bags = new Kit(); for (let i = 0; i < 14; i++) bags.add('clothGreen', new THREE.CapsuleGeometry(0.22, 0.5, 4, 10), M4((i % 7) * 0.62 - 1.9, 0.22 + Math.floor(i / 7) * 0.36, 0, 0, 0, Math.PI / 2));
   for (const [bx, bz, br] of [[T.x + 12, T.z + 16, 0], [T.x - 8, T.z - 18, 0.2]]) { placeStatic(bags, bx, bz, br); addBox(bx, bz, 2.2, 0.3, br, true, 1); }
@@ -2698,8 +2817,19 @@ function defineInstKinds() {
   }
   defineInst('grass', [{ mat: 'grassBlade', geo: grassClumpGeo(1, 11, 1.1) }], null, { maxDist: 90, cast: false, colors: true, density: true, chunk: 45 });
   defineInst('drygrass', [{ mat: 'grassBlade', geo: grassClumpGeo(2, 7, 0.7) }], null, { maxDist: 85, cast: false, colors: true, density: true, chunk: 45 });
-  defineInst('barrel', [{ mat: 'rust', geo: cleanGeo(barrelGeo()) }], null, { chunk: 150 });
-  defineInst('wbarrel', [{ mat: 'metalYellow', geo: cleanGeo(barrelGeo()) }], null, { chunk: 150 });
+  const PR = ASSETS.props; // photo-scanned props, when they loaded
+  if (PR) {
+    defineInst('barrel', [{ mat: 'p_barrel', geo: PR.barrel.body }], null, { chunk: 150 });
+    defineInst('wbarrel', [{ mat: 'p_wbarrel', geo: PR.wbarrel.body }], null, { chunk: 150 });
+    const flatTyre = PR.tyre.body.clone(); flatTyre.computeBoundingBox(); const tb = flatTyre.boundingBox;
+    flatTyre.translate(0, -(tb.min.y + tb.max.y) / 2, 0); flatTyre.rotateX(Math.PI / 2); flatTyre.computeBoundingBox(); flatTyre.translate(0, -flatTyre.boundingBox.min.y, 0);
+    const decor = { tyre: flatTyre, tyreUp: PR.tyre.body, barrier: PR.barrier.body, trashcan: PR.trashcan.body, jerrycan: PR.jerrycan.body, propane: PR.propane.body,
+      log: PR.log.body, log2: PR.log2.body, stump: PR.stump.body, tarpcar: PR.tarpcar.body, generator: PR.generator.body };
+    for (const [k, geo] of Object.entries(decor)) defineInst('d_' + k, [{ mat: 'p_' + (k === 'tyreUp' ? 'tyre' : k), geo }], null, { chunk: 90, maxDist: k === 'tarpcar' || k === 'barrier' || k.startsWith('log') ? 260 : 150 });
+  } else {
+    defineInst('barrel', [{ mat: 'rust', geo: cleanGeo(barrelGeo()) }], null, { chunk: 150 });
+    defineInst('wbarrel', [{ mat: 'metalYellow', geo: cleanGeo(barrelGeo()) }], null, { chunk: 150 });
+  }
   if (BM) for (const kind of ['sedan', 'van', 'wreck']) defineInst(kind, BM.cars[kind].hi, BM.cars[kind].lo, { chunk: 100, lodDist: 60 });
   else {
     const tintBody = (parts) => { parts.forEach(p => { if (p.mat === 'carPaint') p.tint = true; }); return parts; };
@@ -2758,6 +2888,57 @@ function scatterJunk() {
     const x = rng.range(-420, 420), z = rng.range(-420, 420);
     if (!navFreeAt(x, z) || noScatter(x, z, 5) || woodsMaskRaw(x, z) > 0.6) continue;
     addContainer(rng.chance(0.6) ? 'body' : 'crate', x, z, rng.range(0, TAU));
+  }
+}
+/* dressing with the photo-scanned props (own RNG, so the rest of the world stays the same for a seed) */
+function scatterDecor() {
+  const rng = new RNG(S.seed + 97), T = LAYOUT.town, inBounds = (x, z) => Math.abs(x) < 455 && Math.abs(z) < 455;
+  const put = (kind, x, z, rot, opts = {}) => {
+    if (!inBounds(x, z) || inWater(x, z) || (!opts.anywhere && !navFreeAt(x, z))) return false;
+    const gy = opts.y ?? groundHeight(x, z);
+    instAdd('d_' + kind, M4(x, gy + (opts.dy || 0), z, opts.rx || 0, rot, opts.rz || 0, opts.s || 1));
+    if (opts.box) addBox(x, z, opts.box[0], opts.box[1], rot, false, opts.box[2] || 1.2);
+    else if (opts.r) addCircle(x, z, opts.r, false, 1);
+    return true;
+  };
+  const around = (cx, cz, r0, r1) => { const a = rng.range(0, TAU), r = rng.range(r0, r1); return [cx + Math.cos(a) * r, cz + Math.sin(a) * r]; };
+  // tyres and fuel cans along the roads, stacked tyres in town
+  for (const rd of ROADS) for (let i = 0; i < rd.pts.length - 1; i++) {
+    const [ax, az] = rd.pts[i], [bx, bz] = rd.pts[i + 1], L = Math.hypot(bx - ax, bz - az), dx = (bx - ax) / L, dz = (bz - az) / L;
+    for (let s = rng.range(5, 30); s < L; s += rng.range(24, 70)) {
+      const side = (rng.chance(0.5) ? 1 : -1) * (rd.w * 0.5 + rng.range(0.6, 3)), x = ax + dx * s - dz * side, z = az + dz * s + dx * side;
+      if (dist2(x, z, LAYOUT.vaultPad.x, LAYOUT.vaultPad.z) < 25) continue;
+      const k = rng.next();
+      if (k < 0.55) put(rng.chance(0.75) ? 'tyre' : 'tyreUp', x, z, rng.range(0, TAU), { rz: 0 });
+      else if (k < 0.75) put('jerrycan', x, z, rng.range(0, TAU), { rz: rng.chance(0.3) ? Math.PI / 2 : 0, dy: 0 });
+    }
+  }
+  for (let i = 0; i < 10; i++) { const [x, z] = around(T.x, T.z, 25, 80); const n = rng.int(2, 4); for (let j = 0; j < n; j++) put('tyre', x + rng.range(-0.1, 0.1), z + rng.range(-0.1, 0.1), rng.range(0, TAU), { dy: j * 0.165, anywhere: j > 0 }); }
+  // trash cans and gas bottles in town, fuel by the pumps, a generator or two at the camps
+  for (let i = 0; i < 18; i++) { const [x, z] = around(T.x, T.z, 12, 75); put('trashcan', x, z, rng.range(0, TAU), { r: 0.3 }); }
+  for (let i = 0; i < 8; i++) { const [x, z] = around(T.x, T.z, 12, 80); put('propane', x, z, rng.range(0, TAU), { r: 0.2 }); }
+  for (let i = 0; i < 7; i++) put('jerrycan', LAYOUT.gas.x + rng.range(-14, 14), LAYOUT.gas.z + rng.range(-14, 14), rng.range(0, TAU));
+  for (let i = 0; i < 3; i++) { const [x, z] = around(LAYOUT.raiders.x, LAYOUT.raiders.z, 6, 26); put('generator', x, z, rng.range(0, TAU), { box: [0.42, 0.3, 0.6] }); }
+  { const [x, z] = around(T.x, T.z, 20, 50); put('generator', x, z, rng.range(0, TAU), { box: [0.42, 0.3, 0.6] }); }
+  // covered cars parked around town
+  for (let i = 0; i < 5; i++) { const [x, z] = around(T.x, T.z, 30, 85); put('tarpcar', x, z, rng.range(0, TAU), { box: [0.95, 2.25, 1.4] }); }
+  // jersey-barrier roadblocks where roads leave town
+  for (const rd of ROADS) {
+    let best = null;
+    for (let i = 0; i < rd.pts.length - 1; i++) { const [px, pz] = rd.pts[i]; const d = Math.hypot(px - T.x, pz - T.z); if (d > 70 && d < 110 && (!best || d < best.d)) best = { d, i }; }
+    if (!best || rng.chance(0.35)) continue;
+    const [ax, az] = rd.pts[best.i], [bx, bz] = rd.pts[Math.min(best.i + 1, rd.pts.length - 1)], L = Math.hypot(bx - ax, bz - az) || 1, dx = (bx - ax) / L, dz = (bz - az) / L;
+    const rot = Math.atan2(dx, dz);
+    for (let j = -2; j <= 2; j++) { if (j === rng.int(-2, 2)) continue; put('barrier', ax - dz * j * 1.7, az + dx * j * 1.7, rot + Math.PI / 2 + rng.range(-0.15, 0.15), { box: [0.78, 0.32, 0.85], anywhere: true }); }
+  }
+  // logs and stumps on the forest floor
+  for (let i = 0; i < 260; i++) {
+    const x = rng.range(-440, 440), z = rng.range(-440, 440);
+    if (woodsMaskRaw(x, z) < 0.55 || noScatter(x, z, 3) || slopeAt(x, z) > 0.3) continue;
+    const k = rng.next();
+    if (k < 0.35) put('log', x, z, rng.range(0, TAU), { dy: -0.05, box: [1.5, 0.15, 0.3] });
+    else if (k < 0.55) put('log2', x, z, rng.range(0, TAU), { dy: -0.1, box: [1.9, 0.4, 0.6] });
+    else if (k < 0.8) put('stump', x, z, rng.range(0, TAU), { dy: -0.08, s: rng.range(0.55, 0.9), r: 0.45 });
   }
 }
 function scatterNature(progress) {
@@ -2874,6 +3055,7 @@ function populateWorld(progress) {
   defineInstKinds();
   scatterNature(progress);
   scatterJunk();
+  if (ASSETS.props) scatterDecor();
   distributeKeyLoot();
   sbFlush(); instFlush(); instHandleResolve();
 }
@@ -3019,6 +3201,7 @@ function buildCharMaterials() {
   CMAT.ghoulCloth = cloth(0x3d3a30); CMAT.ghoulEye = new THREE.MeshStandardMaterial({ color: 0x331a00, emissive: 0xffaa33, emissiveIntensity: 0.9 });
   CMAT.suitNum = new THREE.MeshBasicMaterial({ map: TEX.suit113, transparent: true, depthWrite: false });
   CMAT.spike = MAT.chrome;
+  CMAT.rustPad = new THREE.MeshStandardMaterial({ color: 0x6e3f26, roughness: 0.8, metalness: 0.3 }); // baked to a vertex colour, so no texture
 }
 function mesh(geo, mat, parent, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, sx = 1, sy = sx, sz = sx) {
   const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.set(rx, ry, rz); m.scale.set(sx, sy, sz); m.castShadow = true; m.receiveShadow = true; parent.add(m); return m;
@@ -3028,6 +3211,8 @@ const cap = (r, l, seg = 14) => new THREE.CapsuleGeometry(r, l, 6, seg);
 
 function weaponModel(kind) {
   const g = new THREE.Group();
+  const PR = ASSETS.props && (kind === 'hammer' || kind === 'axe') && ASSETS.props[kind];
+  if (PR) { mesh(PR.body, MAT['p_' + kind], g, 0, 0.02, 0); return g; } // photo-scanned tool: grip at the origin, head hanging below
   switch (kind) {
     case 'pistol':
       mesh(new RoundedBoxGeometry(0.035, 0.05, 0.22, 2, 0.008), CMAT.metal, g, 0, 0.03, 0.06);
@@ -3081,49 +3266,98 @@ function weaponModel(kind) {
 class Humanoid {
   constructor(kind = 'survivor', seed = 1) {
     this.kind = kind; const r = new RNG(seed);
+    const BM = ASSETS.chars && ASSETS.chars[kind]; // MakeHuman body built in Blender, when it loaded
+    const root = this.root = new THREE.Group();
+    this.hipsOff = 0;
+    if (BM) this.buildJointsFromModel(BM);
+    else this.buildPrimitiveBody(kind);
+    const chest = this.chest, hips = this.hips, head = this.head, neck = this.neck;
+    // gear that sits on top of the body (baked together into one rigid-skinned mesh below)
+    const B = !!BM; // Blender bodies: offsets measured on the MakeHuman proportions
+    if (kind === 'survivor') {
+      if (!B) {
+        mesh(new THREE.BoxGeometry(0.045, 0.5, 0.02), CMAT.vaultY, this.spine, 0, 0.22, 0.14);
+        mesh(new THREE.TorusGeometry(0.075, 0.022, 8, 20), CMAT.vaultY, chest, 0, 0.27, 0, Math.PI / 2);
+      }
+      mesh(new THREE.TorusGeometry(B ? 0.165 : 0.19, B ? 0.028 : 0.03, 8, 28), CMAT.leather, hips, 0, 0.07, B ? 0.005 : 0, Math.PI / 2, 0, 0, 1, B ? 0.72 : 0.7, 1);
+      for (const s of [-1, 1]) mesh(new RoundedBoxGeometry(0.07, 0.08, 0.05, 2, 0.015), CMAT.leather, hips, s * (B ? 0.14 : 0.15), 0.04, B ? 0.105 : 0.1);
+      const num = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.2), CMAT.suitNum); num.position.set(0, B ? 0.15 : 0.12, B ? -0.142 : -0.16); num.rotation.y = Math.PI; chest.add(num);
+      // backpack + bedroll
+      const pack = joint(chest, 0, B ? 0.12 : 0.06, B ? -0.2 : -0.19);
+      mesh(new RoundedBoxGeometry(0.3, 0.4, 0.16, 3, 0.05), CMAT.canvas, pack, 0, 0, -0.02);
+      mesh(new RoundedBoxGeometry(0.22, 0.14, 0.06, 2, 0.02), CMAT.canvas, pack, 0, -0.08, -0.12);
+      mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.42, 14), CMAT.bedroll, pack, 0, 0.26, -0.03, 0, 0, Math.PI / 2);
+      for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(0.03, 0.44, 0.02), CMAT.leather, chest, s * 0.1, B ? 0.12 : 0.08, B ? 0.128 : 0.15, -0.05);
+      if (!B) mesh(new THREE.SphereGeometry(0.12, 16, 10, 0, TAU, 0, Math.PI / 2), CMAT.leather, chest, -0.2, 0.2, 0, 0, 0, 0.5, 1, 0.8, 1.1);
+    } else if (kind === 'raider') {
+      if (!B) mesh(new RoundedBoxGeometry(0.34, 0.3, 0.26, 2, 0.04), CMAT.leather, chest, 0, 0.05, 0.01);
+      for (const s of [-1, 1]) {
+        mesh(new THREE.SphereGeometry(0.13, 12, 8, 0, TAU, 0, Math.PI / 2), B ? CMAT.rustPad : MAT.rust, chest, s * (B ? 0.2 : 0.21), B ? 0.235 : 0.2, 0, 0, 0, -s * 0.5);
+        for (let i = 0; i < 3; i++) mesh(new THREE.ConeGeometry(0.02, 0.1, 6), CMAT.spike, chest, s * ((B ? 0.21 : 0.22) + i * 0.03), B ? 0.335 : 0.3, -0.04 + i * 0.04, 0, 0, -s * 0.4);
+      }
+      if (!B) mesh(new THREE.TorusGeometry(0.19, 0.03, 8, 24), CMAT.leatherDark, hips, 0, 0.07, 0, Math.PI / 2);
+    } else if (kind === 'trader') {
+      if (!B) mesh(new THREE.CylinderGeometry(0.2, 0.27, 0.5, 16, 1, true), CMAT.canvas, hips, 0, -0.18, 0); // duster skirt
+      mesh(new THREE.TorusGeometry(B ? 0.16 : 0.17, 0.025, 6, 20), CMAT.leather, chest, 0, B ? 0.12 : 0.05, 0, Math.PI / 2 - 0.5, 0, 0.6);
+      const pack = joint(chest, 0, B ? 0.1 : 0.02, B ? -0.22 : -0.21);
+      mesh(new RoundedBoxGeometry(0.4, 0.55, 0.24, 3, 0.05), CMAT.leather, pack, 0, 0, -0.04);
+      mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.5, 14), CMAT.bedroll, pack, 0, 0.34, -0.05, 0, 0, Math.PI / 2);
+      for (let i = 0; i < 3; i++) mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.12, 10), MAT.rust, pack, -0.14 + i * 0.14, -0.3, -0.12);
+    } else if (!B) {
+      mesh(new THREE.BoxGeometry(0.3, 0.2, 0.2), CMAT.ghoulCloth, chest, 0.02, -0.05, 0.02, 0.1, 0, 0.1);
+      for (let i = 0; i < 4; i++) mesh(new THREE.TorusGeometry(0.1, 0.01, 4, 10, Math.PI), CMAT.ghoulSkin, chest, 0, 0.02 + i * 0.05, 0.08, 0, 0, 0);
+    }
+    if (kind === 'survivor') {
+      const gog = joint(head, 0, B ? 0.19 : 0.1, B ? 0.108 : 0.07); // pushed up on the forehead
+      for (const s of [-1, 1]) {
+        if (!B) { mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.03, 14), MAT.chrome, gog, s * 0.04, 0, 0.02, Math.PI / 2 - 0.5); continue; }
+        mesh(new THREE.CylinderGeometry(0.023, 0.025, 0.026, 14), CMAT.metal, gog, s * 0.038, 0, 0.012, Math.PI / 2 - 0.9); // rim
+        mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.028, 14), CMAT.eye, gog, s * 0.038, 0.001, 0.014, Math.PI / 2 - 0.9); // smoked lens
+      }
+      mesh(new THREE.TorusGeometry(B ? 0.102 : 0.118, 0.01, 6, 28), CMAT.leatherDark, head, 0, B ? 0.185 : 0.1, B ? 0.02 : 0, Math.PI / 2 - 0.25);
+      if (!B) mesh(new THREE.TorusGeometry(0.09, 0.03, 8, 20), CMAT.bedroll, neck, 0, 0.0, 0, Math.PI / 2, 0, 0, 1, 1, 0.7); // scarf
+    }
+    if (kind === 'ghoul' && B && BM.eyes) { // glowing eyes stay separate (emissive) meshes on the head joint
+      const hw = BM.joints.head;
+      for (const e of BM.eyes) mesh(new THREE.SphereGeometry(0.013, 8, 6), CMAT.ghoulEye, head, e.x, e.y - hw.y, e.z - hw.z + 0.008);
+    }
+    // pip-boy on the left forearm
+    if (kind === 'survivor') { const el = this.el[1]; mesh(new RoundedBoxGeometry(0.075, 0.1, 0.07, 2, 0.015), CMAT.leatherDark, el, -0.02, -0.12, B ? 0.015 : 0.02); mesh(new THREE.PlaneGeometry(0.045, 0.06), CMAT.pip, el, -0.04, -0.12, B ? 0.052 : 0.058, 0, -0.3, 0); }
+    this.gunMount = joint(chest, -0.09, B ? 0.17 : 0.08, B ? 0.26 : 0.28);
+    this.weapon = null; this.weaponKind = null; this.tool = null; this.toolKind = null;
+    this.phase = r.range(0, TAU); this.t = r.range(0, 10); this.deadT = 0; this.hurtT = 0; this.recoil = 0; this.swing = 0;
+    bakeSkinned(root, 2.4, 0.9, (B ? 'hb_' : 'h_') + kind);
+    if (BM) this.body = attachModelBody(root, this.J, BM, 'char_' + kind, 2.4, 0.9, { roughness: 0.78, alphaTest: 0.5 }); // the MakeHuman body
+    this.pose = { hipsY: 0.98 + this.hipsOff, spineX: 0, spineY: 0, chestX: 0, headX: 0, headY: 0, sh: [[0, 0, 0], [0, 0, 0]], el: [0, 0], hip: [[0, 0], [0, 0]], kn: [0, 0], an: [0, 0], rootX: 0, rootZ: 0, gun: 0 };
+    root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  }
+  /* joints at the rest positions measured on the Blender character (no rest rotations, like the primitive rig) */
+  buildJointsFromModel(BM) {
+    const W = BM.joints, J = this.J = {};
+    const at = (name, parent, pname) => { const p = W[name], q = pname ? W[pname] : new THREE.Vector3(); return (J[name] = joint(parent, p.x - q.x, p.y - q.y, p.z - q.z)); };
+    this.hips = at('hips', this.root, null);
+    this.spine = at('spine', this.hips, 'hips'); this.chest = at('chest', this.spine, 'spine');
+    this.neck = at('neck', this.chest, 'chest'); this.head = at('head', this.neck, 'neck');
+    this.sh = []; this.el = []; this.hand = []; this.hip = []; this.kn = []; this.an = [];
+    for (const s of ['r', 'l']) { // index 0 = right (x < 0), 1 = left, like the primitive rig
+      this.sh.push(at('sh_' + s, this.chest, 'chest')); this.el.push(at('el_' + s, this.sh[this.sh.length - 1], 'sh_' + s)); this.hand.push(at('hand_' + s, this.el[this.el.length - 1], 'el_' + s));
+      this.hip.push(at('hip_' + s, this.hips, 'hips')); this.kn.push(at('kn_' + s, this.hip[this.hip.length - 1], 'hip_' + s)); this.an.push(at('an_' + s, this.kn[this.kn.length - 1], 'kn_' + s));
+    }
+    this.hipsOff = W.hips.y - 0.98;
+  }
+  /* the original capsule-and-sphere body (used when the Blender characters are unavailable) */
+  buildPrimitiveBody(kind) {
     const P = kind === 'survivor' ? { top: CMAT.vault, legs: CMAT.vault, skin: CMAT.skin, boots: CMAT.leatherDark, gloves: CMAT.leatherDark }
       : kind === 'raider' ? { top: CMAT.raiderCloth, legs: CMAT.raiderCloth, skin: CMAT.raiderSkin, boots: CMAT.leatherDark, gloves: CMAT.leather }
       : kind === 'trader' ? { top: CMAT.canvas, legs: CMAT.leatherDark, skin: CMAT.skin, boots: CMAT.leatherDark, gloves: CMAT.leather }
         : { top: CMAT.ghoulCloth, legs: CMAT.ghoulCloth, skin: CMAT.ghoulSkin, boots: CMAT.ghoulSkin, gloves: CMAT.ghoulSkin };
     const thin = kind === 'ghoul' ? 0.72 : 1, bulk = kind === 'raider' ? 1.08 : 1;
-    const root = this.root = new THREE.Group();
-    const hips = this.hips = joint(root, 0, 0.98, 0);
+    const hips = this.hips = joint(this.root, 0, 0.98, 0);
     mesh(new RoundedBoxGeometry(0.34 * bulk, 0.2, 0.2, 3, 0.07), P.legs, hips, 0, 0, 0);
     const spine = this.spine = joint(hips, 0, 0.1, 0);
     const chest = this.chest = joint(spine, 0, 0.2, 0);
     mesh(cap(0.15 * thin * bulk + 0.02, 0.2), P.top, spine, 0, 0.12, 0, 0, 0, 0, 1.15, 1, 0.75);
     mesh(cap(0.17 * thin * bulk + 0.02, 0.14), P.top, chest, 0, 0.1, 0, 0, 0, 0, 1.2, 1, 0.78);
-    if (kind === 'survivor') {
-      mesh(new THREE.BoxGeometry(0.045, 0.5, 0.02), CMAT.vaultY, spine, 0, 0.22, 0.14);
-      mesh(new THREE.TorusGeometry(0.075, 0.022, 8, 20), CMAT.vaultY, chest, 0, 0.27, 0, Math.PI / 2);
-      mesh(new THREE.TorusGeometry(0.19, 0.03, 8, 28), CMAT.leather, hips, 0, 0.07, 0, Math.PI / 2, 0, 0, 1, 0.7, 1);
-      for (const s of [-1, 1]) mesh(new RoundedBoxGeometry(0.07, 0.08, 0.05, 2, 0.015), CMAT.leather, hips, s * 0.15, 0.04, 0.1);
-      const num = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.2), CMAT.suitNum); num.position.set(0, 0.12, -0.16); num.rotation.y = Math.PI; chest.add(num);
-      // backpack + bedroll
-      const pack = joint(chest, 0, 0.06, -0.19);
-      mesh(new RoundedBoxGeometry(0.3, 0.4, 0.16, 3, 0.05), CMAT.canvas, pack, 0, 0, -0.02);
-      mesh(new RoundedBoxGeometry(0.22, 0.14, 0.06, 2, 0.02), CMAT.canvas, pack, 0, -0.08, -0.12);
-      mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.42, 14), CMAT.bedroll, pack, 0, 0.26, -0.03, 0, 0, Math.PI / 2);
-      for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(0.03, 0.44, 0.02), CMAT.leather, chest, s * 0.1, 0.08, 0.15, -0.05);
-      mesh(new THREE.SphereGeometry(0.12, 16, 10, 0, TAU, 0, Math.PI / 2), CMAT.leather, chest, -0.2, 0.2, 0, 0, 0, 0.5, 1, 0.8, 1.1);
-    } else if (kind === 'raider') {
-      mesh(new RoundedBoxGeometry(0.34, 0.3, 0.26, 2, 0.04), CMAT.leather, chest, 0, 0.05, 0.01);
-      for (const s of [-1, 1]) {
-        mesh(new THREE.SphereGeometry(0.13, 12, 8, 0, TAU, 0, Math.PI / 2), MAT.rust, chest, s * 0.21, 0.2, 0, 0, 0, -s * 0.5);
-        for (let i = 0; i < 3; i++) mesh(new THREE.ConeGeometry(0.02, 0.1, 6), CMAT.spike, chest, s * (0.22 + i * 0.03), 0.3, -0.04 + i * 0.04, 0, 0, -s * 0.4);
-      }
-      mesh(new THREE.TorusGeometry(0.19, 0.03, 8, 24), CMAT.leatherDark, hips, 0, 0.07, 0, Math.PI / 2);
-    } else if (kind === 'trader') {
-      mesh(new THREE.CylinderGeometry(0.2, 0.27, 0.5, 16, 1, true), CMAT.canvas, hips, 0, -0.18, 0); // duster skirt
-      mesh(new THREE.TorusGeometry(0.17, 0.025, 6, 20), CMAT.leather, chest, 0, 0.05, 0, Math.PI / 2 - 0.5, 0, 0.6);
-      const pack = joint(chest, 0, 0.02, -0.21);
-      mesh(new RoundedBoxGeometry(0.4, 0.55, 0.24, 3, 0.05), CMAT.leather, pack, 0, 0, -0.04);
-      mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.5, 14), CMAT.bedroll, pack, 0, 0.34, -0.05, 0, 0, Math.PI / 2);
-      for (let i = 0; i < 3; i++) mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.12, 10), MAT.rust, pack, -0.14 + i * 0.14, -0.3, -0.12);
-    } else {
-      mesh(new THREE.BoxGeometry(0.3, 0.2, 0.2), CMAT.ghoulCloth, chest, 0.02, -0.05, 0.02, 0.1, 0, 0.1);
-      for (let i = 0; i < 4; i++) mesh(new THREE.TorusGeometry(0.1, 0.01, 4, 10, Math.PI), CMAT.ghoulSkin, chest, 0, 0.02 + i * 0.05, 0.08, 0, 0, 0);
-    }
     // neck/head
     const neck = this.neck = joint(chest, 0, 0.25, 0.01);
     mesh(new THREE.CylinderGeometry(0.055 * thin + 0.01, 0.065, 0.1, 12), P.skin, neck, 0, 0.03, 0);
@@ -3136,22 +3370,15 @@ class Humanoid {
       if (kind !== 'ghoul') mesh(new THREE.SphereGeometry(0.03, 10, 8), P.skin, head, s * 0.105, 0.03, 0, 0, 0, 0, 0.4, 1, 0.7);
       mesh(new THREE.BoxGeometry(0.04, 0.008, 0.01), kind === 'survivor' ? CMAT.hair : P.skin, head, s * 0.04, 0.078, 0.1, 0, 0, s * -0.15);
     }
-    if (kind === 'survivor') {
-      mesh(new THREE.SphereGeometry(0.122, 20, 12, 0, TAU, 0, Math.PI * 0.52), CMAT.hair, head, 0, 0.045, -0.012, -0.25);
-      const gog = joint(head, 0, 0.1, 0.07);
-      for (const s of [-1, 1]) mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.03, 14), MAT.chrome, gog, s * 0.04, 0, 0.02, Math.PI / 2 - 0.5);
-      mesh(new THREE.TorusGeometry(0.118, 0.01, 6, 28), CMAT.leatherDark, head, 0, 0.1, 0, Math.PI / 2 - 0.25);
-      mesh(new THREE.TorusGeometry(0.09, 0.03, 8, 20), CMAT.bedroll, neck, 0, 0.0, 0, Math.PI / 2, 0, 0, 1, 1, 0.7); // scarf
-    } else if (kind === 'raider') {
+    if (kind === 'survivor') mesh(new THREE.SphereGeometry(0.122, 20, 12, 0, TAU, 0, Math.PI * 0.52), CMAT.hair, head, 0, 0.045, -0.012, -0.25);
+    else if (kind === 'raider') {
       mesh(new THREE.BoxGeometry(0.03, 0.07, 0.2), CMAT.mohawk, head, 0, 0.14, 0, 0, 0, 0);
       mesh(new THREE.BoxGeometry(0.2, 0.03, 0.02), new THREE.MeshStandardMaterial({ color: 0x111111 }), head, 0, 0.05, 0.105); // war paint band
     } else if (kind === 'trader') {
       mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.015, 24), CMAT.leather, head, 0, 0.11, -0.01, -0.08);
       mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.12, 16), CMAT.leather, head, 0, 0.17, -0.015, -0.08);
       mesh(new THREE.SphereGeometry(0.06, 10, 8), CMAT.hair, head, 0, -0.07, 0.07, 0, 0, 0, 1.3, 0.8, 0.7); // beard
-    } else {
-      mesh(new THREE.SphereGeometry(0.02, 8, 6), CMAT.ghoulSkin, head, 0.05, 0.1, 0.06);
-    }
+    } else mesh(new THREE.SphereGeometry(0.02, 8, 6), CMAT.ghoulSkin, head, 0.05, 0.1, 0.06);
     // arms
     this.sh = []; this.el = []; this.hand = [];
     for (const s of [-1, 1]) {
@@ -3161,7 +3388,6 @@ class Humanoid {
       const el = joint(sh, 0, -0.29, 0);
       mesh(cap(0.042 * thin + 0.006, 0.19), kind === 'raider' ? CMAT.leather : (kind === 'survivor' ? CMAT.vault : P.skin), el, 0, -0.12, 0);
       if (kind === 'survivor') mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.035, 12), CMAT.vaultY, el, 0, -0.22, 0);
-      if (kind === 'survivor' && s > 0) { const pb = mesh(new RoundedBoxGeometry(0.075, 0.1, 0.07, 2, 0.015), CMAT.leatherDark, el, -0.02, -0.12, 0.02); mesh(new THREE.PlaneGeometry(0.045, 0.06), CMAT.pip, el, -0.04, -0.12, 0.058, 0, -0.3, 0); }
       const hd = joint(el, 0, -0.26, 0);
       mesh(new RoundedBoxGeometry(0.07, 0.09, 0.04, 2, 0.015), P.gloves, hd, 0, -0.04, 0.005);
       mesh(new THREE.CapsuleGeometry(0.014, 0.04, 3, 6), P.gloves, hd, -s * 0.035, -0.035, 0.02, 0.6, 0, s * 0.5);
@@ -3180,12 +3406,6 @@ class Humanoid {
       if (kind !== 'ghoul') mesh(new THREE.CylinderGeometry(0.06, 0.058, 0.12, 12), P.boots, kn, 0, -0.36, 0);
       this.hip.push(hp); this.kn.push(kn); this.an.push(an);
     }
-    this.gunMount = joint(chest, -0.09, 0.08, 0.28);
-    this.weapon = null; this.weaponKind = null; this.tool = null; this.toolKind = null;
-    this.phase = r.range(0, TAU); this.t = r.range(0, 10); this.deadT = 0; this.hurtT = 0; this.recoil = 0; this.swing = 0;
-    bakeSkinned(root, 2.4, 0.9, 'h_' + kind);
-    this.pose = { hipsY: 0.98, spineX: 0, spineY: 0, chestX: 0, headX: 0, headY: 0, sh: [[0, 0, 0], [0, 0, 0]], el: [0, 0], hip: [[0, 0], [0, 0]], kn: [0, 0], an: [0, 0], rootX: 0, rootZ: 0, gun: 0 };
-    root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
   }
   setWeapon(kind) {
     if (this.weaponKind === kind) return;
@@ -3269,6 +3489,7 @@ class Humanoid {
       const d = easeInOut(this.deadT);
       T.rootX = -d * Math.PI / 2; T.hipsY = lerp(0.98, 0.16, d); T.sh[0] = [-2.4, 0, 0.9]; T.sh[1] = [-2.2, 0, -1.0]; T.el = [-0.4, -0.2]; T.hip[0] = [-0.3, 0.2]; T.hip[1] = [0.1, -0.1]; T.kn = [0.5, 0.1]; T.headY = 0.6; T.gun = 1.6;
     }
+    T.hipsY += this.hipsOff; // Blender bodies stand a little lower than the primitive rig
     // smooth toward targets
     const k = st.dead ? 30 : 14, f = 1 - Math.exp(-k * dt);
     P.hipsY += (T.hipsY - P.hipsY) * f; P.spineX += (T.spineX - P.spineX) * f; P.spineY += (T.spineY - P.spineY) * f; P.headX += (T.headX - P.headX) * f; P.headY += (T.headY - P.headY) * f;
@@ -3311,47 +3532,50 @@ class Quadruped {
       : kind === 'cattle' ? { L: 1.7, H: 1.18, W: 0.3, up: 0.5, lo: 0.55, br: 0.42, mat: CMAT.cattle }
         : { L: 0.8, H: 0.34, W: 0.16, up: 0.14, lo: 0.16, br: 0.22, mat: CMAT.mole };
     this.D = D;
+    const CM = ASSETS.creatures && ASSETS.creatures[kind]; // Blender body, when it loaded
+    const J = {}, P = CM ? () => null : mesh; // with a Blender body only the eyes stay primitive
     const root = this.root = new THREE.Group();
-    const body = this.body = joint(root, 0, D.H, 0);
-    mesh(cap(D.br, D.L * 0.7, 16), D.mat, body, 0, 0.02, 0, Math.PI / 2, 0, 0, 1, 1, kind === 'hound' ? 0.85 : 1);
-    if (kind === 'hound') { for (let i = 0; i < 5; i++) mesh(new THREE.TorusGeometry(0.16, 0.012, 5, 14, Math.PI * 1.1), CMAT.horn, body, 0, 0.0, 0.2 - i * 0.07, Math.PI / 2, 0, Math.PI * 0.95); mesh(new THREE.SphereGeometry(0.12, 10, 8), CMAT.houndRaw, body, 0.1, 0.06, -0.1, 0, 0, 0, 0.6, 0.8, 1); }
-    if (kind === 'cattle') mesh(new THREE.SphereGeometry(0.4, 16, 12), D.mat, body, 0, 0.05, 0.45, 0, 0, 0, 1.05, 1.05, 1);
+    const body = this.body = J.body = joint(root, 0, D.H, 0);
+    P(cap(D.br, D.L * 0.7, 16), D.mat, body, 0, 0.02, 0, Math.PI / 2, 0, 0, 1, 1, kind === 'hound' ? 0.85 : 1);
+    if (kind === 'hound') { for (let i = 0; i < 5; i++) P(new THREE.TorusGeometry(0.16, 0.012, 5, 14, Math.PI * 1.1), CMAT.horn, body, 0, 0.0, 0.2 - i * 0.07, Math.PI / 2, 0, Math.PI * 0.95); P(new THREE.SphereGeometry(0.12, 10, 8), CMAT.houndRaw, body, 0.1, 0.06, -0.1, 0, 0, 0, 0.6, 0.8, 1); }
+    if (kind === 'cattle') P(new THREE.SphereGeometry(0.4, 16, 12), D.mat, body, 0, 0.05, 0.45, 0, 0, 0, 1.05, 1.05, 1);
     // heads
     this.heads = []; this.jaws = [];
     const headCount = kind === 'cattle' ? 2 : 1;
     for (let h = 0; h < headCount; h++) {
       const ox = headCount > 1 ? (h ? 0.2 : -0.2) : 0;
-      const neck = joint(body, ox, 0.08, D.L * 0.5);
-      mesh(cap(D.br * 0.45, D.L * 0.18, 10), D.mat, neck, 0, 0.07, 0.08, 1.0, 0, 0);
-      const head = joint(neck, 0, 0.14, 0.2 * (D.L / 0.95));
+      const neck = J['neck' + h] = joint(body, ox, 0.08, D.L * 0.5);
+      P(cap(D.br * 0.45, D.L * 0.18, 10), D.mat, neck, 0, 0.07, 0.08, 1.0, 0, 0);
+      const head = J['head' + h] = joint(neck, 0, 0.14, 0.2 * (D.L / 0.95));
       const hs = kind === 'cattle' ? 1.6 : kind === 'hound' ? 1 : 1.1;
-      mesh(new THREE.SphereGeometry(0.1 * hs, 16, 12), D.mat, head, 0, 0, 0, 0, 0, 0, 1, 0.95, 1.25);
-      mesh(new THREE.CylinderGeometry(0.045 * hs, 0.065 * hs, 0.16 * hs, 12), kind === 'cattle' ? CMAT.cattleNose : D.mat, head, 0, -0.02 * hs, 0.14 * hs, Math.PI / 2 + 0.15);
-      const jaw = joint(head, 0, -0.05 * hs, 0.05 * hs);
-      mesh(new THREE.BoxGeometry(0.07 * hs, 0.025 * hs, 0.15 * hs), D.mat, jaw, 0, 0, 0.07 * hs);
-      if (kind !== 'cattle') for (let t = 0; t < 4; t++) mesh(new THREE.ConeGeometry(0.008, 0.03, 4), CMAT.tooth, jaw, -0.022 + t * 0.015, 0.02, 0.12 * hs, Math.PI);
+      P(new THREE.SphereGeometry(0.1 * hs, 16, 12), D.mat, head, 0, 0, 0, 0, 0, 0, 1, 0.95, 1.25);
+      P(new THREE.CylinderGeometry(0.045 * hs, 0.065 * hs, 0.16 * hs, 12), kind === 'cattle' ? CMAT.cattleNose : D.mat, head, 0, -0.02 * hs, 0.14 * hs, Math.PI / 2 + 0.15);
+      const jaw = J['jaw' + h] = joint(head, 0, -0.05 * hs, 0.05 * hs);
+      P(new THREE.BoxGeometry(0.07 * hs, 0.025 * hs, 0.15 * hs), D.mat, jaw, 0, 0, 0.07 * hs);
+      if (kind !== 'cattle') for (let t = 0; t < 4; t++) P(new THREE.ConeGeometry(0.008, 0.03, 4), CMAT.tooth, jaw, -0.022 + t * 0.015, 0.02, 0.12 * hs, Math.PI);
       for (const s of [-1, 1]) {
-        mesh(new THREE.SphereGeometry(0.016 * hs, 8, 6), kind === 'hound' ? CMAT.houndEye : CMAT.eye, head, s * 0.05 * hs, 0.04 * hs, 0.07 * hs);
-        if (kind === 'hound') mesh(new THREE.ConeGeometry(0.03, 0.09, 6), D.mat, head, s * 0.05, 0.1, -0.02, -0.3, 0, s * -0.3);
-        if (kind === 'cattle') { mesh(new THREE.ConeGeometry(0.035, 0.22, 8), CMAT.horn, head, s * 0.1, 0.12, -0.02, 0, 0, s * -1.1); mesh(new THREE.SphereGeometry(0.04, 8, 6), D.mat, head, s * 0.15, 0.03, -0.04, 0, 0, 0, 1.4, 0.6, 1); }
+        mesh(new THREE.SphereGeometry(0.016 * hs, 8, 6), kind === 'hound' ? CMAT.houndEye : CMAT.eye, head, s * 0.05 * hs, 0.04 * hs, (CM ? 0.08 : 0.07) * hs);
+        if (kind === 'hound') P(new THREE.ConeGeometry(0.03, 0.09, 6), D.mat, head, s * 0.05, 0.1, -0.02, -0.3, 0, s * -0.3);
+        if (kind === 'cattle') { P(new THREE.ConeGeometry(0.035, 0.22, 8), CMAT.horn, head, s * 0.1, 0.12, -0.02, 0, 0, s * -1.1); P(new THREE.SphereGeometry(0.04, 8, 6), D.mat, head, s * 0.15, 0.03, -0.04, 0, 0, 0, 1.4, 0.6, 1); }
       }
-      if (kind === 'burrower') { mesh(new THREE.BoxGeometry(0.03, 0.07, 0.015), CMAT.tooth, head, -0.018, -0.05, 0.27); mesh(new THREE.BoxGeometry(0.03, 0.07, 0.015), CMAT.tooth, head, 0.018, -0.05, 0.27); }
+      if (kind === 'burrower') { P(new THREE.BoxGeometry(0.03, 0.07, 0.015), CMAT.tooth, head, -0.018, -0.05, 0.27); P(new THREE.BoxGeometry(0.03, 0.07, 0.015), CMAT.tooth, head, 0.018, -0.05, 0.27); }
       this.heads.push({ neck, head }); this.jaws.push(jaw);
     }
     // legs
     this.legs = [];
-    for (const [sx, sz] of [[-1, 1], [1, 1], [-1, -1], [1, -1]]) {
-      const hip = joint(body, sx * D.W, -0.02, sz * D.L * 0.36);
-      mesh(cap(D.br * 0.32, D.up * 0.8, 10), D.mat, hip, 0, -D.up / 2, 0);
-      const knee = joint(hip, 0, -D.up, 0);
-      mesh(cap(D.br * 0.2, D.lo * 0.85, 8), D.mat, knee, 0, -D.lo / 2, 0);
-      mesh(new THREE.SphereGeometry(D.br * 0.24, 10, 8), kind === 'cattle' ? CMAT.leatherDark : D.mat, knee, 0, -D.lo, 0.02, 0, 0, 0, 1, 0.6, 1.3);
+    [[-1, 1], [1, 1], [-1, -1], [1, -1]].forEach(([sx, sz], i) => {
+      const hip = J['hip' + i] = joint(body, sx * D.W, -0.02, sz * D.L * 0.36);
+      P(cap(D.br * 0.32, D.up * 0.8, 10), D.mat, hip, 0, -D.up / 2, 0);
+      const knee = J['knee' + i] = joint(hip, 0, -D.up, 0);
+      P(cap(D.br * 0.2, D.lo * 0.85, 8), D.mat, knee, 0, -D.lo / 2, 0);
+      P(new THREE.SphereGeometry(D.br * 0.24, 10, 8), kind === 'cattle' ? CMAT.leatherDark : D.mat, knee, 0, -D.lo, 0.02, 0, 0, 0, 1, 0.6, 1.3);
       this.legs.push({ hip, knee, front: sz > 0, side: sx });
-    }
+    });
     // tail
     this.tail = []; let parent = body, tz = -D.L * 0.5;
-    for (let i = 0; i < 3; i++) { const t = joint(parent, 0, i === 0 ? 0.05 : 0, i === 0 ? tz : -0.12 * (D.L / 0.95)); mesh(cap(D.br * (0.14 - i * 0.03), 0.1 * (D.L / 0.95), 6), D.mat, t, 0, 0, -0.06, Math.PI / 2); this.tail.push(t); parent = t; }
-    bakeSkinned(root, kind === 'cattle' ? 2.6 : 1.6, D.H, 'q_' + kind);
+    for (let i = 0; i < 3; i++) { const t = J['tail' + i] = joint(parent, 0, i === 0 ? 0.05 : 0, i === 0 ? tz : -0.12 * (D.L / 0.95)); P(cap(D.br * (0.14 - i * 0.03), 0.1 * (D.L / 0.95), 6), D.mat, t, 0, 0, -0.06, Math.PI / 2); this.tail.push(t); parent = t; }
+    bakeSkinned(root, kind === 'cattle' ? 2.6 : 1.6, D.H, (CM ? 'qb_' : 'q_') + kind);
+    if (CM) this.model = attachModelBody(root, J, CM, 'cr_' + kind, kind === 'cattle' ? 2.6 : 1.6, D.H, { roughness: kind === 'burrower' ? 0.6 : 0.7 });
     this.phase = r.range(0, TAU); this.t = r.range(0, 10); this.deadT = 0; this.attackT = 0; this.hurtT = 0; this.emerge = 1;
     root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
   }
@@ -3381,20 +3605,23 @@ class Quadruped {
 }
 class Radroach {
   constructor(seed = 1) {
-    const root = this.root = new THREE.Group(); this.body = joint(root, 0, 0.2, 0);
-    mesh(new THREE.SphereGeometry(0.2, 20, 12), CMAT.roach, this.body, 0, 0, 0, 0, 0, 0, 1.05, 0.42, 1.9);
-    for (const s of [-1, 1]) mesh(new THREE.SphereGeometry(0.18, 16, 10, s > 0 ? Math.PI / 2 : -Math.PI / 2, Math.PI), CMAT.roach, this.body, s * 0.02, 0.03, -0.04, 0, 0, s * 0.08, 0.62, 0.34, 1.9);
-    const head = this.head = joint(this.body, 0, 0.0, 0.36); mesh(new THREE.SphereGeometry(0.08, 14, 10), CMAT.roach, head, 0, 0, 0, 0, 0, 0, 1.2, 0.7, 1);
+    const CM = ASSETS.creatures && ASSETS.creatures.roach, J = {}, P = CM ? () => null : mesh;
+    const root = this.root = new THREE.Group(); this.body = J.body = joint(root, 0, 0.2, 0);
+    P(new THREE.SphereGeometry(0.2, 20, 12), CMAT.roach, this.body, 0, 0, 0, 0, 0, 0, 1.05, 0.42, 1.9);
+    for (const s of [-1, 1]) P(new THREE.SphereGeometry(0.18, 16, 10, s > 0 ? Math.PI / 2 : -Math.PI / 2, Math.PI), CMAT.roach, this.body, s * 0.02, 0.03, -0.04, 0, 0, s * 0.08, 0.62, 0.34, 1.9);
+    const head = this.head = J.head = joint(this.body, 0, 0.0, 0.36); P(new THREE.SphereGeometry(0.08, 14, 10), CMAT.roach, head, 0, 0, 0, 0, 0, 0, 1.2, 0.7, 1);
     this.ant = [];
-    for (const s of [-1, 1]) { const a = joint(head, s * 0.03, 0.03, 0.05); const pts = []; for (let i = 0; i <= 8; i++) pts.push(new THREE.Vector3(s * i * 0.04, i * 0.02 - i * i * 0.004, i * 0.07)); mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 10, 0.006, 4), CMAT.roachLeg, a); this.ant.push(a); }
+    [-1, 1].forEach((s, k) => { const a = J['ant' + k] = joint(head, s * 0.03, 0.03, 0.05); const pts = []; for (let i = 0; i <= 8; i++) pts.push(new THREE.Vector3(s * i * 0.04, i * 0.02 - i * i * 0.004, i * 0.07)); P(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 10, 0.006, 4), CMAT.roachLeg, a); this.ant.push(a); });
     this.legs = [];
+    let n = 0;
     for (let i = 0; i < 3; i++) for (const s of [-1, 1]) {
-      const hip = joint(this.body, s * 0.14, -0.02, 0.18 - i * 0.18);
-      const up = mesh(new THREE.CylinderGeometry(0.012, 0.016, 0.22, 6), CMAT.roachLeg, hip, s * 0.1, 0.03, 0, 0, 0, -s * 1.1);
-      const kn = joint(hip, s * 0.2, 0.08, 0); mesh(new THREE.CylinderGeometry(0.008, 0.012, 0.28, 6), CMAT.roachLeg, kn, s * 0.04, -0.12, 0, 0, 0, s * 0.35);
-      this.legs.push({ hip, kn, grp: (i + (s > 0 ? 1 : 0)) % 2, s });
+      const hip = J['hip' + n] = joint(this.body, s * 0.14, -0.02, 0.18 - i * 0.18);
+      P(new THREE.CylinderGeometry(0.012, 0.016, 0.22, 6), CMAT.roachLeg, hip, s * 0.1, 0.03, 0, 0, 0, -s * 1.1);
+      const kn = J['kn' + n] = joint(hip, s * 0.2, 0.08, 0); P(new THREE.CylinderGeometry(0.008, 0.012, 0.28, 6), CMAT.roachLeg, kn, s * 0.04, -0.12, 0, 0, 0, s * 0.35);
+      this.legs.push({ hip, kn, grp: (i + (s > 0 ? 1 : 0)) % 2, s }); n++;
     }
-    bakeSkinned(root, 1.0, 0.2, 'roach');
+    bakeSkinned(root, 1.0, 0.2, CM ? 'roachb' : 'roach');
+    if (CM) this.model = attachModelBody(root, J, CM, 'cr_roach', 1.0, 0.2, { roughness: 0.35, metalness: 0.1 });
     this.t = seed; this.phase = 0; this.deadT = 0; this.hurtT = 0; this.attackT = 0;
     root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
   }
@@ -3411,43 +3638,45 @@ class Radroach {
 class Stalker {
   constructor(seed = 1) {
     const M = CMAT.stalker, root = this.root = new THREE.Group();
-    const hips = this.hips = joint(root, 0, 1.55, 0);
-    mesh(cap(0.32, 0.3, 16), M, hips, 0, 0, 0, Math.PI / 2, 0, 0, 1.1, 1, 1);
-    const spine = this.spine = joint(hips, 0, 0.2, 0.1);
-    mesh(cap(0.38, 0.55, 16), M, spine, 0, 0.35, 0.1, 0.5, 0, 0, 1.25, 1, 0.9);
-    mesh(cap(0.3, 0.45, 12), CMAT.stalkerBelly, spine, 0, 0.3, 0.3, 0.5, 0, 0, 1.05, 1, 0.6);
-    for (let i = 0; i < 6; i++) mesh(new THREE.ConeGeometry(0.06, 0.25, 6), CMAT.claw, spine, 0, 0.2 + i * 0.15, -0.3 + i * 0.04, -0.4);
-    const neck = this.neck = joint(spine, 0, 0.78, 0.42);
-    mesh(cap(0.16, 0.25, 12), M, neck, 0, 0.05, 0.12, 1.1, 0, 0);
-    const head = this.head = joint(neck, 0, 0.12, 0.32);
-    mesh(new THREE.SphereGeometry(0.2, 18, 14), M, head, 0, 0, 0, 0, 0, 0, 1, 0.85, 1.2);
-    mesh(new THREE.CylinderGeometry(0.1, 0.16, 0.36, 14), M, head, 0, -0.03, 0.26, Math.PI / 2);
-    const jaw = this.jaw = joint(head, 0, -0.08, 0.1); mesh(new THREE.BoxGeometry(0.18, 0.05, 0.34), M, jaw, 0, 0, 0.14);
-    for (let t = 0; t < 8; t++) mesh(new THREE.ConeGeometry(0.012, 0.05, 4), CMAT.tooth, jaw, -0.07 + (t % 4) * 0.045, 0.03, 0.05 + Math.floor(t / 4) * 0.2, Math.PI);
+    const CM = ASSETS.creatures && ASSETS.creatures.stalker, J = {}, P = CM ? () => null : mesh;
+    const hips = this.hips = J.hips = joint(root, 0, 1.55, 0);
+    P(cap(0.32, 0.3, 16), M, hips, 0, 0, 0, Math.PI / 2, 0, 0, 1.1, 1, 1);
+    const spine = this.spine = J.spine = joint(hips, 0, 0.2, 0.1);
+    P(cap(0.38, 0.55, 16), M, spine, 0, 0.35, 0.1, 0.5, 0, 0, 1.25, 1, 0.9);
+    P(cap(0.3, 0.45, 12), CMAT.stalkerBelly, spine, 0, 0.3, 0.3, 0.5, 0, 0, 1.05, 1, 0.6);
+    for (let i = 0; i < 6; i++) P(new THREE.ConeGeometry(0.06, 0.25, 6), CMAT.claw, spine, 0, 0.2 + i * 0.15, -0.3 + i * 0.04, -0.4);
+    const neck = this.neck = J.neck = joint(spine, 0, 0.78, 0.42);
+    P(cap(0.16, 0.25, 12), M, neck, 0, 0.05, 0.12, 1.1, 0, 0);
+    const head = this.head = J.head = joint(neck, 0, 0.12, 0.32);
+    P(new THREE.SphereGeometry(0.2, 18, 14), M, head, 0, 0, 0, 0, 0, 0, 1, 0.85, 1.2);
+    P(new THREE.CylinderGeometry(0.1, 0.16, 0.36, 14), M, head, 0, -0.03, 0.26, Math.PI / 2);
+    const jaw = this.jaw = J.jaw = joint(head, 0, -0.08, 0.1); P(new THREE.BoxGeometry(0.18, 0.05, 0.34), M, jaw, 0, 0, 0.14);
+    for (let t = 0; t < 8; t++) P(new THREE.ConeGeometry(0.012, 0.05, 4), CMAT.tooth, jaw, -0.07 + (t % 4) * 0.045, 0.03, 0.05 + Math.floor(t / 4) * 0.2, Math.PI);
     for (const s of [-1, 1]) {
-      mesh(new THREE.SphereGeometry(0.03, 10, 8), CMAT.stalkerEye, head, s * 0.12, 0.07, 0.14);
+      mesh(new THREE.SphereGeometry(0.03, 10, 8), CMAT.stalkerEye, head, s * 0.12, 0.07, CM ? 0.17 : 0.14);
       const horn = new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(0, 0, 0), V3(s * 0.12, 0.12, -0.05), V3(s * 0.2, 0.3, -0.2), V3(s * 0.18, 0.45, -0.42)]), 10, 0.035, 8);
-      mesh(horn, CMAT.horn, head, s * 0.1, 0.1, -0.02);
+      P(horn, CMAT.horn, head, s * 0.1, 0.1, -0.02);
     }
     this.arms = [];
-    for (const s of [-1, 1]) {
-      const sh = joint(spine, s * 0.42, 0.62, 0.3); mesh(cap(0.12, 0.45, 12), M, sh, 0, -0.3, 0);
-      const el = joint(sh, 0, -0.62, 0); mesh(cap(0.1, 0.48, 12), M, el, 0, -0.3, 0);
-      const hd = joint(el, 0, -0.62, 0); mesh(new THREE.SphereGeometry(0.11, 12, 8), M, hd, 0, 0, 0);
-      for (let c = 0; c < 3; c++) mesh(new THREE.ConeGeometry(0.035, 0.42, 8), CMAT.claw, hd, (c - 1) * 0.06, -0.2, 0.1, 0.5, 0, (c - 1) * 0.2);
+    [-1, 1].forEach((s, k) => {
+      const sh = J['sh' + k] = joint(spine, s * 0.42, 0.62, 0.3); P(cap(0.12, 0.45, 12), M, sh, 0, -0.3, 0);
+      const el = J['el' + k] = joint(sh, 0, -0.62, 0); P(cap(0.1, 0.48, 12), M, el, 0, -0.3, 0);
+      const hd = J['hd' + k] = joint(el, 0, -0.62, 0); P(new THREE.SphereGeometry(0.11, 12, 8), M, hd, 0, 0, 0);
+      for (let c = 0; c < 3; c++) P(new THREE.ConeGeometry(0.035, 0.42, 8), CMAT.claw, hd, (c - 1) * 0.06, -0.2, 0.1, 0.5, 0, (c - 1) * 0.2);
       this.arms.push({ sh, el });
-    }
+    });
     this.legs = [];
-    for (const s of [-1, 1]) {
-      const hp = joint(hips, s * 0.3, -0.05, 0); mesh(cap(0.17, 0.5, 12), M, hp, 0, -0.3, 0.05);
-      const kn = joint(hp, 0, -0.62, 0.05); mesh(cap(0.12, 0.45, 10), M, kn, 0, -0.26, 0);
-      const an = joint(kn, 0, -0.55, 0); mesh(cap(0.08, 0.3, 8), M, an, 0, -0.18, 0);
-      const ft = joint(an, 0, -0.38, 0); for (let c = 0; c < 3; c++) mesh(new THREE.ConeGeometry(0.04, 0.28, 6), CMAT.claw, ft, (c - 1) * 0.07, 0, 0.14, Math.PI / 2, 0, 0);
+    [-1, 1].forEach((s, k) => {
+      const hp = J['hp' + k] = joint(hips, s * 0.3, -0.05, 0); P(cap(0.17, 0.5, 12), M, hp, 0, -0.3, 0.05);
+      const kn = J['kn' + k] = joint(hp, 0, -0.62, 0.05); P(cap(0.12, 0.45, 10), M, kn, 0, -0.26, 0);
+      const an = J['an' + k] = joint(kn, 0, -0.55, 0); P(cap(0.08, 0.3, 8), M, an, 0, -0.18, 0);
+      const ft = J['ft' + k] = joint(an, 0, -0.38, 0); for (let c = 0; c < 3; c++) P(new THREE.ConeGeometry(0.04, 0.28, 6), CMAT.claw, ft, (c - 1) * 0.07, 0, 0.14, Math.PI / 2, 0, 0);
       this.legs.push({ hp, kn, an });
-    }
+    });
     this.tail = []; let parent = hips;
-    for (let i = 0; i < 5; i++) { const t = joint(parent, 0, 0, i === 0 ? -0.35 : -0.38); mesh(cap(0.15 - i * 0.025, 0.3, 8), M, t, 0, 0, -0.18, Math.PI / 2); this.tail.push(t); parent = t; }
-    bakeSkinned(root, 4.2, 1.6, 'stalker');
+    for (let i = 0; i < 5; i++) { const t = J['tail' + i] = joint(parent, 0, 0, i === 0 ? -0.35 : -0.38); P(cap(0.15 - i * 0.025, 0.3, 8), M, t, 0, 0, -0.18, Math.PI / 2); this.tail.push(t); parent = t; }
+    bakeSkinned(root, 4.2, 1.6, CM ? 'stalkerb' : 'stalker');
+    if (CM) this.model = attachModelBody(root, J, CM, 'cr_stalker', 4.2, 1.6, { roughness: 0.6 });
     this.phase = 0; this.t = 0; this.deadT = 0; this.attackT = 0; this.hurtT = 0;
     root.scale.setScalar(1.05);
     root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
@@ -6268,7 +6497,7 @@ function setupComposer() {
 function updateGfxInfo() {
   let gpu = '';
   try { const gl = renderer.getContext(), ext = gl.getExtension('WEBGL_debug_renderer_info'); gpu = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : ''; } catch (e) { }
-  const el = $('gfxInfo'); if (el) el.textContent = `Renderer: WebGL2${gpu ? ' · ' + String(gpu).slice(0, 48) : ''} · ${composer ? 'post effects on' : 'direct (safe) mode'} · ${renderer.getPixelRatio().toFixed(2)}x · Blender ${ASSETS.blenderTex ? 'materials' : 'materials missing'}, ${ASSETS.models ? 'models' : 'models missing'}`;
+  const el = $('gfxInfo'); if (el) el.textContent = `Renderer: WebGL2${gpu ? ' · ' + String(gpu).slice(0, 48) : ''} · ${composer ? 'post effects on' : 'direct (safe) mode'} · ${renderer.getPixelRatio().toFixed(2)}x · Blender ${ASSETS.blenderTex ? 'materials' : 'materials missing'}, ${ASSETS.models ? 'models' : 'models missing'}, ${ASSETS.chars ? 'characters' : 'characters missing'}, ${ASSETS.creatures ? 'creatures' : 'creatures missing'}, ${ASSETS.props ? 'props' : 'props missing'}`;
 }
 let issueT = 0;
 function reportIssue(msg, sticky = false) {
@@ -6449,12 +6678,15 @@ async function start(data = {}) {
     try { await Promise.race([document.fonts.load('800 40px "Big Shoulders Stencil Display"'), new Promise(r => setTimeout(r, 1500))]); } catch (e) { }
     setupRenderer();
     bootLog('Loading materials and models built in Blender', 8); await nextFrame();
-    const prog = [0, 1, 0, 1], bar = () => { $('bootfill').style.width = (8 + (prog[0] + prog[2]) / (prog[1] + prog[3]) * 14) + '%'; };
-    const [baked, models] = await Promise.all([
-      ASSETS.loadTextures((d, t) => { prog[0] = d; prog[1] = t; bar(); }),
-      ASSETS.loadModels((d, t) => { prog[2] = d; prog[3] = t; bar(); }),
+    const prog = {}, bar = () => { const v = Object.values(prog); $('bootfill').style.width = (8 + v.reduce((a, p) => a + p[0], 0) / Math.max(1, v.reduce((a, p) => a + p[1], 0)) * 14) + '%'; };
+    const track = (k) => (d, t) => { prog[k] = [d, t]; bar(); };
+    const [baked, models, chars, creatures, props] = await Promise.all([
+      ASSETS.loadTextures(track('tex')), ASSETS.loadModels(track('models')), ASSETS.loadChars(track('chars')), ASSETS.loadCreatures(track('creatures')), ASSETS.loadProps(track('props')),
     ]);
+    if (props) bootLog('Photo-scanned props from Poly Haven ready', 21);
+    if (creatures) bootLog('Hounds, brahmin, mole rats, radroaches and the stalker sculpted in Blender', 21);
     if (models) bootLog('Blender cars, boulders and fir branches ready', 20);
+    if (chars) bootLog('MakeHuman survivors, raiders, traders and ghouls ready', 21);
     if (baked) { bootLog('Blender materials ready', 22); genMacroTexture(); }
     else {
       bootLog('Synthesizing terrain textures', 10); await nextFrame(); genTerrainTextures();
@@ -6478,7 +6710,7 @@ async function start(data = {}) {
     $('bootErr').textContent = 'Feed failed to start: ' + (err && err.message ? err.message : err) + '. A browser with WebGL2 is required.';
   }
 }
-window.__wl = { ASSETS_: ASSETS, EVENTS, DANGER, SITES, PIECES, TRAITS, STYLE, LOGQ, siteFeatures, SAVES, SAVEUI, snapshotGame, loadGame, TREES_: () => TREES, cullActors, ENV, HUD, FX, VAULT, get camera() { return camera; }, get composer() { return composer; }, updateChunks, updateEnvironment, S, get SURV() { return SURV; }, BASE, ENEMIES, CONTAINERS, POIS, step, setSpeed, CAM, NAV, findPath, walkClear, losClear, COLL, TREES, CARS, LAYOUT, groundHeight, get scene() { return scene; }, get renderer() { return renderer; } };
+window.__wl = { ASSETS_: ASSETS, THREE_: THREE, MAT_: MAT, Humanoid, Quadruped, Radroach, Stalker, EVENTS, DANGER, SITES, PIECES, TRAITS, STYLE, LOGQ, siteFeatures, SAVES, SAVEUI, snapshotGame, loadGame, TREES_: () => TREES, cullActors, ENV, HUD, FX, VAULT, get camera() { return camera; }, get composer() { return composer; }, updateChunks, updateEnvironment, S, get SURV() { return SURV; }, BASE, ENEMIES, CONTAINERS, POIS, step, setSpeed, CAM, NAV, findPath, walkClear, losClear, COLL, TREES, CARS, LAYOUT, groundHeight, get scene() { return scene; }, get renderer() { return renderer; } };
 window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
 </script>
 </body>

@@ -13,12 +13,14 @@ No two runs play out the same:
 - Homesteads come in three styles: log cabin with a palisade in the woods, plank farmhouse with a rail fence on farmland, and a scrap-metal shack near town or on high ground.
 - The STAT tab shows the dweller's personality; DATA shows what it remembers.
 
-Graphics built in Blender:
+Graphics:
 
-- The ground, buildings, metal, wood, cloth and roads use 13 PBR material sets (colour, normal, roughness, metalness and ambient occlusion) baked in Blender. Desktop loads them at 1024 px and phones at 512 px.
-- The boulders are sculpted and baked in Blender. The sedans, delivery vans and burnt-out wrecks are modelled there too, and each has a lower-detail version for distance. The pine trees' branch cards are rendered from a modelled fir branch.
-- The files are in `wasteland/assets/`. The scripts that make them, and the steps to rebuild them, are in `wasteland/blender/`. The `.glb` models are plain glTF 2.0, so Unreal Engine 5 and other engines can import them.
-- If the asset files can't be loaded, the page falls back to its built-in procedural textures and models.
+- Ground, buildings, metal, wood, cloth and roads use photo-scanned PBR materials from Poly Haven (colour, normal, roughness, metalness and ambient occlusion), tiled to real-world scale. Desktop loads them at 1024 px and phones at 512 px.
+- The survivor, raiders, traders and ghouls are realistic MakeHuman bodies (vault suit, jackets, shirts, a fedora, boots, hair) generated in Blender and re-rigged onto the game's own skeleton, so its walking, aiming, looting and building animations drive them.
+- Hounds, two-headed brahmin, mole rats, radroaches and the horned stalker are modelled in Blender on their existing skeletons.
+- Barrels, loot chests, ammo cans, tyres, jersey barriers, trash cans, fuel cans, gas bottles, generators, fallen logs, stumps, covered cars, the axe and the hammer are photo-scanned Poly Haven props. The sedans, vans, wrecks and school bus are modelled in Blender.
+- The files are in `wasteland/assets/`, with sources and authors in `wasteland/assets/CREDITS.md`. The scripts that make them are in `wasteland/blender/`. Everything is CC0 or made for this game. The `.glb` models are plain glTF 2.0, so Unreal Engine 5 and other engines can import them.
+- If any group of asset files can't be loaded, the page falls back to its built-in procedural version of that group.
 
 Saving:
 
