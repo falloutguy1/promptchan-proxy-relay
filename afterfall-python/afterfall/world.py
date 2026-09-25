@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from .assets.catalog import material_of
 from .config import HALF, HCELL, HN, PCELL, PN, DN, DCELL, CHUNK, POND, ROADS, SITES
 from .noise import Noise, smooth
 
@@ -67,6 +68,7 @@ class Part:
     color: tuple
     sway: float = 0.0     # wind sway weight for vegetation
     anchor: float | None = None  # ground height the sway is measured from
+    mat: int = 0          # texture layer (assets.catalog), 0 = plain colour
 
 
 @dataclass
@@ -141,7 +143,7 @@ class Kit:
         pos = self.t + self.rb @ np.asarray(loc, dtype=np.float64)
         if self.conform:
             pos[2] += self.w.ground_z(pos[0], pos[1]) - self.base_z
-        self.sink.append(Part(shape, m, pos, hexcol(color), self.sway, self.base_z if self.sway else None))
+        self.sink.append(Part(shape, m, pos, hexcol(color), self.sway, self.base_z if self.sway else None, material_of(color)))
 
     def box(self, size, loc, color, rot=(0, 0, 0)):
         self.emit("cube", color, size, loc, rot)
@@ -522,17 +524,37 @@ class World:
         col = mix(col, 0x857a47, np.where(n2 > .25, smooth(.25, .6, n2) * .7, 0))
         col = mix(col, 0x39401f, np.where(nf > -.02, smooth(-.02, .2, nf) * .6, 0))
         dirt = 1 - smooth(-.5, 3.5, self.rd)
+        bare = dirt.copy()   # trampled ground for the textures: roads, towns, and only the camp's centre
         for s in self.sites:
             d = np.hypot(x - s.x, y - s.y)
             if s.kind == "base":
-                dirt = np.maximum(dirt, (1 - smooth(4, s.r, d)) * .45)
+                dirt = np.maximum(dirt, (1 - smooth(4, s.r, d)) * .3)
+                bare = np.maximum(bare, (1 - smooth(3, 12, d)) * .7)
             else:
                 dirt = np.maximum(dirt, (1 - smooth(s.r * .3, s.r + 10, d)) * .45 * (n.fbm(x * .08, y * .08, 2) * .5 + .6))
+                bare = np.maximum(bare, dirt)
         col = mix(col, 0x5a4a33, np.minimum(dirt, .85))
         col = mix(col, 0x6e6a61, smooth(.14, .34, 1 - nz))
         col = mix(col, 0x3d3326, np.where(h < self.water_z + 1.2, smooth(self.water_z + 1.2, self.water_z + .1, h), 0))
         col = mix(col, 0x8b8a80, np.where(h > 52, smooth(52, 66, h) * .8, 0))
         self.colors = np.clip(col, 0, 1)
+        # the same masks as ground-material weights for the optional scanned textures: grass, forest floor, mud, rock
+        sp = np.zeros(h.shape + (4,))
+        sp[..., 0] = 1
+
+        def lay(k, wt):
+            wt = np.clip(wt, 0, 1)[..., None]
+            one = np.zeros(4)
+            one[k] = 1
+            return sp * (1 - wt) + one * wt
+
+        sp = lay(1, np.where(n2 > .3, smooth(.3, .7, n2) * .35, 0))
+        sp = lay(1, np.where(nf > .05, smooth(.05, .3, nf) * .55, 0))
+        sp = lay(1, np.minimum(bare * 1.2, .9))
+        sp = lay(3, smooth(.12, .3, 1 - nz))
+        sp = lay(2, np.where(h < self.water_z + 1.6, smooth(self.water_z + 1.6, self.water_z + .2, h), 0))
+        sp = lay(3, np.where(h > 52, smooth(52, 64, h), 0))
+        self.splat = sp
 
     def ground_z(self, x, y):
         fx = min(max((x + HALF) / HCELL, 0.0), HN - 1e-3)
@@ -815,7 +837,7 @@ class World:
         xaxis /= np.linalg.norm(xaxis)
         yaxis = np.cross(zaxis, xaxis)
         rot = np.stack([xaxis, yaxis, zaxis], axis=1)
-        self.static_parts.append(Part("cylinder", rot @ np.diag((d, d, length)), (a + b) / 2, hexcol(color)))
+        self.static_parts.append(Part("cylinder", rot @ np.diag((d, d, length)), (a + b) / 2, hexcol(color), mat=material_of(color)))
 
     # --- vegetation ------------------------------------------------------------------------------
 

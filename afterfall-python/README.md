@@ -4,7 +4,8 @@ A 3D survival game you watch rather than play. A survivor wakes up in a procedur
 post-Soviet wasteland. They scavenge the dead towns, avoid or fight the infected, and build a homestead one
 project at a time. If they die, someone new finds their journal and carries on.
 
-Written in Python with [Ursina](https://www.ursinaengine.org/) (Panda3D) and numpy.
+Written in Python with [Ursina](https://www.ursinaengine.org/) (Panda3D) and numpy. An optional free asset
+pack swaps the built-in look for photo-scanned textures and motion-captured characters (see below).
 
 ## Run it
 
@@ -25,9 +26,39 @@ Options:
 | `--skip 24` | Fast-forward this many game hours before showing |
 | `--size 1920x1080`, `--fullscreen` | Window size |
 | `--zombies 40` | How many infected roam the map |
+| `--no-assets` | Ignore the downloaded asset pack and use the built-in look |
 
 Controls: `1` cinematic director, `2` chase, `3` orbit (drag with the mouse, scroll to zoom), `4` overhead,
 `Space` pause, `[` / `]` slower and faster, `H` hide the interface, `Esc` quit.
+
+## Realistic textures, characters and animations (optional)
+
+```bash
+python fetch_assets.py            # about 520 MB to download, 75 MB once installed, about a minute to convert
+python fetch_assets.py --clean    # the same, then deletes the downloaded zips
+```
+
+This downloads free, public-domain (CC0) assets into `assets/` and converts them. The game uses them
+automatically from then on:
+
+- **Scanned materials** from [Poly Haven](https://polyhaven.com): plaster, brick, weathered planks, bark,
+  rusted paint, corrugated iron, roof tiles, concrete, canvas, leaves, rock, mud, asphalt, grass and forest
+  floor. Each comes with colour, normal and roughness maps and is tiled at its real-world size. Buildings and
+  props are mapped in their own frame, so bricks stay level on a rotated wall. The terrain blends four ground
+  scans by slope, height, roads and forest cover, and everything darkens and turns glossy when it rains.
+- **Characters** from Quaternius' [Universal Base Characters](https://quaternius.itch.io/universal-base-characters)
+  and [Modular Character Outfits](https://quaternius.itch.io/modular-character-outfits-fantasy): hooded
+  survivors (the body is male or female, depending on the name), plus six kinds of infected with torn clothes,
+  grey skin and blood stains. Each is about 20 to 30 thousand triangles, skinned on the GPU.
+- **Motion-captured animation** from the [Universal Animation Library 1 and 2](https://quaternius.itch.io/universal-animation-library):
+  walk, jog, sprint, crouch-walk, tree chopping, kneeling repairs, harvesting, eating, sitting, lying down,
+  dying, and zombie shamble, idle and clawing. Clips crossfade, follow the simulation clock (so they pause
+  and speed up with the game), and are sped up to match walking speed so the feet don't slide. The axe,
+  hammer, rifle and backpack attach to the hand and spine.
+
+`--quality` sets the texture resolution (256, 512 or 1024 pixels). If itch.io refuses the automatic download,
+the script prints the four pack pages. Download the free Standard zip from each one, put the zips in
+`assets/downloads/`, and run the script again. Credits are written to `assets/CREDITS.txt`.
 
 ## The survivor's AI
 
@@ -69,6 +100,10 @@ afterfall/
   ai/memory.py    places, danger map, threats, episodes
   ai/zombie.py    the infected
   render/         Panda3D geometry, shaders, bodies, camera director, HUD, synthesised audio
+  render/actors.py      skinned characters from the asset pack
+  render/materials.py   texture arrays for the scanned materials
+  assets/         asset catalogue, downloader and the character/animation converter
+fetch_assets.py   downloads and converts the optional asset pack
 tests/test_sim.py headless multi-day run
 ```
 

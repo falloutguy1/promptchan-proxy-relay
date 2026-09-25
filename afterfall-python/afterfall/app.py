@@ -14,6 +14,7 @@ def parse_args(argv=None):
     p.add_argument("--size", default="1600x900", help="window size, e.g. 1920x1080")
     p.add_argument("--fullscreen", action="store_true")
     p.add_argument("--skip", type=float, default=0.0, help="fast-forward this many game hours before showing")
+    p.add_argument("--no-assets", action="store_true", help="ignore the downloaded texture/character pack")
     p.add_argument("--screenshot", default=None, help=argparse.SUPPRESS)
     p.add_argument("--frames", type=int, default=90, help=argparse.SUPPRESS)
     p.add_argument("--camera", default="cine", help=argparse.SUPPRESS)
@@ -21,7 +22,8 @@ def parse_args(argv=None):
     return p.parse_args(argv)
 
 
-QUALITY = {"low": {"shadow": 1024, "msaa": 0}, "medium": {"shadow": 2048, "msaa": 2}, "high": {"shadow": 4096, "msaa": 4}}
+QUALITY = {"low": {"shadow": 1024, "msaa": 0, "tex": 256}, "medium": {"shadow": 2048, "msaa": 2, "tex": 512},
+           "high": {"shadow": 4096, "msaa": 4, "tex": 1024}}
 
 
 def main(argv=None):
@@ -50,6 +52,7 @@ def main(argv=None):
     if hasattr(window, "exit_button"):
         window.exit_button.visible = False
 
+    from .assets import catalog
     from .sim import Simulation
     from .render.audio import SoundBoard
     from .render.body import Body, heading_deg, survivor_look, zombie_look
@@ -65,15 +68,33 @@ def main(argv=None):
         sim.step(.1)
     print(f"Seed {sim.seed}", flush=True)
 
-    scene.set_shader(world_shader())
+    materials = kit = None
+    if not args.no_assets and catalog.texture_ready():
+        try:
+            from .render.materials import Materials
+            materials = Materials(q["tex"])
+        except Exception as e:  # a broken or outdated pack shouldn't stop the game
+            print(f"Textures unavailable ({e}); using plain colours", flush=True)
+    shader = world_shader(textured=materials is not None)
+    scene.set_shader(shader)
     for k, v in dict(u_light0=Vec4(0), u_light0_col=Vec3(0), u_light1=Vec4(0), u_light1_col=Vec3(0), u_gloss=0.0, u_emissive=0.0,
-                     u_shadow_on=1.0, u_shadow_texel=1.0 / q["shadow"]).items():
+                     u_shadow_on=1.0, u_shadow_texel=1.0 / q["shadow"], u_wet=0.0).items():
         scene.set_shader_input(k, v)
+    if materials:
+        materials.apply(scene)
+    if not args.no_assets and catalog.characters_ready():
+        try:
+            from .render.actors import CharacterKit
+            kit = CharacterKit(app.loader, shader)
+        except Exception as e:
+            print(f"Characters unavailable ({e}); using procedural bodies", flush=True)
+    if materials is None and kit is None and not args.no_assets:
+        print("Tip: run 'python fetch_assets.py' once for scanned textures and motion-captured characters.", flush=True)
     if q["msaa"]:
         scene.set_antialias(AntialiasAttrib.M_multisample)
     camera.clip_plane_near = .15
     camera.clip_plane_far = 2400
-    view = WorldView(sim, scene)
+    view = WorldView(sim, scene, textured=materials is not None)
     env = Environment(sim, scene, camera, q["shadow"])
     env.update(0, Vec3(sim.survivor.x, 0, sim.survivor.y))
     director = Director(camera, sim.world)
@@ -83,7 +104,7 @@ def main(argv=None):
     sound = SoundBoard(app) if not args.offscreen else None
 
     state = {"speed": max(.5, min(16.0, args.speed)), "paused": False, "frames": 0, "last_speed": args.speed,
-             "survivor": None, "body": None, "floaters_seen": len(sim.floaters), "sounds_seen": len(sim.sounds)}
+             "survivor": None, "body": None, "floaters_seen": len(sim.floaters), "sounds_seen": len(sim.sounds), "wet": 0.0}
     zombie_bodies = {}
     agents_root = scene.attach_new_node("agents")
 
@@ -92,13 +113,14 @@ def main(argv=None):
         if state["survivor"] is not s:
             if state["body"] is not None:
                 state["body"].root.remove_node()
-            b = Body(agents_root, {**survivor_look(s.name), "pack": survivor_look(s.name)["pack"]})
+            look = survivor_look(s.name)
+            b = kit.survivor(agents_root, s.name, look) if kit else Body(agents_root, look)
             b.add_items()
             state["body"], state["survivor"] = b, s
         return state["body"]
 
     for z in sim.zombies:
-        zombie_bodies[z.id] = Body(agents_root, zombie_look(z.look))
+        zombie_bodies[z.id] = kit.walker(agents_root, z.look, zombie_look(z.look)) if kit else Body(agents_root, zombie_look(z.look))
 
     def on_hit(kind, x, y):
         if sound:
@@ -148,6 +170,9 @@ def main(argv=None):
         scene.set_shader_input("u_light1_col", Vec3(*c1))
         for road in view.road_nodes:
             road.set_shader_input("u_gloss", sim.rain * .55)
+        # surfaces soak up rain within half an hour and take a few hours to dry
+        state["wet"] = min(1.0, state["wet"] + sim_dt * sim.rain / 30) if sim.rain > .1 else max(0.0, state["wet"] - sim_dt / 180)
+        scene.set_shader_input("u_wet", state["wet"])
         director.update(dt, s, sim.home)
         # floating text and sounds from the simulation
         for fx, fy, text, kind, _delay in sim.floaters[state["floaters_seen"]:]:

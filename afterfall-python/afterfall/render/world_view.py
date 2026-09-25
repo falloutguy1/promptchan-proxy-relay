@@ -5,9 +5,11 @@ import math
 import numpy as np
 from panda3d.core import LineSegs, NodePath, Quat, Vec3
 
+from ..assets.catalog import material_of
 from ..config import CHUNK, HALF, HN
 from ..world import Pal, hexcol
 from .geometry import make_geom_node, node_from_parts, to_panda, unit_node
+from .shaders import terrain_shader
 
 
 def P(x, y, z):
@@ -16,8 +18,9 @@ def P(x, y, z):
 
 
 class WorldView:
-    def __init__(self, sim, root: NodePath):
+    def __init__(self, sim, root: NodePath, textured=False):
         self.sim, self.world, self.home = sim, sim.world, sim.home
+        self.textured = textured
         self.root = root.attach_new_node("world")
         self._terrain()
         self._roads()
@@ -52,7 +55,12 @@ class WorldView:
         i, j = np.meshgrid(np.arange(HN), np.arange(HN))
         a = (j * s + i).ravel()
         tris = np.concatenate([np.stack([a, a + 1, a + s + 1], 1), np.stack([a, a + s + 1, a + s], 1)])
-        self.root.attach_new_node(make_geom_node("terrain", to_panda(pos), to_panda(nrm), col, tris))
+        if self.textured:
+            node = make_geom_node("terrain", to_panda(pos), to_panda(nrm), col, tris, splat=w.splat.reshape(-1, 4))
+            self.terrain = self.root.attach_new_node(node)
+            self.terrain.set_shader(terrain_shader(), 5)
+        else:
+            self.terrain = self.root.attach_new_node(make_geom_node("terrain", to_panda(pos), to_panda(nrm), col, tris))
 
     def _roads(self):
         w = self.world
@@ -80,7 +88,9 @@ class WorldView:
                 for k in range(4):
                     a = i * 5 + k
                     tris += [(a, a + 5, a + 6), (a, a + 6, a + 1)]
-            node = self.root.attach_new_node(make_geom_node("road", to_panda(pos), to_panda(nrm), np.array(cols), np.array(tris)))
+            mat = np.full(len(pos), material_of(Pal.ASPHALT if road["asphalt"] else Pal.DIRT_ROAD), dtype=np.float32)
+            node = self.root.attach_new_node(make_geom_node("road", to_panda(pos), to_panda(nrm), np.array(cols), np.array(tris),
+                                                            tex=pos, mat=mat))
             self.road_nodes.append(node)
             node.set_shader_input("u_gloss", 0.0)
 

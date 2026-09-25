@@ -52,5 +52,6 @@ ITEM_NAMES = {
     "axe": ["woodcutter's axe"], "rifle": ["bolt-action rifle"],
 }
 
+FEMALE_NAMES = {"Mira", "Sasha", "Nadia", "Lena", "Katya", "Dasha", "Vera"}   # picks the body model
 NAMES = ["Mira Volkova", "Alexei Dragan", "Sasha Koval", "Petr Ilyin", "Nadia Orlova", "Lena Marek",
          "Ivan Rusak", "Katya Belova", "Yuri Sokol", "Dasha Levin", "Oleg Brandt", "Vera Novak"]

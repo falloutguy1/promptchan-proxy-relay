@@ -96,28 +96,40 @@ def to_panda(v):
     return v[..., [0, 2, 1]]
 
 
-_FORMAT = None
+_FORMATS = {}
 
 
-def _format():
-    global _FORMAT
-    if _FORMAT is None:
+def _format(extra):
+    """v3 n3 c4 plus optional float columns, e.g. (("tex3", 3), ("material", 1))."""
+    key = tuple(extra)
+    if key not in _FORMATS:
         arr = GeomVertexArrayFormat()
         arr.add_column(InternalName.get_vertex(), 3, GeomEnums.NT_float32, GeomEnums.C_point)
         arr.add_column(InternalName.get_normal(), 3, GeomEnums.NT_float32, GeomEnums.C_normal)
         arr.add_column(InternalName.get_color(), 4, GeomEnums.NT_float32, GeomEnums.C_color)
-        _FORMAT = GeomVertexFormat.register_format(arr)
-    return _FORMAT
+        for name, n in key:
+            arr.add_column(InternalName.make(name), n, GeomEnums.NT_float32, GeomEnums.C_other)
+        _FORMATS[key] = GeomVertexFormat.register_format(arr)
+    return _FORMATS[key]
 
 
-def make_geom_node(name, pos, nrm, col, tris):
-    """pos/nrm (N,3) and col (N,4) already in Panda space; tris (M,3) counter-clockwise in simulation space."""
+def make_geom_node(name, pos, nrm, col, tris, tex=None, mat=None, splat=None):
+    """pos/nrm (N,3) and col (N,4) already in Panda space; tris (M,3) counter-clockwise in simulation space.
+
+    World geometry also carries `tex` (N,3: position in the part's own frame, metres) and `mat` (N,: texture
+    layer, 0 = none); the terrain carries `splat` (N,4: ground material weights)."""
     n = len(pos)
-    data = np.empty((n, 10), dtype=np.float32)
-    data[:, 0:3] = pos
-    data[:, 3:6] = nrm
-    data[:, 6:10] = col
-    vdata = GeomVertexData(name, _format(), Geom.UH_static)
+    cols = [pos, nrm, col]
+    extra = []
+    if splat is not None:
+        cols.append(splat)
+        extra.append(("splat", 4))
+    else:
+        cols.append(tex if tex is not None else np.zeros((n, 3)))
+        cols.append((mat if mat is not None else np.zeros(n)).reshape(n, 1))
+        extra += [("tex3", 3), ("material", 1)]
+    data = np.ascontiguousarray(np.concatenate(cols, axis=1), dtype=np.float32)
+    vdata = GeomVertexData(name, _format(extra), Geom.UH_static)
     vdata.unclean_set_num_rows(n)
     memoryview(vdata.modify_array(0)).cast("B")[:] = data.tobytes()
     prim = GeomTriangles(Geom.UH_static)
@@ -134,11 +146,11 @@ def make_geom_node(name, pos, nrm, col, tris):
 
 
 def build_parts(parts, low=False):
-    """Merge a list of world.Part into arrays (panda space). Returns pos, nrm, col, tris or None."""
+    """Merge a list of world.Part into arrays (panda space). Returns pos, nrm, col, tris, tex, mat or None."""
     if not parts:
         return None
     prims = PRIMS_LOW if low else PRIMS
-    out_p, out_n, out_c, out_t = [], [], [], []
+    out_p, out_n, out_c, out_t, out_x, out_m = [], [], [], [], [], []
     offset = 0
     by_shape = {}
     for p in parts:
@@ -159,22 +171,32 @@ def build_parts(parts, low=False):
         alpha = sway[:, None] * height
         P, V = verts.shape[:2]
         col = np.concatenate([np.repeat(cols[:, None, :], V, axis=1), alpha[:, :, None]], axis=2)
+        # texture space: the unit primitive scaled to metres in the part's own (unrotated) frame, shifted by a
+        # per-part offset so neighbouring walls don't repeat the same bricks
+        size = np.linalg.norm(m, axis=1)                      # column norms = the part's size along each axis
+        shift = np.stack([np.sin(t[:, 0] * 12.9898 + t[:, 1] * 78.233), np.sin(t[:, 1] * 39.346 + t[:, 2] * 11.135),
+                          np.sin(t[:, 0] * 73.156 + t[:, 2] * 52.235)], axis=1) * 43758.5453 % 1.0 * 20.0
+        tex = pv[None, :, :] * size[:, None, :] + shift[:, None, :]
+        mats = np.array([p.mat for p in group], dtype=np.float32)
         out_p.append(verts.reshape(-1, 3))
         out_n.append(nrms.reshape(-1, 3))
         out_c.append(col.reshape(-1, 4))
+        out_x.append(tex.reshape(-1, 3))
+        out_m.append(np.repeat(mats, V))
         tris = (pt[None, :, :] + (np.arange(P) * V)[:, None, None]).reshape(-1, 3) + offset
         out_t.append(tris)
         offset += P * V
     pos = to_panda(np.concatenate(out_p))
     nrm = to_panda(np.concatenate(out_n))
-    return pos, nrm, np.concatenate(out_c), np.concatenate(out_t)
+    return pos, nrm, np.concatenate(out_c), np.concatenate(out_t), np.concatenate(out_x), np.concatenate(out_m)
 
 
 def node_from_parts(name, parts, low=False):
     built = build_parts(parts, low)
     if built is None:
         return None
-    return make_geom_node(name, *built)
+    pos, nrm, col, tris, tex, mat = built
+    return make_geom_node(name, pos, nrm, col, tris, tex, mat)
 
 
 def unit_node(shape, low=False):
