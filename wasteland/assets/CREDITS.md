@@ -45,6 +45,35 @@ Downloaded at 2k with `fetch_ph.py`, then packed into the game layouts, tiled to
 
 Downloaded as 1k glTF with `fetch_phm.py`; decimated, re-oriented and repacked by `make_props.py`.
 
+## Weapons: [Poly Haven](https://polyhaven.com) (CC0)
+
+| Game weapon | Poly Haven asset | Authors |
+| --- | --- | --- |
+| 10mm pistol | [Service Pistol](https://polyhaven.com/a/service_pistol) | Mateusz Sadek |
+| hunting rifle; the stock of the shotgun and the pipe rifle | [Bolt Action Rifle 7.62](https://polyhaven.com/a/bolt_action_rifle_7_62) | Mateusz Sadek |
+| machete | [Machete](https://polyhaven.com/a/machete) | Ulan Cabanilla |
+
+The shotgun and the pipe rifle are kitbashed from the rifle in `make_props.py`: new barrels, pipes, bands and tape, textured with the Rust Coarse 01 and Hessian 230 scans listed above.
+
+## Building and street kit: [Poly Haven](https://polyhaven.com) (CC0)
+
+| Game piece | Poly Haven asset | Authors |
+| --- | --- | --- |
+| fire escapes on the ruins | [Modular Fire Escape](https://polyhaven.com/a/modular_fire_escape) | Juniix |
+| roller shutters (garage, shop doors) | [Rollershutter Door](https://polyhaven.com/a/rollershutter_door) | MP |
+| roller shutters (shop windows) | [Rollershutter Window 02](https://polyhaven.com/a/rollershutter_window_02) | MP |
+| air-con units | [Exterior Aircon Unit](https://polyhaven.com/a/exterior_aircon_unit) | Monsta3D |
+| downpipes | [Modular Metal Gutter](https://polyhaven.com/a/modular_metal_gutter) | Maxim Domnin |
+| wall lamps at the gas station | [Security Light](https://polyhaven.com/a/security_light) | Maximilian Schuster |
+| street lamps | [Street Lamp 01](https://polyhaven.com/a/street_lamp_01) | Josh Dean |
+| fire hydrants | [Fire Hydrant](https://polyhaven.com/a/fire_hydrant) | Gonçalo Felício |
+| utility boxes | [Utility Box 02](https://polyhaven.com/a/utility_box_02) | James Ray Cock |
+| manhole covers | [Water Manhole Cover](https://polyhaven.com/a/water_manhole_cover) | Raunox |
+| power poles along the roads | [Modular Electricity Poles](https://polyhaven.com/a/modular_electricity_poles) | James Ray Cock |
+| homestead fire pit | [Stone Fire Pit](https://polyhaven.com/a/stone_fire_pit) | Sebastian Platen |
+
+Downloaded as 1k glTF with `fetch_phm.py`; assembled, decimated and baked into two shared atlases by `make_kit.py`.
+
 ## People: [MakeHuman](http://www.makehumancommunity.org) via [MPFB 2](https://static.makehumancommunity.org/mpfb.html) (CC0 output)
 
 The survivor, raiders, traders and ghouls are generated with MPFB 2.0.17 in Blender (`make_humans.py`) from the CC0 "MakeHuman system assets" pack (base mesh, skins, eyes, hair `short01`/`short02`, casual suits 01 and 05, `shoes03`, `fedora01`), "suits02" (`matcreator_mc-skinsuit_2022`, recoloured into the vault suit) and "pants01" (`cortu_cargo_pants`). MPFB itself is GPL-3.0 software; models made with it and the listed asset packs are CC0.

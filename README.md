@@ -19,6 +19,8 @@ Graphics:
 - The survivor, raiders, traders and ghouls are realistic MakeHuman bodies (vault suit, jackets, shirts, a fedora, boots, hair) generated in Blender and re-rigged onto the game's own skeleton, so its walking, aiming, looting and building animations drive them.
 - Hounds, two-headed brahmin, mole rats, radroaches and the horned stalker are modelled in Blender on their existing skeletons.
 - Barrels, loot chests, ammo cans, tyres, jersey barriers, trash cans, fuel cans, gas bottles, generators, fallen logs, stumps, covered cars, the axe and the hammer are photo-scanned Poly Haven props. The sedans, vans, wrecks and school bus are modelled in Blender.
+- The pistol, hunting rifle and machete are Poly Haven scans. The shotgun and the pipe rifle are built in Blender from the scanned rifle's stock with new barrels, rusty pipes and tape.
+- The ruins have fire escapes, air-con units, roller shutters (some covered in graffiti), downpipes, window sills and boarded-up windows. The town streets have lamp posts, fire hydrants, utility boxes and manhole covers. Wooden power poles line the roads. The gas station has shutters over its garage bay and wall lamps. The homestead uses a stone fire pit, a portable generator and a rain barrel. All of these come from Poly Haven scans.
 - The files are in `wasteland/assets/`, with sources and authors in `wasteland/assets/CREDITS.md`. The scripts that make them are in `wasteland/blender/`. Everything is CC0 or made for this game. The `.glb` models are plain glTF 2.0, so Unreal Engine 5 and other engines can import them.
 - If any group of asset files can't be loaded, the page falls back to its built-in procedural version of that group.
 

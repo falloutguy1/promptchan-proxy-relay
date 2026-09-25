@@ -951,7 +951,8 @@ const ASSETS = {
     return true;
   },
   /* Poly Haven (CC0) props converted in Blender: barrels, crates, tyres, barriers, logs, tools... */
-  PROP_NAMES: ['barrel', 'wbarrel', 'crate', 'ammo', 'tyre', 'barrier', 'trashcan', 'jerrycan', 'propane', 'log', 'log2', 'stump', 'tarpcar', 'generator', 'axe', 'hammer'],
+  PROP_NAMES: ['barrel', 'wbarrel', 'crate', 'ammo', 'tyre', 'barrier', 'trashcan', 'jerrycan', 'propane', 'log', 'log2', 'stump', 'tarpcar', 'generator', 'axe', 'hammer',
+    'g_pistol', 'g_rifle', 'g_shotgun', 'g_pipe', 'g_machete'], // g_*: weapons, barrel along +z from the grip
   props: null,
   async loadProps(progress) {
     if (window.__wlNoModels) return false;
@@ -970,8 +971,43 @@ const ASSETS = {
       got[k].scene.traverse(o => { if (o.isMesh) { if (o.name.startsWith('lid')) lid = o; else if (!body) body = o; } });
       if (!body) { console.warn('[wasteland] prop without a body mesh', k); return false; }
       out[k] = { body: this.prepGeo(body), lid: lid ? this.prepGeo(lid) : null, tex: { map: got[k + '_c'], normalMap: got[k + '_n'], orm: got[k + '_o'] } };
+      if (k.startsWith('g_') && k !== 'g_machete') out[k].muzzle = this.muzzleOf(out[k].body);
     }
     this.props = out;
+    return true;
+  },
+  /* the muzzle of a gun model: its front end, at the height of the barrel there */
+  muzzleOf(g) {
+    const p = g.attributes.position; let zmax = -1e9, ys = 0, n = 0;
+    for (let i = 0; i < p.count; i++) zmax = Math.max(zmax, p.getZ(i));
+    for (let i = 0; i < p.count; i++) if (p.getZ(i) > zmax - 0.012) { ys += p.getY(i); n++; }
+    return new THREE.Vector3(0, n ? ys / n : 0, zmax);
+  },
+  /* building and street kits: Poly Haven pieces sharing one atlas per kit (see blender/make_kit.py) */
+  async loadKit(progress) {
+    if (window.__wlNoModels || window.__wlNoKit) return false; // test hooks
+    const size = this.texSize(), spec = {};
+    for (const k of ['kitw', 'kits']) {
+      spec[k] = () => this.glbJson(k);
+      spec[k + '_c'] = () => this.tex(`${k}_c_${size}`, true);
+      spec[k + '_n'] = () => this.tex(`${k}_n_${size}`, false);
+      spec[k + '_o'] = () => this.tex(`${k}_orm_${size}`, false);
+    }
+    const got = await this.loadGroup('building kit', spec, progress);
+    if (!got) return false;
+    const out = { tex: {} };
+    for (const k of ['kitw', 'kits']) {
+      got[k].scene.traverse(o => { if (o.isMesh) out[o.name] = this.prepGeo(o); });
+      out.tex[k] = { map: got[k + '_c'], normalMap: got[k + '_n'], orm: got[k + '_o'] };
+    }
+    for (const n of ['fe1', 'fe2', 'ac', 'shutd', 'shutd_g', 'shutw', 'shutw_g', 'pipe', 'pipe_top', 'pipe_bot', 'seclight', 'lamp', 'hydrant', 'ubox', 'manhole', 'pole', 'pole2', 'firepit'])
+      if (!out[n]) { console.warn('[wasteland] building kit is missing', n); return false; }
+    // where the power lines hang: the top of the insulators at the ends of the upper cross-arm
+    const pp = out.pole.attributes.position; let wy = 0, wx = 0, n = 0;
+    for (let i = 0; i < pp.count; i++) if (Math.abs(pp.getX(i)) > 0.4) wy = Math.max(wy, pp.getY(i));
+    for (let i = 0; i < pp.count; i++) if (Math.abs(pp.getX(i)) > 0.3 && pp.getY(i) > wy - 0.12) { wx += Math.abs(pp.getX(i)); n++; }
+    out.poleWireY = wy; out.poleWireX = n ? wx / n : 0.5;
+    this.kit = out;
     return true;
   },
   /* skinned geometry (bind pose in metres, y up, facing +z), joint names in skin order and rest positions */
@@ -1084,7 +1120,7 @@ function computeFlats() {
   add(LAYOUT.farm.x, LAYOUT.farm.z, 30, 22);
   add(LAYOUT.tower.x, LAYOUT.tower.z, 12, 10, baseHeight(LAYOUT.tower.x, LAYOUT.tower.z) - 1);
   placeHighSite('hilltop', 60, 300, -330, -110, (x, z) => roadDist(x, z).d > 20 && dist2(x, z, LAYOUT.tower.x, LAYOUT.tower.z) > 34 && dist2(x, z, LAYOUT.gas.x, LAYOUT.gas.z) > 60 && dist2(x, z, LAYOUT.town.x, LAYOUT.town.z) > 115 && dist2(x, z, LAYOUT.vault.x, LAYOUT.vault.z) > 110);
-  for (const s of SITES) add(s.x, s.z, s.r, 14);
+  for (const s of SITES) { add(s.x, s.z, s.r, 14); FLATS[FLATS.length - 1].site = true; }
 }
 /* move a site to the highest, least bumpy ground inside a box, so "high ground" means it on every map */
 function placeHighSite(id, x0, x1, z0, z1, ok) {
@@ -1105,10 +1141,14 @@ function heightAt(x, z) {
   const rd = roadDist(x, z);
   const rw = smooth(rd.w * 0.5 + 7, rd.w * 0.5 + 0.5, rd.d);
   if (rw > 0) h = lerp(h, broadHeight(x, z) - 0.15, rw);
-  for (const f of FLATS) {
-    const d = dist2(x, z, f.x, f.z); if (d > f.r + f.fall) continue;
-    h = lerp(h, f.h, smooth(f.r + f.fall, f.r, d));
-  }
+  const flatten = (site) => {
+    for (const f of FLATS) {
+      if (!!f.site !== site) continue;
+      const d = dist2(x, z, f.x, f.z); if (d > f.r + f.fall) continue;
+      h = lerp(h, f.h, smooth(f.r + f.fall, f.r, d));
+    }
+  };
+  flatten(false);
   // crater bowl with rim
   { const c = LAYOUT.crater, d = dist2(x, z, c.x, c.z) / c.r;
     if (d < 1.6) { h += -16 * Math.max(0, 1 - d * d) + 4.5 * Math.exp(-((d - 1) * (d - 1)) / 0.03) + S.noise3(x / 9, z / 9) * 0.6 * (1 - smooth(0.8, 1.4, d)); } }
@@ -1123,6 +1163,7 @@ function heightAt(x, z) {
   // quarry pit with terraces
   { const q = LAYOUT.quarry, d = dist2(x, z, q.x, q.z) + S.noise(x / 25, z / 25) * 6;
     if (d < q.r * 1.3) { const depth = smooth(q.r * 1.15, q.r * 0.55, d); h -= Math.floor(depth * 4) / 4 * 20 + depth * 2; } }
+  flatten(true); // homestead sites last, so the lake shore can't tilt the clearing beside it
   return h;
 }
 function buildHeightfield() {
@@ -1587,6 +1628,7 @@ function buildMaterials() {
   MAT.carDark = new THREE.MeshStandardMaterial({ color: 0x1b1a19, roughness: 0.8, metalness: 0.15 }); // grille, underbody, empty window frames
   MAT.wreckRust = texMat(TEX.rust, { color: 0x9a8a7e }); // burnt-out shells: darker than fresh rust
   if (ASSETS.props) for (const [k, pr] of Object.entries(ASSETS.props)) MAT['p_' + k] = texMat(pr.tex); // ORM carries roughness and metalness
+  if (ASSETS.kit) { MAT.kitw = texMat(ASSETS.kit.tex.kitw); MAT.kits = texMat(ASSETS.kit.tex.kits); } // one atlas per kit
   if (ASSETS.models) { // boulders sculpted and baked in Blender: one atlas per LOD
     MAT.rockBaked = texMat(ASSETS.models.rockTex, { metal: 0 });
     MAT.rockBakedLo = texMat(ASSETS.models.rockTexLo, { metal: 0, rough: 0.9 });
@@ -2017,12 +2059,15 @@ function ruinBuilding(x, z, rot, w, d, floors, wallMat, seed, opts = {}) {
   const topDrop = () => r.range(0, 1) < 0.5 ? r.range(0.4, 2.6) : 0;
   const collapseSide = r.int(0, 3), collapseFrom = r.range(0, 1) < 0.6 ? r.int(1, floors) : 99;
   let door = [0, d / 2 + 1.2];
+  const bays = []; // per side: bay count, width, door bay and the bays whose wall collapsed (for the detail pass)
   sides.forEach((sd, si) => {
     const nb = Math.max(2, Math.round(sd.L / 3.1)), bw = sd.L / nb, doorBay = sd.front ? Math.floor(nb / 2) : (si === 1 && r.chance(0.5) ? r.int(0, nb - 1) : -1);
+    const info = bays[si] = { nb, bw, doorBay, holes: new Set() };
     let run0 = null; const runs = [];
     for (let b = 0; b < nb; b++) {
       const t = -sd.L / 2 + (b + 0.5) * bw; // bay center along side
       const hole = si === collapseSide && b >= 1 && b <= 1 + r.int(0, 1);
+      if (hole) info.holes.add(b);
       for (let f = 0; f < floors; f++) {
         if (hole && f >= collapseFrom - 1) break;
         const y0 = f * FH, top = f === floors - 1;
@@ -2071,6 +2116,7 @@ function ruinBuilding(x, z, rot, w, d, floors, wallMat, seed, opts = {}) {
   }
   // interior partition
   if (w > 9 && r.chance(0.7)) { k.box(wallMat, 0.22, FH - 0.2, d * 0.5, r.range(-w * 0.2, w * 0.2), FH / 2, -d * 0.25, 0, 0, 0, 2.5); walls.push({ lx: k.parts[k.parts.length - 1].m.elements[12], lz: -d * 0.25, hw: 0.16, hd: d * 0.25 }); }
+  ruinDetails(k, new RNG(seed + 7), sides, bays, w, d, floors, FH, T, collapseSide, collapseFrom); // own RNG: the layout stays as saved games know it
   if (opts.sign) k.add(opts.sign, new THREE.PlaneGeometry(Math.min(w * 0.7, 7), Math.min(w * 0.7, 7) / (opts.signAspect || 4)), M4(0, FH - 0.2 + 0.05, d / 2 + 0.2));
   if (r.chance(0.5)) k.add('poster', new THREE.PlaneGeometry(0.9, 1.35), M4(r.range(-w * 0.3, w * 0.3), 1.6, d / 2 + 0.18));
   const baseY = groundHeight(x, z) - 0.05;
@@ -2082,6 +2128,70 @@ function ruinBuilding(x, z, rot, w, d, floors, wallMat, seed, opts = {}) {
   const [ix, iz] = lw(x, z, rot, door[0] * 0.5, door[1] * 0.5), [mx, mz] = lw(x, z, rot, (door[0] + door[0] * 0.5) / 2, (door[1] + door[1] * 0.5) / 2);
   navClearCircle(dx, dz, 1.4); navClearCircle(mx, mz, 1.2); navClearCircle(ix, iz, 1.2);
   return { spots: spots.map(([a, b]) => lw(x, z, rot, a, b)), door: [dx, dz], y: baseY };
+}
+
+/* pieces of the building and street kits (Poly Haven scans sharing one atlas per kit, see blender/make_kit.py).
+   Wall pieces touch the wall at z=0 and stick out along +z; standing pieces sit on the ground at the origin. */
+const KITW = new Set(['fe1', 'fe2', 'ac', 'shutd', 'shutd_g', 'shutw', 'shutw_g', 'pipe', 'pipe_top', 'pipe_bot', 'seclight']);
+function kitPiece(k, name, x, y, z, ry = 0, sx = 1, sy = sx, sz = sx) { k.add(KITW.has(name) ? 'kitw' : 'kits', ASSETS.kit[name], M4(x, y, z, 0, ry, 0, sx, sy, sz)); }
+/* dress a ruin: window sills and boarded-up windows, and with the building kit a fire escape up one side,
+   air-con units under upper windows, roller shutters over shop windows and downpipes at the front corners.
+   Collapsed stretches of wall are left bare. */
+function ruinDetails(k, r, sides, bays, w, d, floors, FH, T, collapseSide, collapseFrom) {
+  const face = (sd, t) => { // point on the outer face of a side at distance t along it, and the rotation facing out
+    const nx = sd.ax === 'z' ? Math.sign(sd.cx) : 0, nz = sd.ax === 'x' ? Math.sign(sd.cz) : 0;
+    return [sd.cx + (sd.ax === 'x' ? t : 0) + nx * T / 2, sd.cz + (sd.ax === 'z' ? t : 0) + nz * T / 2, Math.atan2(nx, nz)];
+  };
+  const gap = (si) => si === collapseSide && collapseFrom <= floors;
+  let fe = -1;
+  const sidesFE = [2, 3].filter(si => !gap(si));
+  if (ASSETS.kit && floors >= 2 && sidesFE.length && r.chance(0.8)) {
+    fe = r.pick(sidesFE);
+    const [x, z, ry] = face(sides[fe], r.range(-0.8, 0.8));
+    kitPiece(k, 'fe1', x, FH + 0.12, z, ry);
+    if (floors >= 3) kitPiece(k, 'fe2', x, 2 * FH + 0.12, z, ry);
+  }
+  let ac = 0;
+  for (let si = 0; si < 4 && floors >= 2 && ASSETS.kit; si++) {
+    if (si === fe) continue;
+    const sd = sides[si], B = bays[si];
+    for (let b = 0; b < B.nb; b++) {
+      if (ac >= 3 || !r.chance(0.14)) continue;
+      const f = r.int(1, floors - 1);
+      if (B.holes.has(b) && f >= collapseFrom - 1) continue;
+      const [x, z, ry] = face(sd, -sd.L / 2 + (b + 0.5) * B.bw + r.range(-0.3, 0.3));
+      kitPiece(k, 'ac', x, f * FH + 0.02, z, ry); ac++;
+    }
+  }
+  const F = sides[0], B0 = bays[0], shut = new Set();
+  const win = (sd, B, b) => -sd.L / 2 + (b + 0.5) * B.bw + 0.22; // window openings sit off-centre in their bay, beside the pillar
+  for (let b = 0; b < B0.nb && ASSETS.kit; b++) {
+    if (b === B0.doorBay || (B0.holes.has(b) && collapseFrom <= 1) || !r.chance(0.5)) continue;
+    const [x, z, ry] = face(F, win(F, B0, b)), down = r.chance(0.6) ? 1 : r.range(0.55, 0.8), sy = 1.36 / 1.561 * down;
+    kitPiece(k, r.chance(0.5) ? 'shutw_g' : 'shutw', x, 2.28 - 1.561 * sy, z, ry, (B0.bw - 0.4) / 1.6, sy, 1); shut.add(b);
+  }
+  // concrete sills under the windows; planks nailed over some ground-floor ones
+  for (let si = 0; si < 4; si++) {
+    const sd = sides[si], B = bays[si];
+    for (let b = 0; b < B.nb; b++) for (let f = 0; f < floors; f++) {
+      if ((B.holes.has(b) && f >= collapseFrom - 1) || (f === 0 && b === B.doorBay)) continue;
+      const [x, z, ry] = face(sd, win(sd, B, b)), nx = Math.sin(ry), nz = Math.cos(ry), y0 = f * FH, wd = B.bw - 0.45;
+      k.box('concrete', wd + 0.14, 0.07, 0.16, x + nx * 0.06, y0 + 0.93, z + nz * 0.06, 0, ry, 0, 2);
+      if (f === 0 && !(si === 0 && shut.has(b)) && r.chance(0.2)) {
+        for (const [py, tilt] of [[1.2, r.range(-0.14, 0.14)], [1.62, r.range(-0.1, 0.1)], [2.0, r.range(-0.16, 0.16)]]) {
+          if (r.chance(0.2)) continue; // one plank already pried off
+          k.box(r.chance(0.5) ? 'wood' : 'woodDark', wd + 0.24, 0.2, 0.035, x + nx * 0.03, y0 + py, z + nz * 0.03, 0, ry, tilt, 1.2);
+        }
+      }
+    }
+  }
+  if (!ASSETS.kit) return;
+  const H = floors * FH + 0.1;
+  for (const si of [3, 2]) {
+    if (si === fe || gap(si) && bays[si].holes.has(bays[si].nb - 1) || !r.chance(si === 3 ? 0.7 : 0.35)) continue;
+    const [x, z, ry] = face(sides[si], sides[si].L / 2 - 0.4);
+    kitPiece(k, 'pipe_bot', x, 0.4, z, ry); kitPiece(k, 'pipe', x, 0.4, z, ry, 1, H - 0.76, 1); kitPiece(k, 'pipe_top', x, H - 0.36, z, ry);
+  }
 }
 
 /* wooden house with gable roof; damage 0..1 */
@@ -2148,7 +2258,13 @@ function gasStation() {
   k.box('metalRed', 7, 5, 0.3, 4.5, 2.5, -10, 0, 0, 0, 3); walls.push({ lx: 4.5, lz: -10, hw: 3.5, hd: 0.2 });
   k.box('metalRed', 0.3, 5, 7, 8, 2.5, -6.5, 0, 0, 0, 3); walls.push({ lx: 8, lz: -6.5, hw: 0.2, hd: 3.5 });
   k.box('metalRed', 7.4, 0.4, 7.4, 4.5, 5.1, -6.5, 0, 0, 0, 3);
-  k.box('corrugated', 5.6, 2.2, 0.08, 4.5, 3.7, -3, 0, 0, 0, 2);
+  if (ASSETS.kit) { // roller shutters half down across the garage bay, lamps over the forecourt, an air-con unit on the shop
+    const gr = new RNG(S.seed + 61);
+    for (let i = 0; i < 5; i++) { const sy = gr.range(1.02, 1.12); kitPiece(k, i === 1 || i === 3 ? 'shutd_g' : 'shutd', 1.4 + 1.24 * (i + 0.5), 4.92 - 2.4 * sy, -3.12, 0, 1.24 / 1.08, sy, 1); }
+    for (const x of [-8.6, -1.4]) kitPiece(k, 'seclight', x, 3.6, -2.85);
+    kitPiece(k, 'seclight', 7.8, 3.7, -2.8);
+    kitPiece(k, 'ac', -10.15, 0.12, -7.2, -Math.PI / 2); walls.push({ lx: -10.35, lz: -7.2, hw: 0.22, hd: 0.42 });
+  } else k.box('corrugated', 5.6, 2.2, 0.08, 4.5, 3.7, -3, 0, 0, 0, 2);
   k.box('metalCream', 0.4, 5, 0.4, 1.2, 2.5, -3); k.box('metalCream', 0.4, 5, 0.4, 7.8, 2.5, -3);
   k.box('woodDark', 3, 0.9, 0.8, 5, 0.45, -9, 0, 0, 0, 1); // workbench
   k.add('signCola', new THREE.PlaneGeometry(3, 1.5), M4(-5, 3.1, -2.83));
@@ -2359,7 +2475,7 @@ function roadsMesh() {
         const x = p.x + nx * s * rd.w / 2, z = p.y + nz * s * rd.w / 2;
         pos.push(x, Math.max(groundHeight(x, z), groundHeight(p.x, p.y)) + 0.07, z); uv.push(s < 0 ? 0 : 1, dist / 10);
       }
-      if (i < samples.length - 1) { const v = i * 2; idx.push(v, v + 2, v + 1, v + 1, v + 2, v + 3); }
+      if (i < samples.length - 1) { const v = i * 2; idx.push(v, v + 1, v + 2, v + 1, v + 3, v + 2); } // counter-clockwise from above: the road faces up
     }
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
     const m = new THREE.Mesh(g, MAT.road); m.receiveShadow = true;
@@ -2369,7 +2485,9 @@ function roadsMesh() {
 }
 function telephonePoles() {
   const pk = new Kit(); pk.cyl('woodDark', 0.13, 0.17, 8, 0, 4, 0, 0, 0, 0, 7); pk.box('woodDark', 2.2, 0.14, 0.14, 0, 7.4, 0); for (const xx of [-0.9, 0.9]) pk.cyl('glass', 0.05, 0.07, 0.2, xx, 7.55, 0, 0, 0, 0, 6);
-  const r = new RNG(99), wires = new Kit();
+  const K = ASSETS.kit, PS = 1.2, poles = K ? [new Kit(), new Kit()] : null; // scanned wooden poles (one with a transformer), cross-arms across the road
+  if (K) { kitPiece(poles[0], 'pole', 0, 0, 0, 0, PS); kitPiece(poles[1], 'pole2', 0, 0, 0, 0, PS); }
+  const r = new RNG(99), wires = new Kit(), vr = new RNG(98);
   for (const rd of [ROADS[0], ROADS[1]]) {
     let prev = null;
     for (let i = 0; i < rd.pts.length - 1; i++) {
@@ -2378,6 +2496,18 @@ function telephonePoles() {
         const x = ax + dx * s - dz * 6.5, z = az + dz * s + dx * 6.5;
         if (dist2(x, z, LAYOUT.town.x, LAYOUT.town.z) < 70 || Math.abs(z - HIGHWAY_Z) < 12 || !navFreeAt(x, z)) { prev = null; continue; }
         const lean = r.chance(0.2) ? r.range(-0.25, 0.25) : r.range(-0.04, 0.04), y = groundHeight(x, z), rot = Math.atan2(dx, dz) + Math.PI / 2;
+        if (K) {
+          const ry = rot - Math.PI / 2, lx = Math.cos(ry), lz = -Math.sin(ry); // the cross-arm (local x) lies across the road
+          placeStatic(poles[vr.chance(0.25) ? 1 : 0], x, z, ry, y - 0.3); addCircle(x, z, 0.25, true, 8);
+          const top = [x, y - 0.3 + K.poleWireY * PS, z];
+          if (prev && Math.abs(lean) < 0.1) for (const s2 of [-1, 1]) {
+            const off = s2 * K.poleWireX * PS, cps = [];
+            for (let t = 0; t <= 8; t++) { const u = t / 8; cps.push(new THREE.Vector3(lerp(prev[0], top[0], u) + lx * off, lerp(prev[1], top[1], u) - Math.sin(u * Math.PI) * 1.2, lerp(prev[2], top[2], u) + lz * off)); }
+            wires.add('darkMetal', new THREE.TubeGeometry(new THREE.CatmullRomCurve3(cps), 12, 0.014, 3, false));
+          }
+          prev = Math.abs(lean) < 0.1 ? top : null;
+          continue;
+        }
         placeStatic(pk, x, z, rot, y - 0.3); addCircle(x, z, 0.3, true, 8);
         const top = [x + Math.sin(lean) * 7.3, y + 7.2, z];
         if (prev && Math.abs(lean) < 0.1) for (const off of [-0.9, 0.9]) {
@@ -2440,7 +2570,8 @@ const RAIDER_TOWER = { x: 0, z: 0, y: 0 };
 const FIRES = [];
 function fireBarrel(x, z, withBarrel = true) {
   const y = groundHeight(x, z), g = new THREE.Group(); g.position.set(x, y, z);
-  if (withBarrel) { const b = new THREE.Mesh(barrelGeo(), MAT.rust); b.castShadow = b.receiveShadow = true; g.add(b); addCircle(x, z, 0.4); }
+  const PB = withBarrel && ASSETS.props && ASSETS.props.barrel; // Poly Haven's barrel stove
+  if (withBarrel) { const b = PB ? new THREE.Mesh(PB.body, MAT.p_barrel) : new THREE.Mesh(barrelGeo(), MAT.rust); b.castShadow = b.receiveShadow = true; g.add(b); addCircle(x, z, 0.4); }
   const flames = [];
   for (let i = 0; i < 4; i++) { const f = new THREE.Mesh(new THREE.ConeGeometry(0.2 + i * 0.03, 0.9, 10, 1, true), MAT.fire); f.position.set((Math.random() - .5) * 0.2, (withBarrel ? 1.0 : 0.25) + 0.3, (Math.random() - .5) * 0.2); g.add(f); flames.push(f); }
   const light = VLIGHTS.add(x, y + (withBarrel ? 1.8 : 1.0), z, 0xff8a3a, 18, 22);
@@ -2776,6 +2907,41 @@ function town() {
   }
   addPOI('Redwater Junction', T.x, T.z, 30, 'town', 0.5);
 }
+/* lamp posts, hydrants, utility boxes and manhole covers along Redwater Junction's two streets */
+function streetFurniture() {
+  const T = LAYOUT.town, rng = new RNG(S.seed + 131), doors = POIS.filter(p => p.door).map(p => p.door);
+  const clear = (x, z, r) => navFreeAt(x, z) && !doors.some(([dx, dz]) => dist2(x, z, dx, dz) < r) && !CARS.some(c => dist2(x, z, c.x, c.z) < 3.4);
+  for (const rd of [ROADS[0], ROADS[1]]) {
+    let run = 0, side = rng.sign(), nextLamp = 6, nextHole = 14;
+    for (let i = 0; i < rd.pts.length - 1; i++) {
+      const [ax, az] = rd.pts[i], [bx, bz] = rd.pts[i + 1], L = Math.hypot(bx - ax, bz - az), dx = (bx - ax) / L, dz = (bz - az) / L, rot = Math.atan2(dx, dz);
+      for (let s = 0; s < L; s += 1, run += 1) {
+        const cx = ax + dx * s, cz = az + dz * s, dt = dist2(cx, cz, T.x, T.z);
+        if (dt > 100 || dt < 13) continue;
+        const at = (off) => [cx - dz * off, cz + dx * off];
+        if (run >= nextLamp) { // lamp posts, alternating sides
+          const [x, z] = at(side * (rd.w / 2 + 1.1));
+          if (clear(x, z, 2.5)) { instAdd('k_lamp', M4(x, groundHeight(x, z) - 0.05, z, 0, rot, 0)); addCircle(x, z, 0.22, false, 4); side = -side; nextLamp = run + rng.range(20, 26); }
+          else nextLamp = run + 3;
+        }
+        if (run >= nextHole) { // manhole covers in a lane
+          const [x, z] = at(rng.sign() * 1.7), y = Math.max(groundHeight(x, z), groundHeight(cx, cz)) + 0.085;
+          instAdd('k_manhole', M4(x, y, z, 0, rng.range(0, TAU), 0)); nextHole = run + rng.range(28, 40);
+        }
+      }
+    }
+    for (let k = 0; k < 8; k++) { // hydrants at the kerb, utility boxes a step back
+      const i = rng.int(0, rd.pts.length - 2), [ax, az] = rd.pts[i], [bx, bz] = rd.pts[i + 1], u = rng.next();
+      const cx = lerp(ax, bx, u), cz = lerp(az, bz, u), dt = dist2(cx, cz, T.x, T.z), L = Math.hypot(bx - ax, bz - az), dx = (bx - ax) / L, dz = (bz - az) / L, sd = rng.sign();
+      if (dt > 90 || dt < 14) continue;
+      const box = k % 3 === 2, off = sd * (rd.w / 2 + (box ? 2.1 : 0.7)), x = cx - dz * off, z = cz + dx * off;
+      if (!clear(x, z, 3)) continue;
+      const face = Math.atan2(dz * sd, -dx * sd); // doors toward the road
+      instAdd(box ? 'k_ubox' : 'k_hydrant', M4(x, groundHeight(x, z) - 0.03, z, 0, box ? face : rng.range(0, TAU), 0));
+      if (box) addBox(x, z, 0.48, 0.24, face, false, 1.2); else addCircle(x, z, 0.2, false, 0.8);
+    }
+  }
+}
 function hunterCabin() {
   const x = 286, z = 238, rot = 2.4, rng = new RNG(S.seed + 17);
   const res = woodHouse(x, z, rot, 6.5, 5.5, S.seed + 18, 0.2);
@@ -2829,6 +2995,13 @@ function defineInstKinds() {
   } else {
     defineInst('barrel', [{ mat: 'rust', geo: cleanGeo(barrelGeo()) }], null, { chunk: 150 });
     defineInst('wbarrel', [{ mat: 'metalYellow', geo: cleanGeo(barrelGeo()) }], null, { chunk: 150 });
+  }
+  if (ASSETS.kit) { // street furniture from the Poly Haven street kit
+    MAT.kitsDecal = MAT.kits.clone(); MAT.kitsDecal.polygonOffset = true; MAT.kitsDecal.polygonOffsetFactor = -4; MAT.kitsDecal.polygonOffsetUnits = -4; // manhole covers lie on the road
+    defineInst('k_lamp', [{ mat: 'kits', geo: ASSETS.kit.lamp }], null, { chunk: 90, maxDist: 240 });
+    defineInst('k_hydrant', [{ mat: 'kits', geo: ASSETS.kit.hydrant }], null, { chunk: 90, maxDist: 130 });
+    defineInst('k_ubox', [{ mat: 'kits', geo: ASSETS.kit.ubox }], null, { chunk: 90, maxDist: 170 });
+    defineInst('k_manhole', [{ mat: 'kitsDecal', geo: ASSETS.kit.manhole }], null, { chunk: 90, maxDist: 90, cast: false });
   }
   if (BM) for (const kind of ['sedan', 'van', 'wreck']) defineInst(kind, BM.cars[kind].hi, BM.cars[kind].lo, { chunk: 100, lodDist: 60 });
   else {
@@ -3056,6 +3229,7 @@ function populateWorld(progress) {
   scatterNature(progress);
   scatterJunk();
   if (ASSETS.props) scatterDecor();
+  if (ASSETS.kit) streetFurniture();
   distributeKeyLoot();
   sbFlush(); instFlush(); instHandleResolve();
 }
@@ -3213,6 +3387,8 @@ function weaponModel(kind) {
   const g = new THREE.Group();
   const PR = ASSETS.props && (kind === 'hammer' || kind === 'axe') && ASSETS.props[kind];
   if (PR) { mesh(PR.body, MAT['p_' + kind], g, 0, 0.02, 0); return g; } // photo-scanned tool: grip at the origin, head hanging below
+  const GM = ASSETS.props && ASSETS.props['g_' + kind]; // Poly Haven pistol / rifle / machete, and the shotgun and pipe rifle kitbashed from the rifle
+  if (GM) { mesh(GM.body, MAT['p_g_' + kind], g, 0, kind === 'machete' ? 0.02 : 0, 0); g.userData.muzzle = GM.muzzle; return g; }
   switch (kind) {
     case 'pistol':
       mesh(new RoundedBoxGeometry(0.035, 0.05, 0.22, 2, 0.008), CMAT.metal, g, 0, 0.03, 0.06);
@@ -3510,7 +3686,11 @@ class Humanoid {
     if (this.weapon && this.weapon.parent === this.gunMount) { this.gunMount.rotation.x = P.gun; this.gunMount.position.set(-0.09 + P.gun * 0.05, 0.08 - P.gun * 0.12, 0.28 - P.gun * 0.08); }
   }
   swingPhase(period) { const u = (this.t % period) / period; return u < 0.7 ? (u / 0.7) * (u / 0.7) : 1 - (u - 0.7) / 0.3; }
-  muzzleWorld(out) { if (!this.weapon) return this.head.getWorldPosition(out); const len = this.weaponKind === 'pistol' ? 0.24 : this.weaponKind === 'shotgun' ? 0.62 : 0.75; return this.weapon.localToWorld(out.set(0, 0.035, len)); }
+  muzzleWorld(out) {
+    if (!this.weapon) return this.head.getWorldPosition(out);
+    if (this.weapon.userData.muzzle) return this.weapon.localToWorld(out.copy(this.weapon.userData.muzzle));
+    const len = this.weaponKind === 'pistol' ? 0.24 : this.weaponKind === 'shotgun' ? 0.62 : 0.75; return this.weapon.localToWorld(out.set(0, 0.035, len));
+  }
 }
 
 /* ============================================================
@@ -5459,7 +5639,8 @@ function buildPieceModel(id) {
   const plank = (w, h, d) => boxG(w, h, d, 1.2);
   switch (id) {
     case 'campfire': {
-      for (let i = 0; i < 10; i++) { const a = i / 10 * TAU; P(new THREE.DodecahedronGeometry(0.17, 1), 'rockMat', Math.cos(a) * 0.62, 0.08, 6.4 + Math.sin(a) * 0.62, i, i * 2, 0); }
+      if (ASSETS.kit) P(ASSETS.kit.firepit.clone().scale(0.85, 0.85, 0.85), 'kits', 0, -0.02, 6.4, 0, 0.7, 0); // Poly Haven's stone fire pit
+      else for (let i = 0; i < 10; i++) { const a = i / 10 * TAU; P(new THREE.DodecahedronGeometry(0.17, 1), 'rockMat', Math.cos(a) * 0.62, 0.08, 6.4 + Math.sin(a) * 0.62, i, i * 2, 0); }
       for (let i = 0; i < 4; i++) P(cylG(0.07, 0.08, 0.9, 8), 'bark', 0, 0.2, 6.4, 1.1, i * Math.PI / 2 + 0.4, 0);
       P(new THREE.CylinderGeometry(0.02, 0.02, 1.3, 5), 'darkMetal', -0.7, 0.65, 6.4); P(new THREE.CylinderGeometry(0.02, 0.02, 1.3, 5), 'darkMetal', 0.7, 0.65, 6.4); P(new THREE.CylinderGeometry(0.015, 0.015, 1.5, 5), 'darkMetal', 0, 1.3, 6.4, 0, 0, Math.PI / 2);
       P(boxG(1.4, 0.35, 0.4, 1), 'woodDark', 1.6, 0.18, 6.9, 0, 0.5, 0); break;
@@ -5532,7 +5713,9 @@ function buildPieceModel(id) {
     }
     case 'water': {
       for (const [a, b] of [[-0.4, -0.4], [0.4, -0.4], [-0.4, 0.4], [0.4, 0.4]]) P(boxG(0.08, 0.7, 0.08, 1), 'woodDark', 4.8 + a, 0.35, -2.6 + b);
-      P(barrelGeo(), 'metalTeal', 4.8, 0.7, -2.6); P(new THREE.ConeGeometry(0.7, 0.5, 18, 1, true), 'cloth', 4.8, 1.9, -2.6, Math.PI, 0, 0);
+      P(boxG(0.96, 0.06, 0.96, 1), 'woodDark', 4.8, 0.7, -2.6); // plank top for the barrel to stand on
+      if (ASSETS.props) P(ASSETS.props.wbarrel.body, 'p_wbarrel', 4.8, 0.73, -2.6); else P(barrelGeo(), 'metalTeal', 4.8, 0.73, -2.6);
+      P(new THREE.ConeGeometry(0.7, 0.5, 18, 1, true), 'cloth', 4.8, 1.9, -2.6, Math.PI, 0, 0);
       P(cylG(0.03, 0.03, 0.5, 6), 'darkMetal', 4.8, 1.75, -2.6); P(cylG(0.02, 0.02, 0.2, 6), 'chrome', 4.8, 0.9, -2.28, Math.PI / 2, 0, 0); break;
     }
     case 'garden': case 'garden2': {
@@ -5608,7 +5791,8 @@ function buildPieceModel(id) {
       break;
     }
     case 'lights': {
-      P(new RoundedBoxGeometry(0.9, 0.6, 0.6, 2, 0.05), 'metalRed', 3.4, 0.3, -4.6); P(cylG(0.05, 0.05, 0.6, 8), 'darkMetal', 3.7, 0.8, -4.6); P(boxG(0.4, 0.2, 0.3, 1), 'darkMetal', 3.0, 0.7, -4.6);
+      if (ASSETS.props) P(ASSETS.props.generator.body, 'p_generator', 3.4, 0, -4.6, 0, 0.4, 0); // the photo-scanned portable generator
+      else { P(new RoundedBoxGeometry(0.9, 0.6, 0.6, 2, 0.05), 'metalRed', 3.4, 0.3, -4.6); P(cylG(0.05, 0.05, 0.6, 8), 'darkMetal', 3.7, 0.8, -4.6); P(boxG(0.4, 0.2, 0.3, 1), 'darkMetal', 3.0, 0.7, -4.6); }
       const ant = P(cylG(0.02, 0.03, 3, 6), 'darkMetal', 1.8, 5.7, -1);
       const beacon = P(new THREE.SphereGeometry(0.07, 10, 8), new THREE.MeshStandardMaterial({ color: 0x400000, emissive: 0xff2010, emissiveIntensity: 0 }), 1.8, 7.25, -1); BASE.antenna = beacon;
       const pts = []; for (let i = 0; i <= 14; i++) { const u = i / 14; pts.push(new THREE.Vector3(lerp(-3, 3, u), 3.05 - Math.sin(u * Math.PI) * 0.35, 2.75)); }
@@ -6497,7 +6681,7 @@ function setupComposer() {
 function updateGfxInfo() {
   let gpu = '';
   try { const gl = renderer.getContext(), ext = gl.getExtension('WEBGL_debug_renderer_info'); gpu = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : ''; } catch (e) { }
-  const el = $('gfxInfo'); if (el) el.textContent = `Renderer: WebGL2${gpu ? ' · ' + String(gpu).slice(0, 48) : ''} · ${composer ? 'post effects on' : 'direct (safe) mode'} · ${renderer.getPixelRatio().toFixed(2)}x · Blender ${ASSETS.blenderTex ? 'materials' : 'materials missing'}, ${ASSETS.models ? 'models' : 'models missing'}, ${ASSETS.chars ? 'characters' : 'characters missing'}, ${ASSETS.creatures ? 'creatures' : 'creatures missing'}, ${ASSETS.props ? 'props' : 'props missing'}`;
+  const el = $('gfxInfo'); if (el) el.textContent = `Renderer: WebGL2${gpu ? ' · ' + String(gpu).slice(0, 48) : ''} · ${composer ? 'post effects on' : 'direct (safe) mode'} · ${renderer.getPixelRatio().toFixed(2)}x · Blender ${ASSETS.blenderTex ? 'materials' : 'materials missing'}, ${ASSETS.models ? 'models' : 'models missing'}, ${ASSETS.chars ? 'characters' : 'characters missing'}, ${ASSETS.creatures ? 'creatures' : 'creatures missing'}, ${ASSETS.props ? 'props' : 'props missing'}, ${ASSETS.kit ? 'building kit' : 'building kit missing'}`;
 }
 let issueT = 0;
 function reportIssue(msg, sticky = false) {
@@ -6680,10 +6864,12 @@ async function start(data = {}) {
     bootLog('Loading materials and models built in Blender', 8); await nextFrame();
     const prog = {}, bar = () => { const v = Object.values(prog); $('bootfill').style.width = (8 + v.reduce((a, p) => a + p[0], 0) / Math.max(1, v.reduce((a, p) => a + p[1], 0)) * 14) + '%'; };
     const track = (k) => (d, t) => { prog[k] = [d, t]; bar(); };
-    const [baked, models, chars, creatures, props] = await Promise.all([
+    const [baked, models, chars, creatures, props, kit] = await Promise.all([
       ASSETS.loadTextures(track('tex')), ASSETS.loadModels(track('models')), ASSETS.loadChars(track('chars')), ASSETS.loadCreatures(track('creatures')), ASSETS.loadProps(track('props')),
+      ASSETS.loadKit(track('kit')),
     ]);
-    if (props) bootLog('Photo-scanned props from Poly Haven ready', 21);
+    if (props) bootLog('Photo-scanned props and weapons from Poly Haven ready', 21);
+    if (kit) bootLog('Fire escapes, shutters, street lamps and power poles ready', 21);
     if (creatures) bootLog('Hounds, brahmin, mole rats, radroaches and the stalker sculpted in Blender', 21);
     if (models) bootLog('Blender cars, boulders and fir branches ready', 20);
     if (chars) bootLog('MakeHuman survivors, raiders, traders and ghouls ready', 21);
