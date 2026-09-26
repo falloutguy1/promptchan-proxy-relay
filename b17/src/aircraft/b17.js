@@ -306,6 +306,9 @@ export function makeBombGeometry() {
   return mergeGeometries(all);
 }
 
+const MEMO = new Map();
+function memo(key, fn) { if (!MEMO.has(key)) MEMO.set(key, fn()); return MEMO.get(key); }
+
 export function buildB17(env) {
   const Q = q();
   const hi = Q.texRes === '2k';
@@ -316,7 +319,7 @@ export function buildB17(env) {
 
   // ---------- fuselage
   const fg = loftBody(FUS, { z0: NOSE_Z, around: hi ? 64 : 40, along: hi ? 120 : 70, uLen: 22.66, vLen: 22.66 / 2 });
-  const fT = paintFuselage(fg, hi ? 4096 : 2048);
+  const fT = memo('fus', () => paintFuselage(fg, hi ? 4096 : 2048));
   const fusMat = reg(new THREE.MeshStandardMaterial({ ...fT, metalnessMap: fT.roughnessMap, roughness: 1, metalness: 1, normalScale: new THREE.Vector2(0.6, 0.6) }));
   root.add(mesh(fg, fusMat));
 
@@ -363,7 +366,7 @@ export function buildB17(env) {
     if (sgn > 0) st.unshift({ ...st[0], x: 0.3 }); else st.push({ ...st[st.length - 1], x: -0.3 });
     return st;
   };
-  const wTop = paintWing(hi ? 4096 : 2048, true), wBot = paintWing(hi ? 4096 : 2048, false);
+  const wTop = memo('wt', () => paintWing(hi ? 4096 : 2048, true)), wBot = memo('wb', () => paintWing(hi ? 4096 : 2048, false));
   const wingTopMat = reg(new THREE.MeshStandardMaterial({ ...wTop, metalnessMap: wTop.roughnessMap, roughness: 1, metalness: 1, normalScale: new THREE.Vector2(0.6, 0.6) }));
   const wingBotMat = reg(new THREE.MeshStandardMaterial({ ...wBot, metalnessMap: wBot.roughnessMap, roughness: 1, metalness: 1, normalScale: new THREE.Vector2(0.6, 0.6) }));
   for (const sgn of [1, -1]) {
@@ -372,7 +375,7 @@ export function buildB17(env) {
   }
 
   // ---------- horizontal stabiliser
-  const stabTop = panelTexture(OD, 96, 512), stabBot = panelTexture(NG, 96, 512);
+  const stabTop = memo('st', () => panelTexture(OD, 96, 512)), stabBot = memo('sb', () => panelTexture(NG, 96, 512));
   const stabTopMat = reg(new THREE.MeshStandardMaterial({ ...stabTop, roughness: 0.8, metalness: 0.05 }));
   const stabBotMat = reg(new THREE.MeshStandardMaterial({ ...stabBot, roughness: 0.8, metalness: 0.05 }));
   for (const sgn of [1, -1]) {
@@ -389,7 +392,7 @@ export function buildB17(env) {
   }
 
   // ---------- vertical fin with dorsal fillet
-  const finL = paintFin(hi ? 1024 : 512, false), finR = paintFin(hi ? 1024 : 512, true);
+  const finL = memo('fl', () => paintFin(hi ? 1024 : 512, false)), finR = memo('fr', () => paintFin(hi ? 1024 : 512, true));
   const finMatL = reg(new THREE.MeshStandardMaterial({ ...finL, roughness: 0.85, metalness: 0.05 }));
   const finMatR = reg(new THREE.MeshStandardMaterial({ ...finR, roughness: 0.85, metalness: 0.05 }));
   const finSt = [];
@@ -404,14 +407,13 @@ export function buildB17(env) {
   root.add(mesh(fin, [finMatL, finMatR]));
 
   // ---------- nacelles, engines, props
-  const nacT = panelTexture(OD, 110, 512, { chips: 40 });
-  for (const k of Object.keys(nacT)) nacT[k].repeat.set(2, 1);
+  const nacT = memo('nac', () => { const t = panelTexture(OD, 110, 512, { chips: 40 }); for (const k of Object.keys(t)) t[k].repeat.set(2, 1); return t; });
   const nacMat = reg(new THREE.MeshStandardMaterial({ ...nacT, roughness: 0.8, metalness: 0.1 }));
   const darkMetal = reg(new THREE.MeshStandardMaterial({ color: 0x1e1e1c, roughness: 0.45, metalness: 0.7 }));
   const engineMat = reg(new THREE.MeshStandardMaterial({ color: 0x3a3833, roughness: 0.55, metalness: 0.6 }));
   const rubber = reg(new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.9 }));
   const propMat = reg(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, metalness: 0.2, side: THREE.DoubleSide }));
-  const discMat = new THREE.MeshBasicMaterial({ map: propDiscTexture(), transparent: true, depthWrite: false, side: THREE.DoubleSide, toneMapped: true });
+  const discMat = new THREE.MeshBasicMaterial({ map: memo('disc', propDiscTexture), transparent: true, depthWrite: false, side: THREE.DoubleSide, toneMapped: true });
   const blade = bladeGeometry();
   const props = [], engines = [];
   const nacGeoms = [], engGeoms = [];

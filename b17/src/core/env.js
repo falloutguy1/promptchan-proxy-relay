@@ -13,8 +13,8 @@ export const SUN_DIR = (() => {
   return new THREE.Vector3(Math.cos(el) * Math.cos(az), Math.sin(el), Math.cos(el) * Math.sin(az)).normalize();
 })();
 
-export const HAZE = new THREE.Color(0.50, 0.58, 0.70);
-export const FOG_DENSITY = 0.00007;
+export const HAZE = new THREE.Color(0.40, 0.48, 0.61);
+export const FOG_DENSITY = 0.000062;
 
 export class Environment {
   constructor(renderer, scene, camera, assets) {
@@ -68,7 +68,7 @@ export class Environment {
           uv.y = clamp(uv.y, 0.002, 0.998);
           vec3 sky = hasSky > 0.5 ? texture2D(tSky, uv).rgb * scale : mix(haze, vec3(0.18,0.3,0.6), clamp(d.y*2.0,0.0,1.0));
           // aerial haze towards (and below) the horizon, matches scene fog colour
-          float h = smoothstep(0.16, dip - 0.02, el);
+          float h = smoothstep(0.075, dip - 0.03, el) * 0.92;
           sky = mix(sky, haze, h);
           // sun disc + glare (clamped in the texture)
           float cs = dot(d, sunDir);

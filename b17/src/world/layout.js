@@ -106,8 +106,11 @@ export function urbanAt(x, z) {
   }
   for (const t of TARGETS) {
     if (t.id === 'bridge') continue;
-    const d = Math.hypot(x - t.x, z - t.z) / t.r;
-    u = Math.max(u, smoothstep(1.1, 0.85, d + e * 0.2));
+    // irregular, roughly rectangular works yards rather than discs
+    const c = Math.cos(0.32), sn = Math.sin(0.32);
+    const lx = ((x - t.x) * c - (z - t.z) * sn) / t.r, lz = ((x - t.x) * sn + (z - t.z) * c) / (t.r * 0.72);
+    const d = Math.pow(Math.pow(Math.abs(lx), 4) + Math.pow(Math.abs(lz), 4), 0.25);
+    u = Math.max(u, smoothstep(1.0, 0.75, d + e * 0.55 + noise2(x / 60, z / 60) * 0.12) * 0.92);
   }
   return u;
 }

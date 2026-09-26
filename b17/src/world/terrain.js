@@ -372,7 +372,7 @@ export class Terrain {
       this.buildBudget--;
       m = new THREE.Mesh(nodeGeometry(this.hf, cx, cz, size, this.res), this.material);
       m.receiveShadow = true;
-      m.castShadow = size <= 1024;
+      m.castShadow = false;   // gentle relief at 48 deg sun: terrain self-shadowing not worth the draw calls
       m.matrixAutoUpdate = false;
       m.userData.key = key;
       m.userData.lastUsed = 0;

@@ -192,9 +192,14 @@ export class Buildings {
   // Blast damage; returns destroyed records.
   blast(p, radius, power) {
     const out = [];
-    this.query(p.x, p.z, radius, (r) => {
+    this.query(p.x, p.z, radius + 90, (r) => {
       if (!r.alive) return;
-      const d = Math.max(0, Math.hypot(r.x - p.x, r.z - p.z) - r.type.radius * 0.7);
+      let d;
+      if (r.axis) {
+        const A = r.axis, dx = A.bx - A.ax, dz = A.bz - A.az, L2 = dx * dx + dz * dz;
+        const t = Math.max(0, Math.min(1, ((p.x - A.ax) * dx + (p.z - A.az) * dz) / L2));
+        d = Math.max(0, Math.hypot(p.x - A.ax - dx * t, p.z - A.az - dz * t) - 4);
+      } else d = Math.max(0, Math.hypot(r.x - p.x, r.z - p.z) - r.type.radius * 0.7);
       if (d > radius) return;
       if (p.y > r.y + r.type.h + 25) return;
       const dmg = power * (1 - d / radius) ** 1.5;
