@@ -1,0 +1,7 @@
+{
+  "name": "shipwreck-3d",
+  "private": true,
+  "description": "Standalone real-time 3D scene of a beached, rusted shipwreck (single HTML file).",
+  "scripts": { "build": "bash build.sh" },
+  "devDependencies": { "esbuild": "^0.28.2", "n8ao": "2.0.1", "postprocessing": "^6.39.5", "three": "0.186.1" }
+}
