@@ -151,11 +151,16 @@ export function damage(material, second, o = {}) {
       ['#include <map_fragment>', `$&
       {
         dzUv2 = vMapUv * uUv2 + vec2(0.31, 0.17);
-        vec2 hp = vDzWorld.xz * 0.9 + vec2(vDzWorld.y * 0.83, vDzWorld.y * 0.61);
+        // isotropic 2D domain on the wall plane: horizontal run (x+z) and height
+        vec2 hp = vec2(vDzWorld.x + vDzWorld.z, vDzWorld.y);
         float h = vDzWorld.y - uDmgGround;
-        float n = dm_fbm(hp * 1.1 + vDzWorld.y * 0.9);
-        float low = 1.0 - smoothstep(0.1, 1.3, h);
-        float d = n + low * 0.42 * uDmgAmount * 2.0 - 0.62 + uDmgAmount * 0.12;
+        float n = dm_fbm(hp * 0.9 + 3.7);
+        // splash zone: an irregular band whose top edge wanders between ~0.2 m and ~1.4 m
+        float bandTop = 0.25 + 1.2 * dm_noise(vec2(hp.x * 0.35, 1.3));
+        float low = 1.0 - smoothstep(bandTop * 0.4, bandTop, h);
+        // isolated higher patches where water got behind the render
+        float spots = smoothstep(0.72, 0.9, dm_noise(hp * 0.45 + 11.0));
+        float d = n + (low * 0.55 + spots * 0.5) * uDmgAmount * 2.0 - 0.95 + uDmgAmount * 0.1;
         // plaster breaks off with a crisp edge; a thin darker rim marks the broken lip
         dzDamage = smoothstep(0.0, 0.035, d);
         float rim = smoothstep(-0.03, 0.0, d) * (1.0 - dzDamage);

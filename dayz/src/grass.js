@@ -17,8 +17,8 @@ function clumpGeometry(blades, segs, seed, tall) {
   for (let b = 0; b < blades; b++) {
     const r = Math.sqrt(rnd()) * 0.28, a = rnd() * Math.PI * 2;
     const bx = Math.cos(a) * r, bz = Math.sin(a) * r;
-    const h = (tall ? 0.45 + rnd() * 0.55 : 0.16 + rnd() * 0.22);
-    const w = (tall ? 0.012 : 0.01) + rnd() * 0.008;
+    const h = (tall ? 0.28 + rnd() * 0.42 : 0.12 + rnd() * 0.18);
+    const w = (tall ? 0.0055 : 0.005) + rnd() * 0.004;
     const facing = rnd() * Math.PI * 2;
     const bend = (0.15 + rnd() * 0.45) * h;
     const fx = Math.cos(facing), fz = Math.sin(facing);   // bend direction
@@ -98,8 +98,8 @@ function grassMaterial() {
     fragmentHead: 'varying vec3 vGrass; varying vec3 vInstTint;',
     fragment: [['#include <color_fragment>', /* glsl */`
         {
-          vec3 base = vec3(0.045, 0.07, 0.02), tip = vec3(0.24, 0.30, 0.09);
-          vec3 straw = vec3(0.38, 0.32, 0.18);
+          vec3 base = vec3(0.025, 0.045, 0.012), tip = vec3(0.13, 0.19, 0.05);
+          vec3 straw = vec3(0.26, 0.22, 0.12);
           vec3 c = mix(base, tip, smoothstep(0.0, 1.0, vGrass.z));
           c = mix(c, straw * mix(0.6, 1.0, vGrass.z), vGrass.y);
           diffuseColor.rgb *= c * vGrass.x * vInstTint;
@@ -112,8 +112,8 @@ export async function build(ctx) {
   const { scene, hf, gen, collision } = ctx;
   const mat = grassMaterial();
   const geos = {
-    near: [clumpGeometry(16, 5, 1, true), clumpGeometry(22, 4, 2, false)],
-    far: [clumpGeometry(7, 3, 3, true), clumpGeometry(9, 2, 4, false)],
+    near: [clumpGeometry(26, 5, 1, true), clumpGeometry(32, 3, 2, false)],
+    far: [clumpGeometry(12, 3, 3, true), clumpGeometry(14, 2, 4, false)],
   };
   const maxInst = 60000;
   const meshes = {};
@@ -164,7 +164,7 @@ export async function build(ctx) {
       hf.normal(x, z, nrm);
       q.setFromUnitVectors(up, nrm.lerp(up, 0.5).normalize());
       q.multiply(new THREE.Quaternion().setFromEuler(e.set(0, rnd() * 6.283, 0)));
-      const sc = (0.7 + rnd() * 0.6) * (tall === 0 ? 0.75 + sp.meadow * 0.55 : 1) * (0.85 + 0.3 * sp.occ);
+      const sc = (0.75 + rnd() * 0.5) * (tall === 0 ? 0.8 + sp.meadow * 0.35 : 1) * (0.85 + 0.3 * sp.occ);
       m.compose(p.set(x, hf.height(x, z) - 0.02, z), q, s.set(sc, sc * (0.8 + rnd() * 0.4), sc));
       // tint: lush in the lawn, drier/yellower in the meadow, darker under canopy
       const dry = sp.meadow * 0.35 + rnd() * 0.15;

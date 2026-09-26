@@ -18,14 +18,14 @@ function speciesVariants() {
   const V = [];
   const birch = (preset, seed, h, leafMul, tweak = {}) => {
     const o = deep(PRESETS[preset]); o.seed = seed; o.leaves.count = Math.round(o.leaves.count * leafMul);
-    o.leaves.size *= 0.85; Object.assign(o.branch.gnarliness, tweak.gn || {});
+    o.leaves.size *= 0.6; Object.assign(o.branch.gnarliness, tweak.gn || {});
     if (tweak.angle) o.branch.angle[1] = tweak.angle;
     V.push({ species: 'birch', opt: o, height: h, bark: 'birch', leaf: 'aspen', barkTint: 0xf2f0ea, leafTint: 0x9ed65a });
   };
-  birch('aspen_medium', 1811, 17, 2.2);
-  birch('aspen_medium', 523, 19, 2.4, { angle: 60 });
-  birch('aspen_large', 77, 23, 1.6);
-  birch('aspen_small', 9001, 9, 2.4);
+  birch('aspen_medium', 1811, 17, 3.6);
+  birch('aspen_medium', 523, 19, 3.8, { angle: 60 });
+  birch('aspen_large', 77, 23, 2.6);
+  birch('aspen_small', 9001, 9, 3.6);
   const spruce = (preset, seed, h, tweak = {}) => {
     const o = deep(PRESETS[preset]); o.seed = seed;
     o.leaves.count = Math.round(o.leaves.count * (tweak.leafMul || 1.25));
@@ -39,7 +39,7 @@ function speciesVariants() {
   spruce('pine_small', 66, 7, { leafMul: 1.4 });
   // Scots pine: bare lower trunk, crown in the top third, orange upper bark
   spruce('pine_large', 5150, 24, { species: 'pine', start: 0.62, angle: 100, children: 45, leafMul: 1.6, barkTint: 0xd9a27a, leafTint: 0x7c9160 });
-  const oak = deep(PRESETS.oak_medium); oak.seed = 2024; oak.leaves.count = Math.round(oak.leaves.count * 1.3);
+  const oak = deep(PRESETS.oak_medium); oak.seed = 2024; oak.leaves.count = Math.round(oak.leaves.count * 2.2); oak.leaves.size *= 0.65;
   V.push({ species: 'oak', opt: oak, height: 15, bark: 'oak', leaf: 'oak', barkTint: 0xb8b0a4, leafTint: 0xc8d8a0 });
   const bush = (preset, seed, h, leaf, tint) => {
     const o = deep(PRESETS[preset]); o.seed = seed; o.leaves.count = Math.round(o.leaves.count * 1.6);

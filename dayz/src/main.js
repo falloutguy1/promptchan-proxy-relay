@@ -36,6 +36,10 @@ async function boot() {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.info.autoReset = false;
+  {
+    const gl = renderer.getContext(), ext = gl.getExtension('WEBGL_debug_renderer_info');
+    game.gpu = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+  }
   const q = Q();
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2) * q.renderScale);
   renderer.setSize(innerWidth, innerHeight, false);
@@ -175,7 +179,7 @@ async function boot() {
   };
   // Automation hooks for capture/benchmark tooling (tools/capture.mjs)
   game.setView = (x, y, z, yaw, pitch) => {
-    player.pos.set(x, y ?? collision.groundHeight(x, z, 1e9), z); player.yaw = yaw; player.pitch = pitch ?? 0;
+    player.pos.set(x, y ?? collision.groundHeight(x, z, 1e9), z); player.yaw = yaw; player.pitch = pitch ?? 0; player.vel.set(0, 0, 0);
     player.updateCamera(0);
   };
   game.setCamera = (px, py, pz, tx, ty, tz) => {
@@ -188,8 +192,38 @@ async function boot() {
   game.applyQuality = applyQuality;
   if (URLP.has('capture')) { startOverlay.hidden = true; $('hud').hidden = !URLP.has('hud'); }
   if (URLP.has('autoplay')) resume();
+  if (URLP.has('bench')) runBenchmark(game, player, collision, $('perf'));
   game.ready = true;
   if (!URLP.has('capture')) requestAnimationFrame(frame);
+}
+
+/** ?bench: 20 s scripted walk (road -> yard -> house -> forest edge), then frame-time stats. */
+function runBenchmark(game, player, collision, out) {
+  const path = [[-40, 24], [-5.5, 26], [-2.5, 12], [-1.6, 6.5], [6, 2], [10, -12], [4, -32], [-30, -20], [-60, 10]];
+  const T = 20, t0 = performance.now(), times = [];
+  let last = t0;
+  document.getElementById('start').hidden = true;
+  document.getElementById('hud').hidden = false;
+  const tick = () => {
+    const now = performance.now(), t = (now - t0) / 1000;
+    times.push(now - last); last = now;
+    const f = Math.min(t / T, 0.9999) * (path.length - 1), i = Math.floor(f), u = f - i;
+    const [ax, az] = path[i], [bx, bz] = path[i + 1];
+    const x = ax + (bx - ax) * u, z = az + (bz - az) * u;
+    game.setView(x, collision.groundHeight(x, z, 1e9), z, Math.atan2(-(bx - ax), -(bz - az)), -0.03);
+    if (t < T) return requestAnimationFrame(tick);
+    const s = times.slice(Math.min(10, times.length >> 2)).sort((a, b) => a - b); // drop warm-up frames
+    const avg = s.reduce((a, b) => a + b, 0) / s.length;
+    const r = game.renderer.info.render;
+    const res = { avgFps: 1000 / avg, p50ms: s[Math.floor(s.length * 0.5)], p95ms: s[Math.floor(s.length * 0.95)], p99ms: s[Math.floor(s.length * 0.99)],
+      frames: s.length, draws: r.calls, tris: r.triangles, gpu: game.gpu, canvas: [game.renderer.domElement.width, game.renderer.domElement.height] };
+    game.benchResult = res;
+    out.style.fontSize = '14px';
+    out.textContent = `BENCHMARK (${settings.quality})\n${res.avgFps.toFixed(1)} fps avg   p50 ${res.p50ms.toFixed(1)} ms   p95 ${res.p95ms.toFixed(1)} ms   p99 ${res.p99ms.toFixed(1)} ms\n` +
+      `${res.canvas.join('x')}  draws ${res.draws}  tris ${(res.tris / 1e6).toFixed(2)}M\n${res.gpu}`;
+    console.log('benchmark', JSON.stringify(res));
+  };
+  requestAnimationFrame(tick);
 }
 
 function surfaceName(gen, x, z, collision, player) {

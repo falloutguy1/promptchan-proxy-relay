@@ -21,7 +21,7 @@ export async function build(ctx) {
   }
   ring.setAttribute('aDepth', new THREE.BufferAttribute(depth, 1));
   const mat = new THREE.MeshPhysicalMaterial({
-    name: 'water', color: 0x1d2418, roughness: 0.04, metalness: 0, ior: 1.33, transparent: true, depthWrite: false,
+    name: 'water', color: 0x0b0f09, roughness: 0.03, metalness: 0, ior: 1.33, transparent: true, depthWrite: false,
     envMapIntensity: 1.0, specularIntensity: 1,
   });
   patch(mat, {
@@ -36,16 +36,16 @@ export async function build(ctx) {
           vec2 p = vWP.xz;
           float e = 0.05;
           float t = uTime;
-          #define H(q) (dz_noise((q) * 1.7 + vec2(t * 0.09, t * 0.05)) * 0.6 + dz_noise((q) * 4.3 - vec2(t * 0.13, -t * 0.07)) * 0.4)
+          #define H(q) (dz_noise((q) * 3.1 + vec2(t * 0.09, t * 0.05)) * 0.6 + dz_noise((q) * 4.3 - vec2(t * 0.13, -t * 0.07)) * 0.4)
           float h0 = H(p), hx = H(p + vec2(e, 0.0)), hz = H(p + vec2(0.0, e));
-          vec3 nw = normalize(vec3(-(hx - h0) / e * 0.035, 1.0, -(hz - h0) / e * 0.035));
+          vec3 nw = normalize(vec3(-(hx - h0) / e * 0.012, 1.0, -(hz - h0) / e * 0.012));
           normal = normalize((viewMatrix * vec4(nw, 0.0)).xyz);
         }`],
       ['#include <color_fragment>', /* glsl */`
         float d = max(vDepth, 0.0);
         // absorption: shallow water shows the silty bottom, deep water goes dark olive
-        diffuseColor.rgb = mix(vec3(0.16, 0.14, 0.09), diffuseColor.rgb, smoothstep(0.0, 0.8, d));
-        diffuseColor.a = smoothstep(-0.02, 0.35, d) * 0.92;
+        diffuseColor.rgb = mix(vec3(0.09, 0.08, 0.05), diffuseColor.rgb, smoothstep(0.0, 0.6, d));
+        diffuseColor.a = mix(smoothstep(-0.02, 0.25, d) * 0.85, 0.97, smoothstep(0.25, 1.0, d));
         if (vDepth < -0.02) discard;`],
     ],
   });

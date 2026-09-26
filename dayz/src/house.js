@@ -88,16 +88,16 @@ export async function build(ctx) {
   const [plaster, plasterBrick, concrete, roofSheet, paintedWood, doorMat, floorMat, wallpaper, ceiling, planks, rust, greenMetal] = await Promise.all([
     assets.pbr('plaster'), assets.pbr('plasterBrick'), assets.pbr('concrete'), assets.pbr('roofSheet', { side: THREE.DoubleSide }),
     assets.pbr('paintedWood'), assets.pbr('door'), assets.pbr('floor', { envMapIntensity: 0.3 }), assets.pbr('wallpaper', { envMapIntensity: 0.3 }),
-    assets.pbr('ceiling', { envMapIntensity: 0.25 }), assets.pbr('brownPlanks'), assets.pbr('rust', { metal: true, side: THREE.DoubleSide }),
+    assets.pbr('ceiling', { envMapIntensity: 0.25 }), assets.pbr('brownPlanks'), assets.pbr('rust', { metal: true, side: THREE.DoubleSide, color: 0x9a968e }),
     assets.pbr('greenMetal', { metal: true }),
   ]);
   const plasterBrickSet = { map: plasterBrick.map, normalMap: plasterBrick.normalMap, arm: plasterBrick.roughnessMap };
   damage(plaster, plasterBrickSet, { uvScale: 0.9, groundY: PAD_Y, amount: 0.55 });
-  weather(plaster, { groundY: PAD_Y, grimeHeight: 0.9, grime: 0.4, streaks: 0.12, macro: 0.16, tint: 0xf2eadb });
+  weather(plaster, { groundY: PAD_Y, grimeHeight: 1.1, grime: 0.45, streaks: 0.22, macro: 0.3, tint: 0xe2cfa6 });
   const trim = plaster.clone();
   trim.name = 'plasterTrim';
-  weather(trim, { groundY: PAD_Y, grimeHeight: 0.5, grime: 0.2, streaks: 0.1, macro: 0.1, tint: 0xfffaf0 });
-  weather(concrete, { groundY: PAD_Y, grimeHeight: 0.35, grime: 0.45, macro: 0.2 });
+  weather(trim, { groundY: PAD_Y, grimeHeight: 0.5, grime: 0.25, streaks: 0.15, macro: 0.2, tint: 0xeee6d6 });
+  weather(concrete, { groundY: PAD_Y, grimeHeight: 0.5, grime: 0.55, macro: 0.3, tint: 0xa8a49a });
   weather(roofSheet, { groundY: FLOOR_Y + 2.2, grimeHeight: 1.4, grime: 0.45, macro: 0.25, tint: 0xd8d4c8 });
   weather(paintedWood, { groundY: PAD_Y, grimeHeight: 0.4, grime: 0.3, macro: 0.2 });
   weather(planks, { groundY: FLOOR_Y + WH, grimeHeight: 0.6, grime: 0.25, macro: 0.25 });
@@ -106,8 +106,8 @@ export async function build(ctx) {
   const chimneyMat = plasterBrick;
   weather(chimneyMat, { groundY: FLOOR_Y + 4, grimeHeight: 0.6, grime: 0.3, macro: 0.2 });
   const glass = new THREE.MeshPhysicalMaterial({
-    name: 'glass', color: 0x8f9a93, roughness: 0.06, metalness: 0, ior: 1.52, specularIntensity: 1,
-    transparent: true, opacity: 0.3, depthWrite: false, envMapIntensity: 1.2, side: THREE.DoubleSide,
+    name: 'glass', color: 0x5d6660, roughness: 0.08, metalness: 0, ior: 1.52, specularIntensity: 1,
+    transparent: true, opacity: 0.16, depthWrite: false, envMapIntensity: 1.2, side: THREE.DoubleSide,
   });
   const dark = new THREE.MeshStandardMaterial({ name: 'soot', color: 0x0a0a09, roughness: 1 });
 
@@ -250,7 +250,7 @@ export async function build(ctx) {
     // cladding: boards on battens, 4 cm proud of the masonry
     const clad = new THREE.ExtrudeGeometry(new THREE.Shape([new THREE.Vector2(-D / 2 - 0.03, WH - 0.12), new THREE.Vector2(D / 2 + 0.03, WH - 0.12), new THREE.Vector2(0, ridgeY - 0.02)]), { depth: 0.025, bevelEnabled: false });
     const mc = new THREE.Matrix4().makeRotationY(Math.PI / 2).premultiply(new THREE.Matrix4().makeTranslation(sx * (W / 2 + 0.045) - (sx > 0 ? 0.025 : 0), 0, 0));
-    B.add(planks, clad, mc);
+    B.add(planks, clad, mc, { localUV: true, uvMatrix: new THREE.Matrix4().makeRotationZ(Math.PI / 2) }); // vertical boards
     for (let z = -D / 2 + 0.2; z < D / 2 - 0.1; z += 0.42) {
       const top = WH - 0.12 + (ridgeY - 0.05 - (WH - 0.12)) * (1 - Math.abs(z) / (D / 2 + 0.03));
       B.aabb(planks, sx * (W / 2 + 0.045) - 0.012, WH - 0.12, z - 0.025, sx * (W / 2 + 0.045) + 0.028 * sx, top - 0.06, z + 0.025, 0.004);
