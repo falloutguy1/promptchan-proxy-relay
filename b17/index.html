@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#101418" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<title>Flying Fortress: Schweinfurt 1943</title>
+<link rel="stylesheet" href="style.css" />
+<script type="importmap">
+{ "imports": { "three": "./vendor/three/build/three.module.js", "three/addons/": "./vendor/three/addons/" } }
+</script>
+</head>
+<body>
+<canvas id="gl"></canvas>
+
+<!-- loading -->
+<div id="loading" class="screen">
+  <div class="panel">
+    <div class="kicker">8th AIR FORCE · 14 OCTOBER 1943</div>
+    <h1>Flying Fortress</h1>
+    <div class="sub">Mission 115 — Schweinfurt</div>
+    <div class="bar"><div id="load-fill"></div></div>
+    <div id="load-label">Starting…</div>
+    <div id="load-error" class="error hidden"></div>
+  </div>
+</div>
+
+<!-- menu -->
+<div id="menu" class="screen hidden">
+  <div class="panel wide">
+    <div class="kicker">MISSION BRIEFING</div>
+    <h1>Schweinfurt</h1>
+    <p class="brief">Lead your B-17G element over the Main river valley. Destroy the ball-bearing works (primary) and the
+      marshalling yard, rail bridge and fuel depot. Expect heavy flak and Fw 190 interceptors.</p>
+    <ul class="targets-brief" id="brief-targets"></ul>
+    <div class="row">
+      <button id="btn-start" class="primary">Start mission</button>
+      <button id="btn-settings">Settings</button>
+      <button id="btn-help">Controls</button>
+    </div>
+    <div id="asset-warn" class="warn hidden"></div>
+  </div>
+</div>
+
+<!-- settings -->
+<div id="settings" class="screen hidden">
+  <div class="panel wide">
+    <div class="kicker">SETTINGS</div>
+    <label>Graphics quality
+      <select id="set-preset"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="ultra">Ultra</option></select>
+    </label>
+    <label>Render resolution <span id="rs-val"></span>
+      <input type="range" id="set-scale" min="0.4" max="1.25" step="0.05" />
+    </label>
+    <label>Volume <input type="range" id="set-vol" min="0" max="1" step="0.05" /></label>
+    <label>Mouse / touch sensitivity <input type="range" id="set-sens" min="0.3" max="2.5" step="0.1" /></label>
+    <label class="chk"><input type="checkbox" id="set-inv" /> Invert vertical aim</label>
+    <label class="chk"><input type="checkbox" id="set-fps" /> Show performance stats</label>
+    <p class="note">Quality changes that affect world generation apply after reload.</p>
+    <div class="row"><button id="btn-apply" class="primary">Apply</button><button id="btn-reload">Apply &amp; reload</button><button id="btn-set-back">Back</button></div>
+  </div>
+</div>
+
+<!-- help -->
+<div id="help" class="screen hidden">
+  <div class="panel wide">
+    <div class="kicker">CONTROLS</div>
+    <div class="cols">
+      <div><h3>Desktop</h3>
+        <table>
+          <tr><td>Mouse</td><td>Aim — the bomber flies towards the aim circle</td></tr>
+          <tr><td>Left mouse</td><td>Gunners fire at the aim point</td></tr>
+          <tr><td>W / S</td><td>Throttle</td></tr>
+          <tr><td>A / D, Q / E</td><td>Roll / rudder override</td></tr>
+          <tr><td>B</td><td>Bombsight view (bomb bay opens)</td></tr>
+          <tr><td>Space</td><td>Release bombs</td></tr>
+          <tr><td>X</td><td>Release mode: single / pair / salvo</td></tr>
+          <tr><td>V</td><td>Camera: chase / close / gunner</td></tr>
+          <tr><td>F</td><td>Engine fire extinguisher</td></tr>
+          <tr><td>C (hold)</td><td>Free look</td></tr>
+          <tr><td>Esc / P</td><td>Pause</td></tr>
+        </table></div>
+      <div><h3>Touch</h3>
+        <table>
+          <tr><td>Drag (right side)</td><td>Aim</td></tr>
+          <tr><td>FIRE</td><td>Gunners fire</td></tr>
+          <tr><td>SIGHT</td><td>Bombsight</td></tr>
+          <tr><td>BOMB</td><td>Release bombs</td></tr>
+          <tr><td>+ / −</td><td>Throttle</td></tr>
+          <tr><td>CAM</td><td>Cycle camera</td></tr>
+        </table></div>
+    </div>
+    <div class="row"><button id="btn-help-back">Back</button></div>
+  </div>
+</div>
+
+<!-- pause -->
+<div id="pause" class="screen hidden">
+  <div class="panel">
+    <div class="kicker">PAUSED</div>
+    <div class="row col"><button id="btn-resume" class="primary">Resume</button><button id="btn-p-settings">Settings</button><button id="btn-p-help">Controls</button><button id="btn-restart">Restart mission</button></div>
+  </div>
+</div>
+
+<!-- end -->
+<div id="end" class="screen hidden">
+  <div class="panel wide">
+    <div class="kicker" id="end-kicker">MISSION COMPLETE</div>
+    <h1 id="end-title"></h1>
+    <div id="end-stats"></div>
+    <div class="row"><button id="btn-again" class="primary">Fly again</button></div>
+  </div>
+</div>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div id="hud-targets"></div>
+  <canvas id="minimap" width="220" height="220"></canvas>
+  <div id="hud-msg"></div>
+  <div id="hud-center">
+    <div id="aim"></div>
+    <div id="nose"></div>
+  </div>
+  <div id="hud-bottom">
+    <div class="gauge"><span class="lbl">IAS</span><span id="g-ias">0</span><span class="u">mph</span></div>
+    <div class="gauge"><span class="lbl">ALT</span><span id="g-alt">0</span><span class="u">ft</span></div>
+    <div class="gauge"><span class="lbl">HDG</span><span id="g-hdg">0</span><span class="u">°</span></div>
+    <div class="gauge"><span class="lbl">THR</span><span id="g-thr">0</span><span class="u">%</span></div>
+    <div class="gauge"><span class="lbl">BOMBS</span><span id="g-bombs">12</span><span class="u" id="g-mode">single</span></div>
+  </div>
+  <div id="dmg">
+    <svg viewBox="0 0 120 90" id="dmg-svg">
+      <path id="d-fus" d="M58 6 Q60 2 62 6 L63 70 L60 86 L57 70 Z" />
+      <path id="d-wl" d="M58 30 L6 36 L6 40 L58 40 Z" />
+      <path id="d-wr" d="M62 30 L114 36 L114 40 L62 40 Z" />
+      <path id="d-tail" d="M60 72 L42 80 L42 84 L78 84 L78 80 Z" />
+      <circle id="d-e1" cx="22" cy="33" r="4" /><circle id="d-e2" cx="40" cy="31" r="4" />
+      <circle id="d-e3" cx="80" cy="31" r="4" /><circle id="d-e4" cx="98" cy="33" r="4" />
+    </svg>
+  </div>
+  <div id="sight" class="hidden">
+    <div class="ret"></div>
+    <div id="sight-info"></div>
+  </div>
+  <div id="stats" class="hidden"></div>
+  <div id="touch" class="hidden">
+    <div id="t-thr"><button id="t-up">+</button><button id="t-dn">−</button></div>
+    <div id="t-btns">
+      <button id="t-cam">CAM</button>
+      <button id="t-sight">SIGHT</button>
+      <button id="t-bomb">BOMB</button>
+      <button id="t-fire">FIRE</button>
+    </div>
+    <button id="t-pause">II</button>
+  </div>
+</div>
+
+<noscript><div class="screen"><div class="panel">This game needs JavaScript and WebGL2.</div></div></noscript>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
