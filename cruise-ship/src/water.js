@@ -121,7 +121,7 @@ void main(){
   float db = -168.0 - wp.x;                     // distance behind the stern
   float dbp = max(db, 0.0);
   float edgeN = vnoise(vec2(q.x * 0.012, sgn * 5.0 + 1.0));
-  float wakeW = (15.0 + dbp * 0.075) * (0.82 + 0.36 * edgeN);
+  float wakeW = (15.0 + dbp * 0.075) * (0.74 + 0.5 * edgeN + 0.12 * vnoise(q * 0.05));
   float inWake = db > 0.0 ? 1.0 - smoothstep(wakeW * 0.5, wakeW, az) : 0.0;
   inWake *= smoothstep(-2.0, 6.0, db);
   float wakeAge = exp(-dbp / 650.0);
@@ -151,7 +151,7 @@ void main(){
   float bw = (1.0 - smoothstep(0.0, 2.5 + 9.0 * armLen, bowArm)) * pow(1.0 - armLen, 1.5) * step(wp.x, 172.0) * smoothstep(0.3, 0.6, vnoise(q * 0.06 + 2.0) + 0.25 * (1.0 - armLen));
   float wash = exp(-dbp / 140.0);
   float wakeF = inWake * (wash * 0.9 + wakeAge * smoothstep(0.42, 0.72, streak) * 0.9);
-  float kel = (1.0 - smoothstep(0.0, 2.0 + dbp * 0.01, kelvin)) * exp(-dbp / 420.0) * 0.75 * step(0.0, db) * smoothstep(0.3, 0.65, vnoise(q * 0.045 + 7.0));
+  float kel = (1.0 - smoothstep(0.0, 2.0 + dbp * 0.01, kelvin)) * exp(-dbp / 420.0) * 0.42 * step(0.0, db) * smoothstep(0.4, 0.75, vnoise(q * 0.035 + 7.0)) * (0.6 + 0.4 * vnoise(q * 0.3));
   float mask = max(max(hull, bw * 0.85), max(wakeF, kel));
   float foam = smoothstep(0.32, 0.85, mask * (0.5 + 0.7 * fn) + fd * 0.35 * mask);
   foam *= mix(1.0, 0.7, smoothstep(1500.0, 4000.0, dist));

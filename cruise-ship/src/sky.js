@@ -18,9 +18,11 @@ export const atmo = {
   uSkyTime: { value: 0 },
   uSunDisk: { value: 1 },
   tCloud: { value: null },
+  tNoise3: { value: null },
   uCloudT: { value: 0.6 },
   uCloudSun: { value: 1.3 },
   uCloudTile: { value: 36000 },
+  uCloudP: { value: 0.5 },
 };
 
 export const SKY_GLSL = /* glsl */`
@@ -42,83 +44,112 @@ vec3 skyGradient(vec3 d){
 const SKY_FRAG = NOISE + SKY_GLSL + /* glsl */`
 varying vec3 vDir;
 uniform sampler2D tCloud;
-uniform float uCloudT, uCloudSun, uCloudTile;
-vec2 cGX, cGY; float cT0;
-float cf(vec2 xz, float lod){ float k = lod; return textureGrad(tCloud, xz / uCloudTile, cGX * k, cGY * k).r; }
-// cumulus: coarse search for the cloud surface, bisection, then a short fine integration
-const float HB = 1250.0, HT = 3300.0;
-float cdenC(vec3 p, vec2 wind, float lod){
-  float h = (p.y - HB) / (HT - HB);
-  return cf(p.xz + wind, lod) - uCloudT - 0.42 * h * h;
+uniform highp sampler3D tNoise3;
+uniform float uCloudT, uCloudSun, uCloudTile, uCloudP;
+// Sphere-traced cumulus: each cell of a jittered grid may hold one flat-based cloud built from a
+// smooth union of an ellipsoid body and puffs, displaced by tileable 3D billow noise.
+const float CS = 2400.0;
+const float CS2 = 1500.0;
+const float HB = 1150.0;
+const float HT = 3000.0;
+// layer 0: large cumulus on a 2400 m grid; layer 1: small fair-weather puffs on an offset 1500 m grid
+vec4 cellCloud(vec2 cid, float L){
+  float cs = L < 0.5 ? CS : CS2;
+  vec2 off = L < 0.5 ? vec2(0.0) : vec2(700.0, 1130.0);
+  float h = hash12(cid * 0.7131 + vec2(11.3, 5.7) + L * 17.0);
+  vec2 cc = (cid + 0.5) * cs + off;
+  float cluster = textureLod(tCloud, cc / uCloudTile, 3.0).g;
+  float prob = uCloudP * (L < 0.5 ? (0.08 + 1.5 * smoothstep(0.34, 0.64, cluster)) : (0.12 + 0.7 * smoothstep(0.3, 0.6, cluster)));
+  if (h > prob) return vec4(0.0, 0.0, 0.0, -1.0);
+  vec2 o = hash22(cid + 4.1 + L * 9.0);
+  float R = L < 0.5 ? mix(220.0, 900.0, pow(hash12(cid + 9.7), 2.0)) : mix(90.0, 380.0, pow(hash12(cid + 3.3), 1.6));
+  float m = cs * 0.5 - 1.6 * R;
+  return vec4(cc + (o - 0.5) * 2.0 * m, R, h * 97.0 + 1.0 + L * 500.0);
 }
-float nAmp1, nAmp2;
-float cdenS(vec3 p, vec2 wind, float lod, float amp){
-  vec2 xz = p.xz + wind;
-  float h = (p.y - HB) / (HT - HB);
-  return cf(xz, lod) - uCloudT - 0.42 * h * h + (vnoise((xz + p.y * 0.9) / 120.0) - 0.5) * 0.06 * nAmp1;
-}
-float cden(vec3 p, vec2 wind, float lod, float amp){
-  vec2 xz = p.xz + wind;
-  return cdenS(p, wind, lod, amp) + (vnoise((xz - p.y * 0.7) / 37.0) - 0.5) * 0.022 * nAmp2;
+float smin(float a, float b, float k){ float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0); return mix(b, a, h) - k * h * (1.0 - h); }
+float sdEll(vec3 p, vec3 r){ float k0 = length(p / r); float k1 = length(p / (r * r)); return k0 * (k0 - 1.0) / max(k1, 1e-6); }
+float cloudSDF(vec3 p, vec4 cc){
+  float R = cc.z;
+  vec3 c0 = vec3(cc.x, HB + 0.52 * R, cc.y);
+  float d = sdEll(p - c0, vec3(1.3 * R, 0.7 * R, 1.1 * R));
+  for (int k = 0; k < 4; k++) {
+    vec2 hk = hash22(vec2(cc.w, float(k) * 3.7 + 1.3));
+    float an = hk.x * 6.2832;
+    float rr = R * (0.38 + 0.3 * hash12(vec2(cc.w + 7.0, float(k))));
+    float spread = k == 0 ? 0.15 : 0.62;
+    float up = R * (k == 0 ? 0.95 : 0.3 + 0.5 * hk.y);
+    vec3 ck = c0 + vec3(cos(an) * R * spread, up, sin(an) * R * spread * 0.85);
+    d = smin(d, length(p - ck) - rr, R * 0.24);
+  }
+  float n = texture(tNoise3, vec3(p.x + cc.w * 31.0, p.y * 1.15, p.z) / (R * 2.6)).r;
+  float n2 = texture(tNoise3, vec3(p.z - cc.w * 17.0, p.y * 1.2, p.x) / (R * 0.9)).r;
+  d += (0.52 - n) * R * 0.24 + (0.5 - n2) * R * 0.06;
+  return -smin(-d, p.y - HB, R * 0.22); // smooth max: flat base with a rounded rim
 }
 vec4 cumulus(vec3 d){
-  vec2 uvb = d.xz * (HB / max(d.y, 0.0035)) / uCloudTile;
-  cGX = dFdx(uvb); cGY = dFdy(uvb);
-  float gmax = 4.0 / 2048.0;
-  if (length(cGX) > gmax) cGX *= gmax / length(cGX);
-  if (length(cGY) > gmax) cGY *= gmax / length(cGY);
-  if (d.y < 0.0035) return vec4(0.0, 0.0, 0.0, 1.0);
-  float t0 = HB / d.y;
-  cT0 = t0;
-  if (t0 > 95000.0) return vec4(0.0, 0.0, 0.0, 1.0);
-  float t1 = min(HT / d.y, t0 + 9000.0);
-  vec2 wind = vec2(uSkyTime * 2.2, uSkyTime * 0.8);
-  float lod = 1.0;
-  float amp = 1.0;
-  float foot = t0 * 0.0011 / max(d.y, 0.01);
-  nAmp1 = 1.0 - smoothstep(35.0, 130.0, foot);
-  nAmp2 = 1.0 - smoothstep(10.0, 40.0, foot);
-  // adaptive search on the smooth field (conservative threshold), no jitter
-  float t = t0, te = -1.0;
-  float minStep = 18.0 + t0 * 0.0005;
-  for (int i = 0; i < 56; i++) {
-    if (t > t1) break;
-    float dd = cdenC(d * t, wind, t / t0) + 0.055;
-    if (dd > 0.0) { te = t; break; }
-    t += clamp(-dd * 1500.0, minStep, 650.0);
-  }
-  if (te < 0.0) return vec4(0.0, 0.0, 0.0, 1.0);
-  float a = max(t0, te - minStep);
-  float cosT = dot(d, uSunDir);
-  float g = 0.6;
-  float hg = (1.0 - g * g) / pow(1.0 + g * g - 2.0 * g * cosT, 1.5) * 0.25;
-  vec3 L = vec3(0.0); float T = 1.0;
-  float ign = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
-  float st = 20.0 + t0 * 0.0008;
-  t = a + ign * st * 0.8;
-  for (int j = 0; j < 11; j++) {
-    vec3 p = d * (t + st * 0.5);
-    lod = (t + st * 0.5) / t0;
-    float den = cden(p, wind, lod, amp);
-    if (den > 0.0) {
-      float h = clamp((p.y - HB) / (HT - HB), 0.0, 1.0);
-      float o1 = cdenC(p + uSunDir * 150.0, wind, lod);
-      float o2 = cdenC(p + uSunDir * 480.0, wind, lod);
-      float occ = exp(-(max(o1, 0.0) * 10.0 + max(o2, 0.0) * 7.0));
-      vec3 amb = mix(uCloudShade, uCloudLit * 0.92, smoothstep(0.0, 0.7, h));
-      vec3 S = amb * 0.6 + uSunCol * uCloudSun * occ * (0.5 + 1.7 * hg);
-      float al = 1.0 - exp(-den * 0.03 * st);
-      L += T * al * S;
-      T *= 1.0 - al;
-      if (T < 0.02) break;
+  if (d.y < 0.004) return vec4(0.0, 0.0, 0.0, 1.0);
+  float t = HB / d.y;
+  if (t > 95000.0) return vec4(0.0, 0.0, 0.0, 1.0);
+  float tEnd = min(HT / d.y, t + 16000.0);
+  vec3 wofs = vec3(uSkyTime * 2.2, 0.0, uSkyTime * 0.8);
+  const float PA = 0.0014;
+  float hitT = -1.0; vec4 hitC = vec4(0.0);
+  float nearA = 0.0;
+  for (int i = 0; i < 96; i++) {
+    vec3 p = d * t + wofs;
+    float stepT = 1e6;
+    for (int L = 0; L < 2; L++) {
+      float fl = float(L);
+      float cs = L == 0 ? CS : CS2;
+      vec2 off = L == 0 ? vec2(0.0) : vec2(700.0, 1130.0);
+      vec2 q = p.xz - off;
+      vec2 cid = floor(q / cs);
+      vec2 lo = cid * cs, hi = lo + cs;
+      float tx = d.x > 0.0 ? (hi.x - q.x) / max(d.x, 1e-6) : (lo.x - q.x) / min(d.x, -1e-6);
+      float tz = d.z > 0.0 ? (hi.y - q.y) / max(d.z, 1e-6) : (lo.y - q.y) / min(d.z, -1e-6);
+      float st = min(tx, tz) + 1.5;
+      vec4 cc = cellCloud(cid, fl);
+      if (cc.w > 0.0) {
+        float sd = cloudSDF(p, cc);
+        float eps = t * PA * 0.5;
+        if (sd < eps) { hitT = t; hitC = cc; }
+        nearA = max(nearA, 1.0 - sd / (t * PA * 2.2));
+        st = min(st, max(sd * 0.72, eps));
+      }
+      stepT = min(stepT, st);
     }
-    t += st; st *= 1.33;
+    if (hitT > 0.0) break;
+    t += stepT;
+    if (t > tEnd) break;
   }
-  float haze = 1.0 - exp(-t0 / 30000.0);
-  vec3 hz = skyGradient(vec3(d.x, 0.02, d.z));
-  L = mix(L, hz * (1.0 - T), haze * 0.9);
-  float fade = smoothstep(0.0035, 0.02, d.y) * (1.0 - 0.55 * smoothstep(30000.0, 85000.0, t0));
-  return vec4(L * fade, mix(1.0, T, fade));
+  vec3 col; float alpha;
+  float dist = hitT > 0.0 ? hitT : t;
+  if (hitT > 0.0) {
+    vec3 p = d * hitT + wofs;
+    float R = hitC.z;
+    float e = max(hitT * PA, R * 0.03);
+    vec2 k = vec2(1.0, -1.0);
+    vec3 n = normalize(k.xyy * cloudSDF(p + k.xyy * e, hitC) + k.yyx * cloudSDF(p + k.yyx * e, hitC)
+                     + k.yxy * cloudSDF(p + k.yxy * e, hitC) + k.xxx * cloudSDF(p + k.xxx * e, hitC));
+    float sh = 1.0, sl = R * 0.1;
+    for (int j = 0; j < 5; j++) { float sd = cloudSDF(p + uSunDir * sl, hitC); sh = min(sh, clamp(3.0 * sd / sl + 0.15, 0.0, 1.0)); sl += R * 0.24; }
+    float h = clamp((p.y - HB) / (1.9 * R), 0.0, 1.0);
+    float ndl = dot(n, uSunDir);
+    float wrap = clamp((ndl + 0.35) / 1.35, 0.0, 1.0);
+    vec3 amb = mix(uCloudShade, uCloudLit * 0.95, clamp(n.y * 0.5 + 0.5, 0.0, 1.0) * 0.65 + h * 0.35);
+    amb *= 1.0 - 0.55 * (1.0 - smoothstep(0.0, R * 0.45, p.y - HB));
+    float cosT = dot(d, uSunDir);
+    float rim = pow(1.0 - clamp(dot(n, -d), 0.0, 1.0), 3.0) * pow(max(cosT, 0.0), 3.0);
+    col = amb * 0.55 + uSunCol * uCloudSun * (wrap * mix(0.25, 1.0, sh) * 0.85 + rim * 1.4);
+    alpha = 1.0;
+  } else {
+    col = mix(uCloudShade, uCloudLit, 0.75);
+    alpha = clamp(nearA, 0.0, 1.0) * 0.55;
+  }
+  float haze = 1.0 - exp(-dist / 32000.0);
+  col = mix(col, skyGradient(vec3(d.x, 0.02, d.z)), haze * 0.85);
+  alpha *= smoothstep(0.004, 0.02, d.y) * (1.0 - 0.45 * smoothstep(40000.0, 95000.0, dist));
+  return vec4(col * alpha, 1.0 - alpha);
 }
 // faint high cirrus for texture
 vec4 cirrus(vec3 d){
@@ -220,7 +251,7 @@ export const MOODS = [
   { // moonlit night
     sunDir: dir(34, 0.62, 0.78), sunCol: col(0x9fb4ff, 1.0), sunI: 0.42,
     zenith: col(0x020612, 1.0), horizon: col(0x10203a, 1.0), ground: col(0x050b16, 1.0),
-    glow: col(0x2a3e66, 0.2), glowPow: 3, cloud: 0.22, cloudLit: col(0x121a2a, 0.8), cloudShade: col(0x05080f, 1.0), cloudSun: 0.22,
+    glow: col(0x2a3e66, 0.2), glowPow: 3, cloud: 0.22, cloudLit: col(0x0d1420, 0.8), cloudShade: col(0x04060b, 1.0), cloudSun: 0.09,
     night: 1, sunDisk: 0,
     hemiSky: col(0x3a5080), hemiGround: col(0x06080c), hemiI: 0.55,
     envI: 1.4, exposure: 1.1, fog: 0.00012,

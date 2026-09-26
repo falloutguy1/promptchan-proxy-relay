@@ -7,7 +7,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { buildShip } from './ship.js';
 import { createSky, atmo, MOODS, lerpMood } from './sky.js';
-import { bakeClouds } from './clouds.js';
+import { bakeClouds, makeNoise3D } from './clouds.js';
 import { createWater } from './water.js';
 import { shared } from './procmat.js';
 import { VIEWS, buildUI } from './ui.js';
@@ -45,6 +45,7 @@ camera.layers.enable(1);
 // ------------------------------------------------------------------ world
 const cloudBake = bakeClouds(renderer, 2048);
 atmo.tCloud.value = cloudBake.texture;
+atmo.tNoise3.value = makeNoise3D(64);
 const sky = createSky();
 scene.add(sky);
 const water = createWater();
@@ -131,6 +132,7 @@ function applyMood(m) {
   atmo.uGlowPow.value = m.glowPow;
   atmo.uCloud.value = m.cloud;
   atmo.uCloudT.value = cloudBake.thresholdFor(m.cloud);
+  atmo.uCloudP.value = m.cloud * 1.05;
   atmo.uCloudSun.value = m.cloudSun;
   atmo.uCloudLit.value.copy(m.cloudLit);
   atmo.uCloudShade.value.copy(m.cloudShade);
@@ -367,4 +369,4 @@ function moodNow(i) {
   moodFrom = moodTo = MOODS[i]; moodIndex = i; moodT = 1;
   applyMood(MOODS[i]); updateEnv(); ui.setMood(i);
 }
-window.__ship = { renderer, scene, camera, goView, setMood, moodNow, controls, setTime: (t) => { time = t; } };
+window.__ship = { cloudBake, renderer, scene, camera, goView, setMood, moodNow, controls, setTime: (t) => { time = t; } };

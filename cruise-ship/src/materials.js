@@ -58,7 +58,7 @@ ${SIG} {
 
   float wc = fillAA(winD, px);
   float fr = fillAA(abs(winD + 0.05) - 0.05, px);
-  float lf = smoothstep(0.4, 1.2, px / 0.7);
+  float lf = smoothstep(0.7, 1.6, px / 0.7);
   float valid = winD < 50.0 ? 1.0 : 0.0;
   wc = mix(wc, 0.2 * valid, lf);
   fr = mix(fr, 0.0, lf);
@@ -67,7 +67,7 @@ ${SIG} {
   col = mix(col, col * 0.8, fr * 0.6);
   alb = mix(col, glass, wc);
   rgh = mix(rgh, 0.05, wc);
-  emi += WARM * 0.9 * uNight * lit * wc;
+  emi += WARM * 0.9 * uNight * mix(lit * wc, 0.45 * 0.2 * valid, lf);
   bump = -min(0.04, px * 0.5) * (1.0 - smoothstep(-px, px, winD)) * (1.0 - lf);
 
   float hc = fillAA(hawse * 0.9, px);
