@@ -1,0 +1,13 @@
+{
+  "name": "cruise-ship-3d",
+  "private": true,
+  "type": "module",
+  "description": "Real-time procedural 3D cruise ship scene, bundled into a single standalone index.html",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "three": "^0.186.1"
+  }
+}
