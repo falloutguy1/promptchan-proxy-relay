@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
 import { N8AOPass } from 'n8ao';
@@ -18,9 +19,29 @@ const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const HERO = { pos: V(-24, 3.0, 66), tgt: V(16, 8.5, -26), fov: 38 };
 const HF = HERO.tgt.clone().sub(HERO.pos).setY(0).normalize(), HR = V(-HF.z, 0, HF.x);
 const heroPt = (f, r) => HERO.pos.clone().addScaledVector(HF, f).addScaledVector(HR, r).setY(0);
-const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance', stencil: false });
-const maxDPR = Math.min(window.devicePixelRatio || 1, 2);
-let dpr = Math.min(maxDPR, 1.5);
+// ---------------------------------------------------------------- quality tiers
+// 0 = desktop, 1 = phone / tablet, 2 = fallback after the GPU dropped the context
+const isMobile = (window.matchMedia && matchMedia('(pointer: coarse)').matches) || /Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent) || Math.min(screen.width, screen.height) < 700;
+const hashTier = (location.hash.match(/q(\d)/) || [])[1];
+const TIER = Math.min(2, Math.max(isMobile ? 1 : 0, hashTier ? +hashTier : 0));
+const Q = [
+  { shadow: 4096, ao: true, bloom: true, smaa: true, refl: 0.5, dprCap: 2, dpr: 1.5, tex: 1024, terrain: 340 },
+  { shadow: 2048, ao: false, bloom: false, smaa: true, refl: 0.33, dprCap: 1.5, dpr: 1.0, tex: 1024, terrain: 240 },
+  { shadow: 1024, ao: false, bloom: false, smaa: false, refl: 0.25, dprCap: 1, dpr: 0.75, tex: 512, terrain: 180 },
+][TIER];
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: TIER ? 'default' : 'high-performance', stencil: false });
+} catch (e) {
+  document.getElementById('veil').classList.add('nogl');
+  throw e;
+}
+renderer.domElement.addEventListener('webglcontextlost', (e) => {
+  e.preventDefault();
+  if (TIER < 2) { location.replace(location.href.split('#')[0] + '#q' + (TIER + 1)); location.reload(); }
+}, false);
+const maxDPR = Math.min(window.devicePixelRatio || 1, Q.dprCap);
+let dpr = Math.min(maxDPR, Q.dpr);
 renderer.setPixelRatio(dpr);
 renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -34,7 +55,7 @@ scene.fog = new THREE.FogExp2(SKY.haze.clone(), 0.0021);
 const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.1, 9000);
 
 function build() {
-  const rust = makeRust(1024), sand = makeSand(1024), bump = makeBumps(512);
+  const rust = makeRust(Q.tex), sand = makeSand(Q.tex), bump = makeBumps(512);
   [rust.map, rust.roughMap, rust.normalMap, sand.map, sand.normalMap, bump].forEach(t => t.anisotropy = renderer.capabilities.getMaxAnisotropy());
 
   // ---------------- ship placement & sand mounds around the hull
@@ -49,8 +70,8 @@ function build() {
   scene.environment = pm.fromScene(envScene, 0.02).texture;
   scene.environmentIntensity = 0.55;
 
-  scene.add(makeTerrain(sand));
-  const water = makeWater(renderer); scene.add(water);
+  scene.add(makeTerrain(sand, Q.terrain));
+  const water = makeWater(renderer, Q.refl); scene.add(water);
   scene.add(makeDistantLand());
 
   const ship = buildShip(rust, placement); scene.add(ship.root);
@@ -71,7 +92,7 @@ function build() {
   const tgt = V(8, 0, -8);
   sun.position.copy(tgt).addScaledVector(SUN_DIR, 180); sun.target.position.copy(tgt);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(4096, 4096);
+  sun.shadow.mapSize.set(Q.shadow, Q.shadow);
   const sc = sun.shadow.camera; sc.left = -100; sc.right = 100; sc.top = 90; sc.bottom = -90; sc.near = 20; sc.far = 400;
   sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.05; sun.shadow.radius = 3;
   scene.add(sun, sun.target);
@@ -125,13 +146,15 @@ function build() {
 let composer, aoPass, gradePass, W;
 function setupPost() {
   composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType }));
-  aoPass = new N8AOPass(scene, camera, innerWidth, innerHeight);
-  aoPass.configuration.aoRadius = 2.5; aoPass.configuration.distanceFalloff = 0.8; aoPass.configuration.intensity = 2.2;
-  aoPass.configuration.halfRes = true; aoPass.configuration.gammaCorrection = false; aoPass.configuration.aoSamples = 12; aoPass.configuration.denoiseSamples = 6;
-  composer.addPass(aoPass);
-  composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.14, 0.5, 0.95));
+  if (Q.ao) {
+    aoPass = new N8AOPass(scene, camera, innerWidth, innerHeight);
+    aoPass.configuration.aoRadius = 2.5; aoPass.configuration.distanceFalloff = 0.8; aoPass.configuration.intensity = 2.2;
+    aoPass.configuration.halfRes = true; aoPass.configuration.gammaCorrection = false; aoPass.configuration.aoSamples = 12; aoPass.configuration.denoiseSamples = 6;
+    composer.addPass(aoPass);
+  } else composer.addPass(new RenderPass(scene, camera));
+  if (Q.bloom) composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.14, 0.5, 0.95));
   composer.addPass(new OutputPass());
-  composer.addPass(new SMAAPass());
+  if (Q.smaa) composer.addPass(new SMAAPass());
   gradePass = new ShaderPass({
     uniforms: { tDiffuse: { value: null }, uTime: { value: 0 }, uRes: { value: new THREE.Vector2(innerWidth, innerHeight) } },
     vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
@@ -171,15 +194,29 @@ function makeViews() {
   ];
 }
 let tween = null, current = 0;
+// widen the vertical field of view on tall screens so the composition still fits
+function fitFov(f) {
+  const a = camera.aspect, ref = 1.6;
+  if (a >= ref) return f;
+  const k = 1 + (ref / a - 1) * 0.3;
+  return Math.min(80, 2 * Math.atan(Math.tan(f * Math.PI / 360) * k) * 180 / Math.PI);
+}
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; controls.dampingFactor = 0.06;
 controls.maxPolarAngle = Math.PI * 0.62; controls.minDistance = 3; controls.maxDistance = 420;
 controls.rotateSpeed = 0.6; controls.zoomSpeed = 0.8;
+// on tall screens also dolly the camera back so the wide shots keep their width
+function pose(v) {
+  const a = camera.aspect, ref = 1.6;
+  if (a >= ref) return v;
+  const f = Math.min(1.3, Math.pow(ref / a, 0.3));
+  return { pos: v.tgt.clone().addScaledVector(v.pos.clone().sub(v.tgt), f), tgt: v.tgt, fov: v.fov };
+}
 function setView(i, instant = false) {
-  current = i; const v = views[i];
+  current = i; const v = pose(views[i]);
   document.querySelectorAll('#views button').forEach((b, k) => b.classList.toggle('on', k === i));
-  if (instant) { camera.position.copy(v.pos); controls.target.copy(v.tgt); camera.fov = v.fov; camera.updateProjectionMatrix(); controls.update(); return; }
-  tween = { t: 0, p0: camera.position.clone(), t0: controls.target.clone(), f0: camera.fov, v };
+  if (instant) { camera.position.copy(v.pos); controls.target.copy(v.tgt); camera.fov = fitFov(v.fov); camera.updateProjectionMatrix(); controls.update(); return; }
+  tween = { t: 0, p0: camera.position.clone(), t0: controls.target.clone(), f0: camera.fov, v, f1: fitFov(v.fov) };
 }
 window.__setView = (i) => setView(i, true);
 window.__cam = (p, t, f) => { camera.position.set(...p); controls.target.set(...t); if (f) { camera.fov = f; camera.updateProjectionMatrix(); } controls.update(); };
@@ -198,7 +235,7 @@ function animate() {
     const lift = Math.sin(Math.PI * k) * Math.min(12, tween.p0.distanceTo(tween.v.pos) * 0.08);
     camera.position.lerpVectors(tween.p0, tween.v.pos, k).y += lift;
     controls.target.lerpVectors(tween.t0, tween.v.tgt, k);
-    camera.fov = tween.f0 + (tween.v.fov - tween.f0) * k; camera.updateProjectionMatrix();
+    camera.fov = tween.f0 + (tween.f1 - tween.f0) * k; camera.updateProjectionMatrix();
     if (tween.t >= 1) tween = null;
   }
   controls.update();
@@ -234,12 +271,14 @@ function animate() {
   requestAnimationFrame(animate);
 }
 function resize() {
-  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  camera.aspect = innerWidth / innerHeight;
+  if (!tween && views[current]) camera.fov = fitFov(views[current].fov);
+  camera.updateProjectionMatrix();
   renderer.setPixelRatio(dpr); renderer.setSize(innerWidth, innerHeight);
   composer.setPixelRatio(dpr); composer.setSize(innerWidth, innerHeight);
   gradePass.uniforms.uRes.value.set(innerWidth * dpr, innerHeight * dpr);
   const s = new THREE.Vector2(); renderer.getDrawingBufferSize(s);
-  W.water.getRenderTarget().setSize(Math.max(256, s.x * 0.5), Math.max(256, s.y * 0.5));
+  W.water.getRenderTarget().setSize(Math.max(256, s.x * Q.refl), Math.max(256, s.y * Q.refl));
 }
 addEventListener('resize', resize);
 addEventListener('keydown', (e) => { const k = parseInt(e.key, 10); if (k >= 1 && k <= views.length) setView(k - 1); });
@@ -250,9 +289,10 @@ requestAnimationFrame(() => setTimeout(() => {
   makeViews();
   const nav = document.getElementById('views');
   views.forEach((_, i) => { const b = document.createElement('button'); b.setAttribute('aria-label', 'View ' + (i + 1)); b.onclick = () => setView(i); nav.appendChild(b); });
+  camera.aspect = innerWidth / innerHeight;
   setView(0, true);
   renderer.compile(scene, camera);
   animate();
   setTimeout(() => { document.body.classList.add('ready'); window.__ready = true; }, 300);
-  window.__info = () => JSON.stringify({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures, dpr });
+  window.__info = () => JSON.stringify({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures, dpr, tier: TIER, fov: camera.fov });
 }, 30));

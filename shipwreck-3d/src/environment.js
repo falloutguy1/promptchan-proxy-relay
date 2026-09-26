@@ -66,8 +66,7 @@ export function makeSky() {
 
 // ------------------------------------------------------------------ terrain
 export const TERR = { cx: 0, cz: -40, size: 1100 };
-export function makeTerrain(sand) {
-  const seg = 340;
+export function makeTerrain(sand, seg = 340) {
   const g = new THREE.PlaneGeometry(1, 1, seg, seg); g.rotateX(-Math.PI / 2);
   const p = g.attributes.position, uv = g.attributes.uv;
   for (let i = 0; i < p.count; i++) {
@@ -110,7 +109,7 @@ export function makeTerrain(sand) {
 }
 
 // ------------------------------------------------------------------ water with planar reflections
-export function makeWater(renderer) {
+export function makeWater(renderer, refl = 0.5) {
   // bake sand heights for depth-aware shading
   const N = 512, data = new Float32Array(N * N * 4);
   for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
@@ -181,7 +180,7 @@ export function makeWater(renderer) {
   };
   const size = new THREE.Vector2(); renderer.getDrawingBufferSize(size);
   const water = new Reflector(new THREE.PlaneGeometry(9000, 9000), {
-    shader, textureWidth: Math.max(256, size.x * 0.5), textureHeight: Math.max(256, size.y * 0.5), clipBias: 0.002, multisample: 0,
+    shader, textureWidth: Math.max(256, size.x * refl), textureHeight: Math.max(256, size.y * refl), clipBias: 0.002, multisample: 0,
   });
   water.rotation.x = -Math.PI / 2; water.position.y = 0;
   const mat = water.material;

@@ -2,19 +2,20 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Beached Wreck</title>
 <style>
   :root { --bg: #aab7bd; --dot: rgba(255,255,255,0.55); --dot-on: #ffffff; --glass: rgba(20,26,32,0.28); }
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #1b2126; } }
   :root[data-theme="dark"] { --bg: #1b2126; }
-  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); background: linear-gradient(#4d6a86, #aab7bd 60%, #cdb294 60%, #b89c84); }
   #stage, #stage canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
   #veil { position: fixed; inset: 0; background: linear-gradient(#4d6a86, #aab7bd 70%, #9eabb0); display: grid; place-items: center; transition: opacity 1.4s ease; z-index: 5; }
   #veil i { width: 34px; height: 34px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.25); border-top-color: #fff; animation: spin 1s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   body.ready #veil { opacity: 0; pointer-events: none; }
-  #views { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); display: flex; gap: 12px; padding: 10px 14px; border-radius: 999px;
+  #veil.nogl i { display: none; }
+  #views { position: fixed; left: 50%; bottom: max(22px, env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; gap: 12px; padding: 10px 14px; border-radius: 999px;
     background: var(--glass); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); z-index: 4; opacity: 0; transition: opacity 1.2s ease 0.6s; }
   body.ready #views { opacity: 1; }
   #views button { width: 12px; height: 12px; padding: 0; border: 0; border-radius: 50%; background: var(--dot); cursor: pointer; transition: transform .25s ease, background .25s ease, box-shadow .25s ease; }
