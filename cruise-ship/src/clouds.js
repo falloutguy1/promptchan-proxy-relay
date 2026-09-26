@@ -34,7 +34,7 @@ void main(){
   gl_FragColor = vec4(clamp(f * 0.9 + 0.05, 0.0, 1.0), cov, w1, 1.0);
 }`;
 
-export function bakeClouds(renderer, size = 2048) {
+export function bakeClouds(renderer, size = 512) {
   const make = (s, mips) => {
     const rt = new THREE.WebGLRenderTarget(s, s, {
       depthBuffer: false, generateMipmaps: mips,
@@ -54,24 +54,12 @@ export function bakeClouds(renderer, size = 2048) {
   const cam = new THREE.Camera();
   const prev = renderer.getRenderTarget();
 
-  // coarse copy for the coverage histogram
-  const small = make(128, false);
-  renderer.setRenderTarget(small); renderer.render(scene, cam);
-  const px = new Uint8Array(128 * 128 * 4);
-  renderer.readRenderTargetPixels(small, 0, 0, 128, 128, px);
-  const vals = new Float32Array(128 * 128);
-  for (let i = 0; i < vals.length; i++) vals[i] = px[i * 4] / 255;
-  vals.sort();
-  small.dispose();
-
   const rt = make(size, true);
   renderer.setRenderTarget(rt); renderer.render(scene, cam);
   renderer.setRenderTarget(prev);
   mat.dispose(); quad.geometry.dispose();
 
-  // threshold for a given sky coverage fraction
-  const thresholdFor = (cov) => vals[Math.min(vals.length - 1, Math.max(0, Math.floor((1 - cov) * vals.length)))];
-  return { texture: rt.texture, thresholdFor, rt };
+  return { texture: rt.texture, rt };
 }
 
 // Tileable 3D billow noise (inverted Worley, three octaves) for eroding cloud walls into cauliflower puffs.

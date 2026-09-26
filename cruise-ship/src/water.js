@@ -195,7 +195,7 @@ void main(){
   gl_FragColor = vec4(col, 1.0);
 }`;
 
-export function createWater() {
+export function createWater({ type = THREE.HalfFloatType } = {}) {
   const normal = makeNormalMap(512);
   const uniforms = THREE.UniformsUtils.merge([THREE.UniformsLib.lights, {
     tReflect: { value: null }, tNormal: { value: null }, textureMatrix: { value: new THREE.Matrix4() },
@@ -212,7 +212,7 @@ export function createWater() {
   mesh.receiveShadow = true;
   mesh.frustumCulled = false;
 
-  const rt = new THREE.WebGLRenderTarget(512, 512, { type: THREE.HalfFloatType, samples: 0, generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter });
+  const rt = new THREE.WebGLRenderTarget(512, 512, { type, samples: 0, generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter });
   uniforms.tReflect.value = rt.texture;
   const mirrorCam = new THREE.PerspectiveCamera();
   mirrorCam.layers.set(0);

@@ -8,6 +8,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { buildShip } from './ship.js';
 import { createSky, atmo, MOODS, lerpMood } from './sky.js';
 import { bakeClouds, makeNoise3D } from './clouds.js';
+import { createSkyBaker } from './skybake.js';
 import { createWater } from './water.js';
 import { shared } from './procmat.js';
 import { VIEWS, buildUI } from './ui.js';
@@ -25,6 +26,21 @@ THREE.ShaderChunk.shadowmap_pars_fragment = THREE.ShaderChunk.shadowmap_pars_fra
 const params = new URLSearchParams(location.search);
 const LOCK_Q = params.has('q');
 
+// Quality tier: 0 desktop, 1 phones/tablets, 2 fallback after the GPU dropped the context once.
+const ssGet = (k) => { try { return sessionStorage.getItem(k); } catch (e) { return null; } };
+const ssSet = (k, v) => { try { sessionStorage.setItem(k, v); } catch (e) { /* storage unavailable */ } };
+const MOBILE = (window.matchMedia && matchMedia('(pointer: coarse)').matches) ||
+  /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+  (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.platform || ''));
+let tier = Math.max(MOBILE ? 1 : 0, parseInt(ssGet('cruise-tier') || '0', 10) || 0);
+if (params.has('tier')) tier = parseInt(params.get('tier'), 10) || 0;
+tier = Math.min(2, Math.max(0, tier));
+const TIER = [
+  { dprCap: 2, q: 1.0, qMin: 0.55, shadow: 4096, samples: 4, refl: 0.5, skyW: 6144, skyH: 1536, tiles: 24 },
+  { dprCap: 2, q: 0.72, qMin: 0.5, shadow: 2048, samples: 4, refl: 0.4, skyW: 4096, skyH: 1280, tiles: 32 },
+  { dprCap: 1.5, q: 0.62, qMin: 0.45, shadow: 2048, samples: 4, refl: 0.3, skyW: 2048, skyH: 768, tiles: 16 },
+][tier];
+
 // ------------------------------------------------------------------ renderer
 const canvas = document.getElementById('c');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false, preserveDrawingBuffer: params.has('shot') });
@@ -35,32 +51,54 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.shadowMap.autoUpdate = false;
 
-const baseDPR = Math.min(window.devicePixelRatio || 1, 2);
-let qScale = LOCK_Q ? parseFloat(params.get('q')) || 1 : baseDPR > 1.3 ? 0.8 : 1.0;
+const baseDPR = Math.min(window.devicePixelRatio || 1, TIER.dprCap);
+let qScale = LOCK_Q ? parseFloat(params.get('q')) || 1 : tier === 0 ? (baseDPR > 1.3 ? 0.8 : 1.0) : TIER.q;
+// Half-float render targets need a colour-buffer-float extension; fall back to 8-bit targets without it.
+const FLOAT_RT = renderer.extensions.has('EXT_color_buffer_float') || renderer.extensions.has('EXT_color_buffer_half_float');
+const RT_TYPE = FLOAT_RT ? THREE.HalfFloatType : THREE.UnsignedByteType;
+
+// If the GPU resets the context (driver timeout or memory pressure), reload once at a lighter tier.
+let contextLost = false;
+canvas.addEventListener('webglcontextlost', (e) => {
+  e.preventDefault();
+  contextLost = true;
+  const reloads = parseInt(ssGet('cruise-reloads') || '0', 10) || 0;
+  if (reloads < 3) {
+    ssSet('cruise-reloads', String(reloads + 1));
+    ssSet('cruise-tier', String(Math.min(2, tier + 1)));
+    setTimeout(() => location.reload(), 400);
+  }
+}, false);
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.8, 30000);
+const camera = new THREE.PerspectiveCamera(38, 16 / 9, 0.8, 30000);
 camera.layers.enable(1);
 
 // ------------------------------------------------------------------ world
-const cloudBake = bakeClouds(renderer, 2048);
-atmo.tCloud.value = cloudBake.texture;
-atmo.tNoise3.value = makeNoise3D(64);
+const skyBaker = createSkyBaker(renderer, {
+  width: Math.min(TIER.skyW, renderer.capabilities.maxTextureSize),
+  height: TIER.skyH,
+  cluster: bakeClouds(renderer, 512).texture,
+  noise3: makeNoise3D(64),
+  tiles: TIER.tiles,
+});
 const sky = createSky();
 scene.add(sky);
-const water = createWater();
+const water = createWater({ type: RT_TYPE });
 scene.add(water.mesh);
 const { ship, anim, materials: shipMats } = buildShip();
 scene.add(ship);
 
 const sun = new THREE.DirectionalLight(0xffffff, 3);
 sun.castShadow = true;
-sun.shadow.mapSize.set(4096, 4096);
+sun.shadow.mapSize.set(TIER.shadow, TIER.shadow);
 const sc = sun.shadow.camera;
 sc.left = -195; sc.right = 195; sc.top = 195; sc.bottom = -195; sc.near = 10; sc.far = 1100;
 sc.layers.enable(1);
-sun.shadow.bias = -0.00003;
-sun.shadow.normalBias = 0.06;
+// bias tuned for a 4096 map; a coarser map needs proportionally more to avoid acne
+const shadowK = 4096 / TIER.shadow;
+sun.shadow.bias = -0.00003 * shadowK;
+sun.shadow.normalBias = 0.06 * shadowK;
 sun.shadow.radius = 0.85;
 sun.target.position.set(0, 35, 0);
 scene.add(sun, sun.target);
@@ -72,7 +110,7 @@ const pmrem = new THREE.PMREMGenerator(renderer);
 const envScene = new THREE.Scene();
 const envSky = createSky();
 envScene.add(envSky);
-const cubeRT = new THREE.WebGLCubeRenderTarget(256, { type: THREE.HalfFloatType, generateMipmaps: false });
+const cubeRT = new THREE.WebGLCubeRenderTarget(256, { type: RT_TYPE, generateMipmaps: false });
 const cubeCam = new THREE.CubeCamera(1, 100, cubeRT);
 let envRT = null;
 function updateEnv() {
@@ -82,9 +120,22 @@ function updateEnv() {
 }
 
 // ------------------------------------------------------------------ post
-const composerRT = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 });
+const composerRT = new THREE.WebGLRenderTarget(1, 1, { type: RT_TYPE, samples: TIER.samples });
 const composer = new EffectComposer(renderer, composerRT);
 composer.addPass(new RenderPass(scene, camera));
+// A single NaN/Inf pixel from any shader would be smeared over the whole frame by bloom; scrub them first.
+composer.addPass(new ShaderPass({
+  uniforms: { tDiffuse: { value: null } },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+  fragmentShader: /* glsl */`
+    uniform sampler2D tDiffuse; varying vec2 vUv;
+    void main(){
+      vec4 c = texture2D(tDiffuse, vUv);
+      c.rgb = min(max(c.rgb, vec3(0.0)), vec3(6.0e4));
+      if (any(isnan(c.rgb)) || any(isinf(c.rgb))) c.rgb = vec3(0.0);
+      gl_FragColor = vec4(c.rgb, 1.0);
+    }`,
+}));
 const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.35, 0.55, 1.4);
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
@@ -105,9 +156,20 @@ const finish = new ShaderPass({
     }`,
 });
 composer.addPass(finish);
+// The scene always lands in renderTarget2 as long as each frame swaps an even number of times
+// (scrub + output); the last pass draws to screen and needs no swap. Only that target needs MSAA.
+finish.needsSwap = false;
+composer.renderTarget1.samples = 0;
 
+// The page can start at 0x0 (e.g. inside a preview sheet that is still opening); nothing may divide by that.
+function viewSize() {
+  const de = document.documentElement;
+  return [Math.round(window.innerWidth || de.clientWidth || 0), Math.round(window.innerHeight || de.clientHeight || 0)];
+}
+let sizedW = 0, sizedH = 0, fitPending = false;
 function resize() {
-  const w = innerWidth, h = innerHeight;
+  const [w, h] = viewSize();
+  if (w < 2 || h < 2) return;
   const dpr = baseDPR * qScale;
   renderer.setPixelRatio(dpr);
   renderer.setSize(w, h, false);
@@ -115,9 +177,13 @@ function resize() {
   composer.setSize(w, h);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  water.setSize(w * dpr * 0.5, h * dpr * 0.5);
+  water.setSize(w * dpr * TIER.refl, h * dpr * TIER.refl);
+  sizedW = w; sizedH = h;
+  if (fitPending && typeof goView === 'function') { fitPending = false; goView(viewIndex, true); }
 }
 addEventListener('resize', resize);
+addEventListener('orientationchange', () => setTimeout(resize, 250));
+if (window.ResizeObserver) new ResizeObserver(() => resize()).observe(document.documentElement);
 
 // ------------------------------------------------------------------ moods
 const mood = {};
@@ -131,9 +197,6 @@ function applyMood(m) {
   atmo.uGlow.value.copy(m.glow);
   atmo.uGlowPow.value = m.glowPow;
   atmo.uCloud.value = m.cloud;
-  atmo.uCloudT.value = cloudBake.thresholdFor(m.cloud);
-  atmo.uCloudP.value = m.cloud * 1.05;
-  atmo.uCloudSun.value = m.cloudSun;
   atmo.uCloudLit.value.copy(m.cloudLit);
   atmo.uCloudShade.value.copy(m.cloudShade);
   atmo.uNightAmt.value = m.night;
@@ -162,6 +225,7 @@ function setMood(i) {
   if (i === moodIndex && moodT >= 1) return;
   moodFrom = lerpMood(moodFrom, moodTo, easeInOut(Math.min(1, moodT)), {});
   moodTo = MOODS[i]; moodIndex = i; moodT = 0;
+  skyBaker.start(MOODS[i]);
   ui.setMood(i);
 }
 
@@ -187,11 +251,16 @@ function sph(p) {
   return { r, th: Math.atan2(v.z, v.x), ph: Math.acos(THREE.MathUtils.clamp(v.y / r, -1, 1)) };
 }
 // pull the camera back on narrow (portrait) screens so the ship still fits
-function fitFactor() { const a = innerWidth / innerHeight; return a >= 1.5 ? 1 : Math.pow(1.5 / a, 0.62); }
+function fitFactor() {
+  const a = sizedW / sizedH;
+  if (!sizedW || !sizedH || !Number.isFinite(a) || a <= 0) return 1;
+  return a >= 1.5 ? 1 : Math.min(3, Math.pow(1.5 / a, 0.62));
+}
 function goView(i, instant = false, dur = 2.8) {
   viewIndex = i;
   const v = VIEWS[i];
   const toTgt = new THREE.Vector3(...v.target);
+  if (!sizedW) fitPending = true;
   const toPos = new THREE.Vector3(...v.pos).sub(toTgt).multiplyScalar(fitFactor()).add(toTgt);
   if (toPos.y < 2.5) toPos.y = 2.5;
   ui.setView(i);
@@ -286,17 +355,17 @@ function adapt(dt) {
   const ms = (acc / frames) * 1000;
   acc = 0; frames = 0;
   if (cooldown > 0) { cooldown--; return; }
-  if (ms > 24 && qScale > 0.55) { qScale = Math.max(0.55, qScale - 0.1); resize(); cooldown = 1; }
+  if (ms > 24 && qScale > TIER.qMin) { qScale = Math.max(TIER.qMin, qScale - 0.1); resize(); cooldown = 1; }
   else if (ms < 12.5 && qScale < 1.0) { qScale = Math.min(1.0, qScale + 0.05); resize(); cooldown = 2; }
 }
 
 // ------------------------------------------------------------------ start
 resize();
-applyMood(MOODS[0]);
-updateEnv();
 const startView = params.has('view') ? Math.min(VIEWS.length - 1, Math.max(0, parseInt(params.get('view'), 10) - 1)) : 0;
 const startMood = params.has('mood') ? Math.min(MOODS.length - 1, Math.max(0, parseInt(params.get('mood'), 10) - 1)) : 0;
-if (startMood) { moodFrom = moodTo = MOODS[startMood]; moodIndex = startMood; applyMood(MOODS[startMood]); updateEnv(); }
+moodFrom = moodTo = MOODS[startMood]; moodIndex = startMood;
+applyMood(MOODS[startMood]);
+skyBaker.start(MOODS[startMood], true);
 ui.setMood(moodIndex);
 goView(startView, true);
 
@@ -307,21 +376,37 @@ let envCounter = 0;
 const drift = new THREE.Vector3();
 let firstFrame = true;
 
+let skyWasBusy = true;
+function camOK() {
+  const p = camera.position, t = controls.target;
+  return Number.isFinite(p.x + p.y + p.z + t.x + t.y + t.z + camera.fov + camera.aspect);
+}
 function frame() {
+  if (contextLost) return;
+  requestAnimationFrame(frame);
   timer.update();
   const dt = Math.min(timer.getDelta(), 0.1);
+  const [vw, vh] = viewSize();
+  if (vw !== sizedW || vh !== sizedH) resize();
+  if (!sizedW) return; // still zero-size: wait
+  // first bake the sky (a few strips per frame) while the loader is showing
+  if (firstFrame && skyBaker.baking) { skyBaker.update(4, dt); return; }
   time += dt;
+  atmo.uSkyRot.value = time * 0.00025;
   shared.uTime.value = time;
   water.uniforms.uTime.value = time;
   atmo.uSkyTime.value = time;
   finish.uniforms.uTime.value = time;
 
+  const skyBusy = skyBaker.update(2, dt);
   if (moodT < 1) {
     moodT = Math.min(1, moodT + dt / 2.2);
     lerpMood(moodFrom, moodTo, easeInOut(moodT), mood);
     applyMood(mood);
-    if (++envCounter % 5 === 0 || moodT >= 1) updateEnv();
   }
+  if (moodT < 1 || skyBusy) { if (++envCounter % 5 === 0) updateEnv(); }
+  else if (skyWasBusy || envCounter) { updateEnv(); envCounter = 0; }
+  skyWasBusy = skyBusy;
 
   if (touring && !tween) {
     tourHold += dt;
@@ -332,6 +417,7 @@ function frame() {
   }
   stepTween(dt);
   controls.update();
+  if (!camOK()) { tween = null; goView(viewIndex, true); } // never let a bad value stick
   if (camera.position.y < 1.8) camera.position.y = 1.8;
   // keep the camera a few metres off the hull and superstructure
   const cp = camera.position;
@@ -354,10 +440,9 @@ function frame() {
   composer.render(dt);
   cp.sub(drift);
 
-  if (firstFrame) { firstFrame = false; ui.ready(); }
+  if (firstFrame) { firstFrame = false; ui.ready(); ssSet('cruise-reloads', '0'); }
   window.__frames = (window.__frames || 0) + 1;
   adapt(dt);
-  requestAnimationFrame(frame);
 }
 
 async function start() {
@@ -367,6 +452,7 @@ async function start() {
 start();
 function moodNow(i) {
   moodFrom = moodTo = MOODS[i]; moodIndex = i; moodT = 1;
+  skyBaker.bakeNow(MOODS[i]);
   applyMood(MOODS[i]); updateEnv(); ui.setMood(i);
 }
-window.__ship = { cloudBake, renderer, scene, camera, goView, setMood, moodNow, controls, setTime: (t) => { time = t; } };
+window.__ship = { tier, skyBaker, renderer, scene, camera, goView, setMood, moodNow, controls, setTime: (t) => { time = t; } };

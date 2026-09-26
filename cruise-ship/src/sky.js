@@ -17,12 +17,10 @@ export const atmo = {
   uMoonDir: { value: new THREE.Vector3(-0.4, 0.5, 0.6).normalize() },
   uSkyTime: { value: 0 },
   uSunDisk: { value: 1 },
-  tCloud: { value: null },
-  tNoise3: { value: null },
-  uCloudT: { value: 0.6 },
-  uCloudSun: { value: 1.3 },
-  uCloudTile: { value: 36000 },
-  uCloudP: { value: 0.5 },
+  tSkyA: { value: null },
+  tSkyB: { value: null },
+  uSkyMix: { value: 0 },
+  uSkyRot: { value: 0 },
 };
 
 export const SKY_GLSL = /* glsl */`
@@ -41,11 +39,11 @@ vec3 skyGradient(vec3 d){
 }
 `;
 
-const SKY_FRAG = NOISE + SKY_GLSL + /* glsl */`
-varying vec3 vDir;
+// Cloud field, evaluated only by the sky baker (skybake.js).
+export const CLOUD_GLSL = /* glsl */`
 uniform sampler2D tCloud;
 uniform highp sampler3D tNoise3;
-uniform float uCloudT, uCloudSun, uCloudTile, uCloudP;
+uniform float uCloudSun, uCloudTile, uCloudP, uPA;
 // Sphere-traced cumulus: each cell of a jittered grid may hold one flat-based cloud built from a
 // smooth union of an ellipsoid body and puffs, displaced by tileable 3D billow noise.
 const float CS = 2400.0;
@@ -58,7 +56,7 @@ vec4 cellCloud(vec2 cid, float L){
   vec2 off = L < 0.5 ? vec2(0.0) : vec2(700.0, 1130.0);
   float h = hash12(cid * 0.7131 + vec2(11.3, 5.7) + L * 17.0);
   vec2 cc = (cid + 0.5) * cs + off;
-  float cluster = textureLod(tCloud, cc / uCloudTile, 3.0).g;
+  float cluster = textureLod(tCloud, cc / uCloudTile, 1.0).g;
   float prob = uCloudP * (L < 0.5 ? (0.08 + 1.5 * smoothstep(0.34, 0.64, cluster)) : (0.12 + 0.7 * smoothstep(0.3, 0.6, cluster)));
   if (h > prob) return vec4(0.0, 0.0, 0.0, -1.0);
   vec2 o = hash22(cid + 4.1 + L * 9.0);
@@ -92,7 +90,7 @@ vec4 cumulus(vec3 d){
   if (t > 95000.0) return vec4(0.0, 0.0, 0.0, 1.0);
   float tEnd = min(HT / d.y, t + 16000.0);
   vec3 wofs = vec3(uSkyTime * 2.2, 0.0, uSkyTime * 0.8);
-  const float PA = 0.0014;
+  float PA = uPA; // angular size of one baked texel
   float hitT = -1.0; vec4 hitC = vec4(0.0);
   float nearA = 0.0;
   for (int i = 0; i < 96; i++) {
@@ -113,7 +111,7 @@ vec4 cumulus(vec3 d){
         float sd = cloudSDF(p, cc);
         float eps = t * PA * 0.5;
         if (sd < eps) { hitT = t; hitC = cc; }
-        nearA = max(nearA, 1.0 - sd / (t * PA * 2.2));
+        nearA = max(nearA, 1.0 - sd / (t * PA * 3.2));
         st = min(st, max(sd * 0.72, eps));
       }
       stepT = min(stepT, st);
@@ -144,7 +142,7 @@ vec4 cumulus(vec3 d){
     alpha = 1.0;
   } else {
     col = mix(uCloudShade, uCloudLit, 0.75);
-    alpha = clamp(nearA, 0.0, 1.0) * 0.55;
+    alpha = smoothstep(0.0, 1.0, clamp(nearA, 0.0, 1.0)) * 0.8;
   }
   float haze = 1.0 - exp(-dist / 32000.0);
   col = mix(col, skyGradient(vec3(d.x, 0.02, d.z)), haze * 0.85);
@@ -159,6 +157,44 @@ vec4 cirrus(vec3 d){
   float a = smoothstep(0.55, 0.85, n) * 0.28 * smoothstep(0.02, 0.25, d.y);
   vec3 c = mix(uCloudLit, uSunCol, 0.25) * 0.95;
   return vec4(c, a);
+}
+`;
+
+const SKY_FRAG = NOISE + SKY_GLSL + /* glsl */`
+varying vec3 vDir;
+uniform sampler2D tSkyA, tSkyB;
+uniform float uSkyMix, uSkyRot;
+// Baked clouds: rgb = sqrt(premultiplied colour / 4), a = transmittance, over the upper hemisphere
+// (u = azimuth, v = sqrt(elevation / 90deg)).
+// Cubic B-spline filtering from four bilinear taps: smooth when the bake is magnified.
+vec4 texCubic(sampler2D t, vec2 uv, vec2 gx, vec2 gy){
+  vec2 size = vec2(textureSize(t, 0));
+  vec2 st = uv * size - 0.5;
+  vec2 i = floor(st), f = st - i;
+  vec2 f2 = f * f, f3 = f2 * f;
+  vec2 w0 = (1.0 - 3.0 * f + 3.0 * f2 - f3) / 6.0;
+  vec2 w1 = (4.0 - 6.0 * f2 + 3.0 * f3) / 6.0;
+  vec2 w2 = (1.0 + 3.0 * f + 3.0 * f2 - 3.0 * f3) / 6.0;
+  vec2 w3 = f3 / 6.0;
+  vec2 g0 = w0 + w1, g1 = w2 + w3;
+  vec2 p0 = (i - 0.5 + w1 / g0) / size, p1 = (i + 1.5 + w3 / g1) / size;
+  return (textureGrad(t, vec2(p0.x, p0.y), gx, gy) * g0.x + textureGrad(t, vec2(p1.x, p0.y), gx, gy) * g1.x) * g0.y
+       + (textureGrad(t, vec2(p0.x, p1.y), gx, gy) * g0.x + textureGrad(t, vec2(p1.x, p1.y), gx, gy) * g1.x) * g1.y;
+}
+vec4 bakedClouds(vec3 d){
+  if (d.y <= 0.0) return vec4(0.0, 0.0, 0.0, 1.0);
+  float u = fract(atan(d.z, d.x) * 0.15915494 + uSkyRot);
+  float v = sqrt(asin(min(d.y, 1.0)) * 0.63661977);
+  vec2 uv = vec2(u, v);
+  vec2 gx = dFdx(uv), gy = dFdy(uv);
+  gx.x -= floor(gx.x + 0.5); gy.x -= floor(gy.x + 0.5);
+  gx.x = clamp(gx.x, -0.004, 0.004); gy.x = clamp(gy.x, -0.004, 0.004);
+  vec4 a = texCubic(tSkyA, uv, gx, gy);
+  vec3 ca = a.rgb * a.rgb * 4.0;
+  if (uSkyMix <= 0.0) return vec4(ca, a.a);
+  vec4 b = texCubic(tSkyB, uv, gx, gy);
+  vec3 cb = b.rgb * b.rgb * 4.0;
+  return vec4(mix(ca, cb, uSkyMix), mix(a.a, b.a, uSkyMix));
 }
 vec3 stars(vec3 d){
   float th = atan(d.z, d.x);
@@ -194,10 +230,8 @@ void main(){
     col += vec3(0.5, 0.6, 0.8) * pow(max(md, 0.0), 700.0) * 0.8 * uNightAmt;
     col += vec3(0.25, 0.32, 0.5) * pow(max(md, 0.0), 30.0) * 0.12 * uNightAmt;
   }
-  vec4 ci = cirrus(d);
-  col = mix(col, ci.rgb, ci.a * uCloud);
-  vec4 cu = cumulus(d);
-  col = col * cu.a + cu.rgb;
+  vec4 cl = bakedClouds(d);
+  col = col * cl.a + cl.rgb;
   gl_FragColor = vec4(col, 1.0);
 }`;
 
