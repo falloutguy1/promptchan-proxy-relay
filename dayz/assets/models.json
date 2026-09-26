@@ -1,0 +1,209 @@
+{
+ "old_tyre": {
+  "url": "assets/models/old_tyre.glb",
+  "source": "https://polyhaven.com/a/old_tyre",
+  "license": "CC0-1.0"
+ },
+ "rusted_wheel_rim_01": {
+  "url": "assets/models/rusted_wheel_rim_01.glb",
+  "source": "https://polyhaven.com/a/rusted_wheel_rim_01",
+  "license": "CC0-1.0"
+ },
+ "barrel_03": {
+  "url": "assets/models/barrel_03.glb",
+  "source": "https://polyhaven.com/a/barrel_03",
+  "license": "CC0-1.0"
+ },
+ "metal_jerrycan_green": {
+  "url": "assets/models/metal_jerrycan_green.glb",
+  "source": "https://polyhaven.com/a/metal_jerrycan_green",
+  "license": "CC0-1.0"
+ },
+ "trashbag": {
+  "url": "assets/models/trashbag.glb",
+  "source": "https://polyhaven.com/a/trashbag",
+  "license": "CC0-1.0"
+ },
+ "wooden_crate_01": {
+  "url": "assets/models/wooden_crate_01.glb",
+  "source": "https://polyhaven.com/a/wooden_crate_01",
+  "license": "CC0-1.0"
+ },
+ "plastic_crate_01": {
+  "url": "assets/models/plastic_crate_01.glb",
+  "source": "https://polyhaven.com/a/plastic_crate_01",
+  "license": "CC0-1.0"
+ },
+ "covered_car": {
+  "url": "assets/models/covered_car.glb",
+  "source": "https://polyhaven.com/a/covered_car",
+  "license": "CC0-1.0",
+  "lod1": "assets/models/covered_car_lod1.glb"
+ },
+ "rusted_spade_01": {
+  "url": "assets/models/rusted_spade_01.glb",
+  "source": "https://polyhaven.com/a/rusted_spade_01",
+  "license": "CC0-1.0"
+ },
+ "wooden_ladder": {
+  "url": "assets/models/wooden_ladder.glb",
+  "source": "https://polyhaven.com/a/wooden_ladder",
+  "license": "CC0-1.0"
+ },
+ "watering_can_metal_01": {
+  "url": "assets/models/watering_can_metal_01.glb",
+  "source": "https://polyhaven.com/a/watering_can_metal_01",
+  "license": "CC0-1.0"
+ },
+ "wooden_bucket_01": {
+  "url": "assets/models/wooden_bucket_01.glb",
+  "source": "https://polyhaven.com/a/wooden_bucket_01",
+  "license": "CC0-1.0"
+ },
+ "hatchet": {
+  "url": "assets/models/hatchet.glb",
+  "source": "https://polyhaven.com/a/hatchet",
+  "license": "CC0-1.0"
+ },
+ "rock_moss_set_01": {
+  "url": "assets/models/rock_moss_set_01.glb",
+  "source": "https://polyhaven.com/a/rock_moss_set_01",
+  "license": "CC0-1.0",
+  "lod1": "assets/models/rock_moss_set_01_lod1.glb"
+ },
+ "rock_moss_set_02": {
+  "url": "assets/models/rock_moss_set_02.glb",
+  "source": "https://polyhaven.com/a/rock_moss_set_02",
+  "license": "CC0-1.0",
+  "lod1": "assets/models/rock_moss_set_02_lod1.glb"
+ },
+ "boulder_01": {
+  "url": "assets/models/boulder_01.glb",
+  "source": "https://polyhaven.com/a/boulder_01",
+  "license": "CC0-1.0",
+  "lod1": "assets/models/boulder_01_lod1.glb"
+ },
+ "tree_stump_01": {
+  "url": "assets/models/tree_stump_01.glb",
+  "source": "https://polyhaven.com/a/tree_stump_01",
+  "license": "CC0-1.0",
+  "lod1": "assets/models/tree_stump_01_lod1.glb"
+ },
+ "dead_tree_trunk": {
+  "url": "assets/models/dead_tree_trunk.glb",
+  "source": "https://polyhaven.com/a/dead_tree_trunk",
+  "license": "CC0-1.0",
+  "lod1": "assets/models/dead_tree_trunk_lod1.glb"
+ },
+ "dry_branches_medium_01": {
+  "url": "assets/models/dry_branches_medium_01.glb",
+  "source": "https://polyhaven.com/a/dry_branches_medium_01",
+  "license": "CC0-1.0"
+ },
+ "fern_02": {
+  "url": "assets/models/fern_02.glb",
+  "source": "https://polyhaven.com/a/fern_02",
+  "license": "CC0-1.0"
+ },
+ "nettle_plant": {
+  "url": "assets/models/nettle_plant.glb",
+  "source": "https://polyhaven.com/a/nettle_plant",
+  "license": "CC0-1.0"
+ },
+ "shrub_02": {
+  "url": "assets/models/shrub_02.glb",
+  "source": "https://polyhaven.com/a/shrub_02",
+  "license": "CC0-1.0",
+  "lod1": "assets/models/shrub_02_lod1.glb"
+ },
+ "old_bed_frame": {
+  "url": "assets/models/old_bed_frame.glb",
+  "source": "https://polyhaven.com/a/old_bed_frame",
+  "license": "CC0-1.0"
+ },
+ "painted_wooden_cabinet": {
+  "url": "assets/models/painted_wooden_cabinet.glb",
+  "source": "https://polyhaven.com/a/painted_wooden_cabinet",
+  "license": "CC0-1.0"
+ },
+ "painted_wooden_table": {
+  "url": "assets/models/painted_wooden_table.glb",
+  "source": "https://polyhaven.com/a/painted_wooden_table",
+  "license": "CC0-1.0"
+ },
+ "painted_wooden_chair_01": {
+  "url": "assets/models/painted_wooden_chair_01.glb",
+  "source": "https://polyhaven.com/a/painted_wooden_chair_01",
+  "license": "CC0-1.0"
+ },
+ "painted_wooden_shelves": {
+  "url": "assets/models/painted_wooden_shelves.glb",
+  "source": "https://polyhaven.com/a/painted_wooden_shelves",
+  "license": "CC0-1.0"
+ },
+ "scandinavian_masonry_heater": {
+  "url": "assets/models/scandinavian_masonry_heater.glb",
+  "source": "https://polyhaven.com/a/scandinavian_masonry_heater",
+  "license": "CC0-1.0"
+ },
+ "wooden_bookshelf_worn": {
+  "url": "assets/models/wooden_bookshelf_worn.glb",
+  "source": "https://polyhaven.com/a/wooden_bookshelf_worn",
+  "license": "CC0-1.0"
+ },
+ "cardboard_box_01": {
+  "url": "assets/models/cardboard_box_01.glb",
+  "source": "https://polyhaven.com/a/cardboard_box_01",
+  "license": "CC0-1.0"
+ },
+ "rubber_boots": {
+  "url": "assets/models/rubber_boots.glb",
+  "source": "https://polyhaven.com/a/rubber_boots",
+  "license": "CC0-1.0"
+ },
+ "pot_enamel_01": {
+  "url": "assets/models/pot_enamel_01.glb",
+  "source": "https://polyhaven.com/a/pot_enamel_01",
+  "license": "CC0-1.0"
+ },
+ "russian_food_cans_01": {
+  "url": "assets/models/russian_food_cans_01.glb",
+  "source": "https://polyhaven.com/a/russian_food_cans_01",
+  "license": "CC0-1.0"
+ },
+ "can_rusted": {
+  "url": "assets/models/can_rusted.glb",
+  "source": "https://polyhaven.com/a/can_rusted",
+  "license": "CC0-1.0"
+ },
+ "medical_box": {
+  "url": "assets/models/medical_box.glb",
+  "source": "https://polyhaven.com/a/medical_box",
+  "license": "CC0-1.0"
+ },
+ "old_gas_mask": {
+  "url": "assets/models/old_gas_mask.glb",
+  "source": "https://polyhaven.com/a/old_gas_mask",
+  "license": "CC0-1.0"
+ },
+ "plastic_bottle_gallon": {
+  "url": "assets/models/plastic_bottle_gallon.glb",
+  "source": "https://polyhaven.com/a/plastic_bottle_gallon",
+  "license": "CC0-1.0"
+ },
+ "wooden_military_crate": {
+  "url": "assets/models/wooden_military_crate.glb",
+  "source": "https://polyhaven.com/a/wooden_military_crate",
+  "license": "CC0-1.0"
+ },
+ "ammo_box": {
+  "url": "assets/models/ammo_box.glb",
+  "source": "https://polyhaven.com/a/ammo_box",
+  "license": "CC0-1.0"
+ },
+ "bolt_action_rifle_7_62": {
+  "url": "assets/models/bolt_action_rifle_7_62.glb",
+  "source": "https://polyhaven.com/a/bolt_action_rifle_7_62",
+  "license": "CC0-1.0"
+ }
+}
