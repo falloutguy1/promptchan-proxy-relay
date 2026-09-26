@@ -183,7 +183,7 @@ void main(){
   col += uSunCol * spec * uSpecI * shadow * step(0.0, uSunDir.y);
 
   // ---- foam shading
-  vec3 foamCol = vec3(0.88, 0.92, 0.95) * (uSunCol * max(uSunDir.y, 0.0) * 1.3 * mix(0.45, 1.0, shadow) + uZenith * 0.6 + uHorizon * 0.35);
+  vec3 foamCol = vec3(0.88, 0.92, 0.95) * (uSunCol * max(uSunDir.y, 0.0) * 1.3 * mix(0.45, 1.0, shadow) * (1.0 - 0.8 * uNightAmt) + uZenith * 0.6 + uHorizon * 0.35);
   foamCol = max(foamCol, vec3(0.012, 0.016, 0.024));
   col = mix(col, foamCol, foam * 0.92);
 

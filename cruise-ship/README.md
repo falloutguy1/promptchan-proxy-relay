@@ -1,13 +1,15 @@
 # Cruise ship — real-time 3D
 
+![Views and lighting moods](preview.jpg)
+
 `index.html` is the finished piece: one self-contained file (three.js and all code inlined, no
 external assets or network requests). Open it directly in a desktop browser with WebGL2.
 
 Everything is generated at load time (about 430k triangles): lofted hull, stepped fore/aft
 terraces, ~2,000 balcony dividers, ~1,100 furnished balconies, ~500 sun loungers, 16 lifeboats with
 davits, whale-tail funnel, roller coaster with moving cars, water slides, pools, radomes and
-rotating radar. The sky uses ray-marched cumulus over a
-GPU-baked coverage field; the ocean has planar reflections, sun glint, bow wave and wake foam.
+rotating radar. The sky has sphere-traced cumulus clouds (noise-displaced
+signed-distance shapes, clustered by a GPU-baked field); the ocean has planar reflections, sun glint, bow wave and wake foam.
 Three lighting moods (day, golden hour, night) re-bake the image-based lighting on the fly.
 
 There is deliberately no text anywhere in the scene or UI.
