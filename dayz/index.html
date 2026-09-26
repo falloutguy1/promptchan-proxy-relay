@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Day Z — Forest Edge Farmstead</title>
+<link rel="stylesheet" href="src/ui.css" />
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/three.module.js",
+    "three/addons/": "./vendor/three/addons/"
+  }
+}
+</script>
+</head>
+<body>
+<canvas id="view"></canvas>
+
+<div id="loading" class="overlay">
+  <div class="panel">
+    <h1>Forest Edge Farmstead</h1>
+    <p class="sub">A Day Z survival location · Three.js / WebGL2</p>
+    <div class="bar"><div id="load-bar"></div></div>
+    <div id="load-text">Starting…</div>
+    <div id="load-error" hidden></div>
+  </div>
+</div>
+
+<div id="start" class="overlay" hidden>
+  <div class="panel">
+    <h1>Forest Edge Farmstead</h1>
+    <p class="sub">You wake at the edge of the forest. Search the abandoned house for supplies.</p>
+    <button id="play">Click to play</button>
+    <table class="keys">
+      <tr><td>W A S D</td><td>move</td><td>Shift</td><td>sprint</td></tr>
+      <tr><td>C</td><td>crouch</td><td>Space</td><td>jump</td></tr>
+      <tr><td>E</td><td>pick up / open door</td><td>Tab</td><td>inventory</td></tr>
+      <tr><td>Esc</td><td>pause &amp; settings</td><td>F2</td><td>screenshot</td></tr>
+    </table>
+    <div id="settings"></div>
+  </div>
+</div>
+
+<div id="hud" hidden>
+  <div id="crosshair"></div>
+  <div id="prompt"></div>
+  <div id="status">
+    <div class="stat"><span>Health</span><div class="meter"><i id="m-health"></i></div></div>
+    <div class="stat"><span>Food</span><div class="meter"><i id="m-food"></i></div></div>
+    <div class="stat"><span>Water</span><div class="meter"><i id="m-water"></i></div></div>
+  </div>
+  <div id="toast"></div>
+  <div id="inventory" hidden><h2>Inventory</h2><ul id="inv-list"></ul></div>
+  <div id="perf"></div>
+</div>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

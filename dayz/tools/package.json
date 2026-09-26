@@ -1,0 +1,15 @@
+{
+  "name": "dayz-asset-tools",
+  "private": true,
+  "type": "module",
+  "description": "Offline asset pipeline + capture tools for the Day Z Three.js location (not deployed).",
+  "dependencies": {
+    "three": "0.180.0",
+    "@gltf-transform/core": "^4.1.0",
+    "@gltf-transform/extensions": "^4.1.0",
+    "@gltf-transform/functions": "^4.1.0",
+    "@gltf-transform/cli": "^4.1.0",
+    "meshoptimizer": "^0.22.0",
+    "sharp": "^0.33.5"
+  }
+}
