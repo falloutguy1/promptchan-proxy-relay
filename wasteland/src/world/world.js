@@ -10,6 +10,7 @@ import { Trees } from './vegetation.js';
 import { Grass } from './grass.js';
 import { Town } from './town.js';
 import { Props } from './props.js';
+import { Characters } from '../gfx/characters.js';
 
 export class World {
   constructor(game) {
@@ -57,6 +58,9 @@ export class World {
     scene.add(await this.props.build(assets, this.town));
     this.grass = new Grass(this);
     scene.add(await this.grass.build(assets));
+    this.characters = new Characters(this);
+    await this.characters.init(assets);
+    scene.add(this.characters.group);
   }
 
   update(dt, camera, focus) {
@@ -64,6 +68,7 @@ export class World {
     this.trees?.update(camera, focus, this.settings.values.shadowDistance * 0.9);
     this.grass?.update(camera, focus);
     this.props?.update(camera, this.settings.values.grassDistance / 64);
+    this.characters?.update(dt, camera);
     for (const u of this.updatables) u(dt, camera);
   }
 }

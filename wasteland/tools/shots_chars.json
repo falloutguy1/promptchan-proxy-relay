@@ -1,0 +1,6 @@
+[
+  { "name": "chars_line", "time": 10.5, "eval": "window.__wl.spawnTest(20, -60)", "view": { "pos": [20, 1.4, -51], "target": [20, 0.95, -60], "fov": 55 }, "frames": 6 },
+  { "name": "chars_close", "time": 10.5, "view": { "pos": [16.5, 1.5, -57], "target": [15.2, 1.0, -60], "fov": 45 }, "frames": 2 },
+  { "name": "chars_back", "time": 10.5, "view": { "pos": [17.5, 1.6, -63.2], "target": [16.0, 1.15, -60], "fov": 45 }, "frames": 2 },
+  { "name": "chars_rts", "time": 10.5, "rts": [20, -60, 22, 0.3, 0], "frames": 2 }
+]

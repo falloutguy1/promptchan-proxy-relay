@@ -54,6 +54,20 @@ export function installReviewApi(game) {
       return it;
     },
     weather(w) { game.world.sky.setWeather(w, true); },
+    /** Line up characters in every animation state for a visual check. */
+    spawnTest(x = 20, z = -60) {
+      const C = game.world.characters;
+      const states = [['survivor', 'idle'], ['survivor', 'walk'], ['survivor', 'run'], ['survivor', 'work:chop'], ['survivor', 'work:dig'], ['survivor', 'aim'], ['infected', 'walk'], ['infected', 'attack'], ['infected', 'idle'], ['survivor', 'work:carry'], ['survivor', 'dead']];
+      states.forEach(([kind, st], i) => {
+        const c = C.spawn(kind, 31 + i * 7, x + (i - 5) * 1.6, z);
+        const [s, w] = st.split(':');
+        c.anim.set(s); if (w) c.anim.work = w;
+        c.anim.weights = { [s]: 1 };
+        c.speed = s === 'walk' ? (kind === 'infected' ? 0.7 : 1.4) : s === 'run' ? 3.6 : 0;
+        c.targetYaw = c.yaw = 0;
+      });
+      return states.length;
+    },
     wet(v) { game.world.sky.rain = v; },
     /** Render n frames with a fixed timestep (review mode has no rAF loop). */
     async frames(n = 3, dt = 1 / 30) {
