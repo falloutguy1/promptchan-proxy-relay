@@ -1,0 +1,237 @@
+{
+ "dawn": {
+  "scale": 10.43200035095215,
+  "hasSun": false,
+  "sun": {
+   "dir": [
+    0.76517,
+    0.10228,
+    0.63565
+   ],
+   "azimuthDeg": 39.72,
+   "elevationDeg": 5.87,
+   "color": [
+    1,
+    0.5542,
+    0.1617
+   ],
+   "illuminance": 0.0002,
+   "angularRadiusDeg": 3.973
+  },
+  "skyIrradiance": 2.558,
+  "horizon": [
+   1.06473,
+   0.88525,
+   0.77606
+  ],
+  "zenith": [
+   0.22808,
+   0.35661,
+   0.60391
+  ],
+  "ground": [
+   0.08957,
+   0.09364,
+   0.06107
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/kloppenheim_06_puresky",
+   "license": "CC0 1.0",
+   "name": "Kloppenheim 06 (Pure Sky)",
+   "authors": [
+    "Greg Zaal",
+    "Jarod Guest"
+   ],
+   "dimensions_mm": null
+  }
+ },
+ "day": {
+  "scale": 10.624000339508056,
+  "hasSun": true,
+  "sun": {
+   "dir": [
+    0.59043,
+    0.6821,
+    0.43144
+   ],
+   "azimuthDeg": 36.16,
+   "elevationDeg": 43.01,
+   "color": [
+    1,
+    0.7838,
+    0.4402
+   ],
+   "illuminance": 4.2209,
+   "angularRadiusDeg": 3.438
+  },
+  "skyIrradiance": 1.4502,
+  "horizon": [
+   0.47585,
+   0.50941,
+   0.45501
+  ],
+  "zenith": [
+   0.12418,
+   0.17001,
+   0.21306
+  ],
+  "ground": [
+   0.15158,
+   0.15848,
+   0.10335
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/sunflowers_puresky",
+   "license": "CC0 1.0",
+   "name": "Sunflowers (Pure Sky)",
+   "authors": [
+    "Jarod Guest",
+    "Sergej Majboroda"
+   ],
+   "dimensions_mm": null
+  }
+ },
+ "dusk": {
+  "scale": 23.04000057220459,
+  "hasSun": false,
+  "sun": {
+   "dir": [
+    0.80242,
+    0.1312,
+    0.58216
+   ],
+   "azimuthDeg": 35.96,
+   "elevationDeg": 7.54,
+   "color": [
+    1,
+    0.5117,
+    0.0715
+   ],
+   "illuminance": 0.189,
+   "angularRadiusDeg": 1.68
+  },
+  "skyIrradiance": 3.4215,
+  "horizon": [
+   2.01516,
+   1.76952,
+   1.21417
+  ],
+  "zenith": [
+   0.33064,
+   0.63961,
+   0.94911
+  ],
+  "ground": [
+   0.12067,
+   0.12615,
+   0.08227
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/wasteland_clouds_puresky",
+   "license": "CC0 1.0",
+   "name": "Wasteland Clouds (Pure Sky)",
+   "authors": [
+    "Jarod Guest",
+    "Sergej Majboroda"
+   ],
+   "dimensions_mm": null
+  }
+ },
+ "night": {
+  "scale": 6.528000097274781,
+  "hasSun": true,
+  "sun": {
+   "dir": [
+    0.77709,
+    0.29287,
+    0.5571
+   ],
+   "azimuthDeg": 35.64,
+   "elevationDeg": 17.03,
+   "color": [
+    0.7971,
+    0.8614,
+    1
+   ],
+   "illuminance": 1.5962,
+   "angularRadiusDeg": 7.88
+  },
+  "skyIrradiance": 0.5259,
+  "horizon": [
+   0.35086,
+   0.41532,
+   0.49325
+  ],
+  "zenith": [
+   0.06958,
+   0.09363,
+   0.13696
+  ],
+  "ground": [
+   0.03478,
+   0.03636,
+   0.02371
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/kloppenheim_02_puresky",
+   "license": "CC0 1.0",
+   "name": "Kloppenheim 02 (Pure Sky)",
+   "authors": [
+    "Greg Zaal",
+    "Jarod Guest"
+   ],
+   "dimensions_mm": null
+  }
+ },
+ "overcast": {
+  "scale": 4.096000242233276,
+  "hasSun": false,
+  "sun": {
+   "dir": [
+    0.80471,
+    0.56889,
+    -0.16971
+   ],
+   "azimuthDeg": -11.91,
+   "elevationDeg": 34.67,
+   "color": [
+    1,
+    1,
+    1
+   ],
+   "illuminance": 0,
+   "angularRadiusDeg": 0
+  },
+  "skyIrradiance": 4.6882,
+  "horizon": [
+   0.80254,
+   0.74577,
+   0.68962
+  ],
+  "zenith": [
+   1.85776,
+   1.84569,
+   1.86222
+  ],
+  "ground": [
+   0.16415,
+   0.17161,
+   0.11192
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/overcast_soil_puresky",
+   "license": "CC0 1.0",
+   "name": "Overcast Soil (Pure Sky)",
+   "authors": [
+    "Jarod Guest",
+    "Sergej Majboroda"
+   ],
+   "dimensions_mm": null
+  }
+ }
+}

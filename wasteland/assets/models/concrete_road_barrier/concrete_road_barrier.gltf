@@ -1,0 +1,257 @@
+{
+  "asset": {
+    "generator": "glTF-Transform v4.5.0",
+    "version": "2.0"
+  },
+  "accessors": [
+    {
+      "type": "SCALAR",
+      "componentType": 5123,
+      "count": 23994,
+      "normalized": false,
+      "byteOffset": 0,
+      "bufferView": 0
+    },
+    {
+      "type": "VEC3",
+      "componentType": 5122,
+      "count": 4536,
+      "max": [
+        32767,
+        17610,
+        13545
+      ],
+      "min": [
+        -32767,
+        -17610,
+        -13545
+      ],
+      "normalized": true,
+      "byteOffset": 0,
+      "bufferView": 1
+    },
+    {
+      "type": "VEC3",
+      "componentType": 5122,
+      "count": 4536,
+      "normalized": true,
+      "byteOffset": 0,
+      "bufferView": 2
+    },
+    {
+      "type": "VEC2",
+      "componentType": 5123,
+      "count": 4536,
+      "normalized": true,
+      "byteOffset": 0,
+      "bufferView": 3
+    }
+  ],
+  "bufferViews": [
+    {
+      "buffer": 1,
+      "byteOffset": 0,
+      "byteLength": 47988,
+      "target": 34963,
+      "extensions": {
+        "EXT_meshopt_compression": {
+          "buffer": 0,
+          "byteOffset": 0,
+          "byteLength": 9340,
+          "mode": "TRIANGLES",
+          "byteStride": 2,
+          "count": 23994
+        }
+      }
+    },
+    {
+      "buffer": 1,
+      "byteOffset": 47988,
+      "byteLength": 36288,
+      "target": 34962,
+      "byteStride": 8,
+      "extensions": {
+        "EXT_meshopt_compression": {
+          "buffer": 0,
+          "byteOffset": 9340,
+          "byteLength": 21232,
+          "mode": "ATTRIBUTES",
+          "byteStride": 8,
+          "count": 4536
+        }
+      }
+    },
+    {
+      "buffer": 1,
+      "byteOffset": 84276,
+      "byteLength": 36288,
+      "target": 34962,
+      "byteStride": 8,
+      "extensions": {
+        "EXT_meshopt_compression": {
+          "buffer": 0,
+          "byteOffset": 30572,
+          "byteLength": 26278,
+          "mode": "ATTRIBUTES",
+          "byteStride": 8,
+          "count": 4536
+        }
+      }
+    },
+    {
+      "buffer": 1,
+      "byteOffset": 120564,
+      "byteLength": 18144,
+      "target": 34962,
+      "byteStride": 4,
+      "extensions": {
+        "EXT_meshopt_compression": {
+          "buffer": 0,
+          "byteOffset": 56852,
+          "byteLength": 14217,
+          "mode": "ATTRIBUTES",
+          "byteStride": 4,
+          "count": 4536
+        }
+      }
+    }
+  ],
+  "samplers": [
+    {
+      "magFilter": 9729,
+      "minFilter": 9987,
+      "wrapS": 10497,
+      "wrapT": 10497
+    }
+  ],
+  "textures": [
+    {
+      "sampler": 0,
+      "extensions": {
+        "KHR_texture_basisu": {
+          "source": 1
+        }
+      }
+    },
+    {
+      "sampler": 0,
+      "extensions": {
+        "KHR_texture_basisu": {
+          "source": 0
+        }
+      }
+    },
+    {
+      "sampler": 0,
+      "extensions": {
+        "KHR_texture_basisu": {
+          "source": 2
+        }
+      }
+    }
+  ],
+  "images": [
+    {
+      "name": "concrete_road_barrier_nor_gl",
+      "mimeType": "image/ktx2",
+      "uri": "t0_normal.ktx2"
+    },
+    {
+      "name": "concrete_road_barrier_diff",
+      "mimeType": "image/ktx2",
+      "uri": "t1_color.ktx2"
+    },
+    {
+      "name": "concrete_road_barrier_rough",
+      "mimeType": "image/ktx2",
+      "uri": "t2_linear.ktx2"
+    }
+  ],
+  "buffers": [
+    {
+      "uri": "concrete_road_barrier.bin",
+      "byteLength": 71072
+    },
+    {
+      "byteLength": 138708,
+      "extensions": {
+        "EXT_meshopt_compression": {
+          "fallback": true
+        }
+      }
+    }
+  ],
+  "materials": [
+    {
+      "name": "concrete_road_barrier",
+      "extras": {
+        "xyNormal": true
+      },
+      "doubleSided": true,
+      "pbrMetallicRoughness": {
+        "metallicFactor": 0,
+        "baseColorTexture": {
+          "index": 0
+        },
+        "metallicRoughnessTexture": {
+          "index": 2
+        }
+      },
+      "normalTexture": {
+        "index": 1
+      }
+    }
+  ],
+  "meshes": [
+    {
+      "name": "RetopoFlow.006",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 1,
+            "NORMAL": 2,
+            "TEXCOORD_0": 3
+          },
+          "mode": 4,
+          "material": 0,
+          "indices": 0
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "name": "concrete_road_barrier",
+      "translation": [
+        -0.0018133819103240967,
+        0.4072151929140091,
+        0.024622842669487
+      ],
+      "scale": [
+        0.7724685370922089,
+        0.7724685370922089,
+        0.7724685370922089
+      ],
+      "mesh": 0
+    }
+  ],
+  "scenes": [
+    {
+      "name": "Scene",
+      "nodes": [
+        0
+      ]
+    }
+  ],
+  "scene": 0,
+  "extensionsUsed": [
+    "EXT_meshopt_compression",
+    "KHR_mesh_quantization",
+    "KHR_texture_basisu"
+  ],
+  "extensionsRequired": [
+    "EXT_meshopt_compression",
+    "KHR_mesh_quantization",
+    "KHR_texture_basisu"
+  ]
+}

@@ -1,0 +1,326 @@
+{
+  "asset": {
+    "generator": "glTF-Transform v4.5.0",
+    "version": "2.0"
+  },
+  "accessors": [
+    {
+      "type": "SCALAR",
+      "componentType": 5123,
+      "count": 16902,
+      "normalized": false,
+      "byteOffset": 0,
+      "bufferView": 0
+    },
+    {
+      "type": "VEC3",
+      "componentType": 5122,
+      "count": 4017,
+      "max": [
+        32767,
+        32767,
+        12141
+      ],
+      "min": [
+        -32767,
+        -32767,
+        -12141
+      ],
+      "normalized": true,
+      "byteOffset": 0,
+      "bufferView": 1
+    },
+    {
+      "type": "VEC3",
+      "componentType": 5122,
+      "count": 4017,
+      "normalized": true,
+      "byteOffset": 0,
+      "bufferView": 2
+    },
+    {
+      "type": "VEC2",
+      "componentType": 5123,
+      "count": 4017,
+      "normalized": true,
+      "byteOffset": 0,
+      "bufferView": 3
+    },
+    {
+      "type": "VEC3",
+      "componentType": 5122,
+      "count": 4017,
+      "max": [
+        44,
+        2972,
+        288
+      ],
+      "min": [
+        -2088,
+        -2060,
+        -376
+      ],
+      "normalized": true,
+      "byteOffset": 0,
+      "bufferView": 4
+    },
+    {
+      "type": "VEC3",
+      "componentType": 5122,
+      "count": 4017,
+      "normalized": true,
+      "byteOffset": 0,
+      "bufferView": 5
+    }
+  ],
+  "bufferViews": [
+    {
+      "buffer": 1,
+      "byteOffset": 0,
+      "byteLength": 33804,
+      "target": 34963,
+      "extensions": {
+        "EXT_meshopt_compression": {
+          "buffer": 0,
+          "byteOffset": 0,
+          "byteLength": 6689,
+          "mode": "TRIANGLES",
+          "byteStride": 2,
+          "count": 16902
+        }
+      }
+    },
+    {
+      "buffer": 1,
+      "byteOffset": 33804,
+      "byteLength": 32136,
+      "target": 34962,
+      "byteStride": 8,
+      "extensions": {
+        "EXT_meshopt_compression": {
+          "buffer": 0,
+          "byteOffset": 6692,
+          "byteLength": 20722,
+          "mode": "ATTRIBUTES",
+          "byteStride": 8,
+          "count": 4017
+        }
+      }
+    },
+    {
+      "buffer": 1,
+      "byteOffset": 65940,
+      "byteLength": 32136,
+      "target": 34962,
+      "byteStride": 8,
+      "extensions": {
+        "EXT_meshopt_compression": {
+          "buffer": 0,
+          "byteOffset": 27416,
+          "byteLength": 23667,
+          "mode": "ATTRIBUTES",
+          "byteStride": 8,
+          "count": 4017
+        }
+      }
+    },
+    {
+      "buffer": 1,
+      "byteOffset": 98076,
+      "byteLength": 16068,
+      "target": 34962,
+      "byteStride": 4,
+      "extensions": {
+        "EXT_meshopt_compression": {
+          "buffer": 0,
+          "byteOffset": 51084,
+          "byteLength": 12194,
+          "mode": "ATTRIBUTES",
+          "byteStride": 4,
+          "count": 4017
+        }
+      }
+    },
+    {
+      "buffer": 1,
+      "byteOffset": 114144,
+      "byteLength": 32136,
+      "target": 34962,
+      "byteStride": 8,
+      "extensions": {
+        "EXT_meshopt_compression": {
+          "buffer": 0,
+          "byteOffset": 63280,
+          "byteLength": 4352,
+          "mode": "ATTRIBUTES",
+          "byteStride": 8,
+          "count": 4017
+        }
+      }
+    },
+    {
+      "buffer": 1,
+      "byteOffset": 146280,
+      "byteLength": 32136,
+      "target": 34962,
+      "byteStride": 8,
+      "extensions": {
+        "EXT_meshopt_compression": {
+          "buffer": 0,
+          "byteOffset": 67632,
+          "byteLength": 5854,
+          "mode": "ATTRIBUTES",
+          "byteStride": 8,
+          "count": 4017
+        }
+      }
+    }
+  ],
+  "samplers": [
+    {
+      "magFilter": 9729,
+      "minFilter": 9987,
+      "wrapS": 10497,
+      "wrapT": 10497
+    }
+  ],
+  "textures": [
+    {
+      "sampler": 0,
+      "extensions": {
+        "KHR_texture_basisu": {
+          "source": 1
+        }
+      }
+    },
+    {
+      "sampler": 0,
+      "extensions": {
+        "KHR_texture_basisu": {
+          "source": 0
+        }
+      }
+    },
+    {
+      "sampler": 0,
+      "extensions": {
+        "KHR_texture_basisu": {
+          "source": 2
+        }
+      }
+    }
+  ],
+  "images": [
+    {
+      "name": "rusted_wheel_rim_01_nor_gl",
+      "mimeType": "image/ktx2",
+      "uri": "t0_normal.ktx2"
+    },
+    {
+      "name": "rusted_wheel_rim_01_diff",
+      "mimeType": "image/ktx2",
+      "uri": "t1_color.ktx2"
+    },
+    {
+      "name": "rusted_wheel_rim_01_rough",
+      "mimeType": "image/ktx2",
+      "uri": "t2_linear.ktx2"
+    }
+  ],
+  "buffers": [
+    {
+      "uri": "rusted_wheel_rim_01.bin",
+      "byteLength": 73488
+    },
+    {
+      "byteLength": 178416,
+      "extensions": {
+        "EXT_meshopt_compression": {
+          "fallback": true
+        }
+      }
+    }
+  ],
+  "materials": [
+    {
+      "name": "rusted_wheel_rim_01",
+      "extras": {
+        "xyNormal": true
+      },
+      "doubleSided": true,
+      "pbrMetallicRoughness": {
+        "metallicFactor": 0,
+        "baseColorTexture": {
+          "index": 0
+        },
+        "metallicRoughnessTexture": {
+          "index": 2
+        }
+      },
+      "normalTexture": {
+        "index": 1
+      }
+    }
+  ],
+  "meshes": [
+    {
+      "name": "steel_wheel_01_1",
+      "extras": {
+        "targetNames": [
+          "Key 1"
+        ]
+      },
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 1,
+            "NORMAL": 2,
+            "TEXCOORD_0": 3
+          },
+          "mode": 4,
+          "material": 0,
+          "indices": 0,
+          "targets": [
+            {
+              "POSITION": 4,
+              "NORMAL": 5
+            }
+          ]
+        }
+      ],
+      "weights": [
+        1
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "name": "rusted_wheel_rim_01",
+      "scale": [
+        0.202455535531044,
+        0.202455535531044,
+        0.202455535531044
+      ],
+      "mesh": 0
+    }
+  ],
+  "scenes": [
+    {
+      "name": "Scene",
+      "nodes": [
+        0
+      ]
+    }
+  ],
+  "scene": 0,
+  "extensionsUsed": [
+    "EXT_meshopt_compression",
+    "KHR_mesh_quantization",
+    "KHR_texture_basisu"
+  ],
+  "extensionsRequired": [
+    "EXT_meshopt_compression",
+    "KHR_mesh_quantization",
+    "KHR_texture_basisu"
+  ]
+}

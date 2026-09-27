@@ -1,0 +1,28 @@
+{
+  "name": "wasteland-tools",
+  "private": true,
+  "type": "module",
+  "description": "Offline asset pipeline, vendoring and visual-review tooling for the Wasteland Colony browser game. Not deployed.",
+  "scripts": {
+    "vendor": "node vendor.mjs",
+    "fetch-assets": "node fetch-assets.mjs",
+    "build-textures": "node build-textures.mjs",
+    "build-models": "node build-models.mjs",
+    "serve": "node serve.mjs",
+    "shots": "node shots.mjs",
+    "bench": "node bench.mjs"
+  },
+  "devDependencies": {
+    "@gltf-transform/core": "^4.5.0",
+    "@gltf-transform/extensions": "^4.5.0",
+    "@gltf-transform/functions": "^4.5.0",
+    "basis_universal": "1.16.4-1",
+    "esbuild": "^0.25.12",
+    "meshoptimizer": "^1.3.0",
+    "n8ao": "2.0.1",
+    "playwright": "^1.56.1",
+    "postprocessing": "6.39.5",
+    "sharp": "^0.35.4",
+    "three": "0.186.1"
+  }
+}

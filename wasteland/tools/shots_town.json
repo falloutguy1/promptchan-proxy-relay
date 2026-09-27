@@ -1,0 +1,7 @@
+[
+  { "name": "town_house_a", "time": 10.5, "view": { "pos": [-14, 2.2, -4], "target": [-26, 2.5, -20], "fov": 50 }, "frames": 3 },
+  { "name": "town_gas", "time": 10.5, "view": { "pos": [-92, 2.5, 18], "target": [-112, 3, 42], "fov": 55 }, "frames": 3 },
+  { "name": "town_store", "time": 10.5, "view": { "pos": [-40, 2.0, 22], "target": [-52, 2.5, 38], "fov": 55 }, "frames": 3 },
+  { "name": "town_rts", "time": 10.5, "rts": [-30, 10, 110, 2.6, 0], "frames": 3 },
+  { "name": "town_tower", "time": 10.5, "view": { "pos": [140, 3, -50], "target": [160, 9, -78], "fov": 55 }, "frames": 3 }
+]

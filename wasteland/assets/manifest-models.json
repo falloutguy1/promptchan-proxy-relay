@@ -1,0 +1,1974 @@
+{
+ "Barrel_01": {
+  "file": "models/Barrel_01/Barrel_01.gltf",
+  "bytesHi": 634412,
+  "bytesLo": 233692,
+  "tris": 2682,
+  "srcTris": 2682,
+  "min": [
+   -0.282,
+   -0.007,
+   -0.282
+  ],
+  "max": [
+   0.282,
+   0.873,
+   0.282
+  ],
+  "nodes": [
+   "Barrel_01"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/Barrel_01",
+   "license": "CC0 1.0",
+   "name": "Barrel_01",
+   "authors": [
+    "Jorge Camacho"
+   ],
+   "dimensions_mm": [
+    563.0351305007935,
+    563.0352199077606,
+    880.0000050105155
+   ]
+  }
+ },
+ "shrub_03": {
+  "file": "models/shrub_03/shrub_03.gltf",
+  "bytesHi": 632429,
+  "bytesLo": 264174,
+  "tris": 3998,
+  "srcTris": 8287,
+  "min": [
+   -0.074,
+   -0.002,
+   -0.073
+  ],
+  "max": [
+   1.293,
+   0.401,
+   0.079
+  ],
+  "nodes": [
+   "shrub_03_a",
+   "shrub_03_b",
+   "shrub_03_c",
+   "shrub_03_d"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/shrub_03",
+   "license": "CC0 1.0",
+   "name": "Shrub 03",
+   "authors": [
+    "Rico Cilliers"
+   ],
+   "dimensions_mm": [
+    1366.9319450855255,
+    151.20302885770798,
+    402.78380597010255
+   ]
+  }
+ },
+ "Barrel_02": {
+  "file": "models/Barrel_02/Barrel_02.gltf",
+  "bytesHi": 428158,
+  "bytesLo": 173820,
+  "tris": 2688,
+  "srcTris": 2688,
+  "min": [
+   -0.244,
+   0.005,
+   -0.242
+  ],
+  "max": [
+   0.244,
+   0.885,
+   0.242
+  ],
+  "nodes": [
+   "Barrel_02"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/Barrel_02",
+   "license": "CC0 1.0",
+   "name": "Barrel 02",
+   "authors": [
+    "Jorge Camacho"
+   ],
+   "dimensions_mm": [
+    488.17557096481323,
+    484.6164435148239,
+    879.9999924376607
+   ]
+  }
+ },
+ "barrel_stove": {
+  "file": "models/barrel_stove/barrel_stove.gltf",
+  "bytesHi": 533896,
+  "bytesLo": 243137,
+  "tris": 9216,
+  "srcTris": 9216,
+  "min": [
+   -0.296,
+   0,
+   -0.296
+  ],
+  "max": [
+   0.296,
+   0.856,
+   0.296
+  ],
+  "nodes": [
+   "barrel_stove"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/barrel_stove",
+   "license": "CC0 1.0",
+   "name": "Barrel Stove",
+   "authors": [
+    "MP"
+   ],
+   "dimensions_mm": [
+    599.3210971355438,
+    598.1101393699646,
+    855.6039333343506
+   ]
+  }
+ },
+ "wooden_crate_01": {
+  "file": "models/wooden_crate_01/wooden_crate_01.gltf",
+  "bytesHi": 649617,
+  "bytesLo": 259276,
+  "tris": 6576,
+  "srcTris": 6576,
+  "min": [
+   -0.413,
+   -0.008,
+   -0.196
+  ],
+  "max": [
+   0.413,
+   0.342,
+   0.213
+  ],
+  "nodes": [
+   "wooden_crate_01_lid",
+   "wooden_crate_01",
+   "wooden_crate_01_latch"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/wooden_crate_01",
+   "license": "CC0 1.0",
+   "name": "Wooden Crate 01",
+   "authors": [
+    "James Ray Cock"
+   ],
+   "dimensions_mm": [
+    825.2729177474976,
+    408.9537411928177,
+    349.6182831004262
+   ]
+  }
+ },
+ "old_military_crate": {
+  "file": "models/old_military_crate/old_military_crate.gltf",
+  "bytesHi": 777076,
+  "bytesLo": 331881,
+  "tris": 10476,
+  "srcTris": 10476,
+  "min": [
+   -0.913,
+   0,
+   -0.667
+  ],
+  "max": [
+   0.902,
+   0.301,
+   0.309
+  ],
+  "nodes": [
+   "old_military_crate_lid_a",
+   "old_military_crate_loop_a",
+   "old_military_crate_latch_a",
+   "old_military_crate_cloth_a",
+   "old_military_crate_a",
+   "old_military_crate_lid_b",
+   "old_military_crate_loop_b",
+   "old_military_crate_latch_b",
+   "old_military_crate_cloth_b",
+   "old_military_crate_b"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/old_military_crate",
+   "license": "CC0 1.0",
+   "name": "Old Military Crate",
+   "authors": [
+    "Jack Mava"
+   ],
+   "dimensions_mm": [
+    1815.3856992721558,
+    979.0960550308228,
+    300.932839512825
+   ]
+  }
+ },
+ "plastic_crate_01": {
+  "file": "models/plastic_crate_01/plastic_crate_01.gltf",
+  "bytesHi": 352494,
+  "bytesLo": 212827,
+  "tris": 10348,
+  "srcTris": 18320,
+  "min": [
+   -0.149,
+   0,
+   -0.204
+  ],
+  "max": [
+   0.149,
+   0.264,
+   0.204
+  ],
+  "nodes": [
+   "plastic_crate_01"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/plastic_crate_01",
+   "license": "CC0 1.0",
+   "name": "Plastic Crate 01",
+   "authors": [
+    "PierreB3D"
+   ],
+   "dimensions_mm": [
+    298.00063371658325,
+    408.00413489341736,
+    264.1694247722626
+   ]
+  }
+ },
+ "cardboard_box_01": {
+  "file": "models/cardboard_box_01/cardboard_box_01.gltf",
+  "bytesHi": 250550,
+  "bytesLo": 110155,
+  "tris": 4000,
+  "srcTris": 16952,
+  "min": [
+   -0.192,
+   -0.007,
+   -0.225
+  ],
+  "max": [
+   0.194,
+   0.335,
+   0.291
+  ],
+  "nodes": [
+   "cardboard_box_01"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/cardboard_box_01",
+   "license": "CC0 1.0",
+   "name": "Cardboard Box 01",
+   "authors": [
+    "Rahul Chaudhary"
+   ],
+   "dimensions_mm": [
+    387.02359795570374,
+    515.8704221248627,
+    341.7995423078537
+   ]
+  }
+ },
+ "metal_jerrycan_green": {
+  "file": "models/metal_jerrycan_green/metal_jerrycan_green.gltf",
+  "bytesHi": 324156,
+  "bytesLo": 179660,
+  "tris": 9636,
+  "srcTris": 9636,
+  "min": [
+   -0.188,
+   0,
+   -0.085
+  ],
+  "max": [
+   0.172,
+   0.5,
+   0.085
+  ],
+  "nodes": [
+   "metal_jerrycan_green_pin",
+   "metal_jerrycan_green_cap",
+   "metal_jerrycan_green_body",
+   "metal_jerrycan_green_latch",
+   "metal_jerrycan_green_fastener"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/metal_jerrycan_green",
+   "license": "CC0 1.0",
+   "name": "Metal Jerrycan Green",
+   "authors": [
+    "Ulan Cabanilla"
+   ],
+   "dimensions_mm": [
+    373.92209470272064,
+    170.86732387542725,
+    500.91034173965454
+   ]
+  }
+ },
+ "plastic_jerrycan": {
+  "file": "models/plastic_jerrycan/plastic_jerrycan.gltf",
+  "bytesHi": 280458,
+  "bytesLo": 139702,
+  "tris": 7348,
+  "srcTris": 7348,
+  "min": [
+   -0.135,
+   0,
+   -0.167
+  ],
+  "max": [
+   0.133,
+   0.318,
+   0.174
+  ],
+  "nodes": [
+   "plastic_jerrycan"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/plastic_jerrycan",
+   "license": "CC0 1.0",
+   "name": "Plastic Jerrycan",
+   "authors": [
+    "Ulan Cabanilla"
+   ],
+   "dimensions_mm": [
+    268.02290976047516,
+    340.8927023410797,
+    318.4274435043335
+   ]
+  }
+ },
+ "trashbag": {
+  "file": "models/trashbag/trashbag.gltf",
+  "bytesHi": 237433,
+  "bytesLo": 111003,
+  "tris": 4482,
+  "srcTris": 4482,
+  "min": [
+   -0.26,
+   -0.001,
+   -0.24
+  ],
+  "max": [
+   0.268,
+   0.574,
+   0.223
+  ],
+  "nodes": [
+   "trashbag"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/trashbag",
+   "license": "CC0 1.0",
+   "name": "Trashbag",
+   "authors": [
+    "Benny Weimer"
+   ],
+   "dimensions_mm": [
+    528.0700623989105,
+    462.893009185791,
+    574.9993845820427
+   ]
+  }
+ },
+ "propane_tank": {
+  "file": "models/propane_tank/propane_tank.gltf",
+  "bytesHi": 243409,
+  "bytesLo": 112362,
+  "tris": 5238,
+  "srcTris": 5238,
+  "min": [
+   -0.169,
+   0,
+   -0.169
+  ],
+  "max": [
+   0.169,
+   0.554,
+   0.169
+  ],
+  "nodes": [
+   "propane_tank"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/propane_tank",
+   "license": "CC0 1.0",
+   "name": "Propane Tank",
+   "authors": [
+    "Slinc"
+   ],
+   "dimensions_mm": [
+    337.3616933822632,
+    337.3616933822632,
+    553.7950303405523
+   ]
+  }
+ },
+ "metal_trash_can": {
+  "file": "models/metal_trash_can/metal_trash_can.gltf",
+  "bytesHi": 615496,
+  "bytesLo": 308652,
+  "tris": 13960,
+  "srcTris": 13960,
+  "min": [
+   -0.953,
+   0,
+   -0.278
+  ],
+  "max": [
+   0.825,
+   0.906,
+   0.278
+  ],
+  "nodes": [
+   "metal_trash_can_handle_left",
+   "metal_trash_can_lid",
+   "metal_trash_can",
+   "metal_trash_can_handle_right",
+   "metal_trash_can_rust",
+   "metal_trash_can_rust_handle_left",
+   "metal_trash_can_rust_handle_right",
+   "metal_trash_can_rust_lid"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/metal_trash_can",
+   "license": "CC0 1.0",
+   "name": "Metal Trash Can",
+   "authors": [
+    "GurJas Studios"
+   ],
+   "dimensions_mm": [
+    1846.9352722167969,
+    556.2898814678192,
+    906.1697272554738
+   ]
+  }
+ },
+ "ammo_box": {
+  "file": "models/ammo_box/ammo_box.gltf",
+  "bytesHi": 165144,
+  "bytesLo": 92356,
+  "tris": 4382,
+  "srcTris": 4382,
+  "min": [
+   -0.043,
+   0,
+   -0.129
+  ],
+  "max": [
+   0.043,
+   0.177,
+   0.129
+  ],
+  "nodes": [
+   "ammo_box_handle_ring_b",
+   "ammo_box",
+   "ammo_box_handle_ring_a",
+   "ammo_box_latch",
+   "ammo_box_handle"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/ammo_box",
+   "license": "CC0 1.0",
+   "name": "Ammo Box",
+   "authors": [
+    "DanKit"
+   ],
+   "dimensions_mm": [
+    86.56343817710876,
+    257.8783482313156,
+    177.47706174850464
+   ]
+  }
+ },
+ "medical_box": {
+  "file": "models/medical_box/medical_box.gltf",
+  "bytesHi": 203054,
+  "bytesLo": 99003,
+  "tris": 3718,
+  "srcTris": 3718,
+  "min": [
+   -0.263,
+   0,
+   -0.172
+  ],
+  "max": [
+   0.263,
+   0.098,
+   0.178
+  ],
+  "nodes": [
+   "medical_box_latch",
+   "medical_box_latch_rings",
+   "medical_box_lid",
+   "medical_box",
+   "medical_box_handle"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/medical_box",
+   "license": "CC0 1.0",
+   "name": "Medical Box",
+   "authors": [
+    "Ulan Cabanilla"
+   ],
+   "dimensions_mm": [
+    525.4814624786377,
+    350.16927123069763,
+    97.5121483206749
+   ]
+  }
+ },
+ "russian_food_cans_01": {
+  "file": "models/russian_food_cans_01/russian_food_cans_01.gltf",
+  "bytesHi": 180029,
+  "bytesLo": 68790,
+  "tris": 1348,
+  "srcTris": 1348,
+  "min": [
+   -0.073,
+   0,
+   -0.023
+  ],
+  "max": [
+   0.069,
+   0.085,
+   0.023
+  ],
+  "nodes": [
+   "russian_food_cans_01_salt_box",
+   "russian_food_cans_01_can_cond",
+   "russian_food_cans_01_can_fish"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/russian_food_cans_01",
+   "license": "CC0 1.0",
+   "name": "Russian Food Cans 01",
+   "authors": [
+    "Kosan Aziz"
+   ],
+   "dimensions_mm": [
+    142.3535794019699,
+    46.203918755054474,
+    84.89999175071716
+   ]
+  }
+ },
+ "cement_bag": {
+  "file": "models/cement_bag/cement_bag.gltf",
+  "bytesHi": 183579,
+  "bytesLo": 71246,
+  "tris": 844,
+  "srcTris": 844,
+  "min": [
+   -0.229,
+   0.001,
+   -0.348
+  ],
+  "max": [
+   0.234,
+   0.181,
+   0.351
+  ],
+  "nodes": [
+   "cement_bag"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/cement_bag",
+   "license": "CC0 1.0",
+   "name": "Cement Bag",
+   "authors": [
+    "PierreB3D"
+   ],
+   "dimensions_mm": [
+    462.4738246202469,
+    699.5841264724731,
+    179.9098700284958
+   ]
+  }
+ },
+ "old_tyre": {
+  "file": "models/old_tyre/old_tyre.gltf",
+  "bytesHi": 228703,
+  "bytesLo": 91719,
+  "tris": 2880,
+  "srcTris": 2880,
+  "min": [
+   -0.3,
+   -0.3,
+   -0.083
+  ],
+  "max": [
+   0.3,
+   0.3,
+   0.082
+  ],
+  "nodes": [
+   "old_tyre"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/old_tyre",
+   "license": "CC0 1.0",
+   "name": "Old Tyre",
+   "authors": [
+    "MP"
+   ],
+   "dimensions_mm": [
+    600.0000238418579,
+    164.99999910593033,
+    600.0000238418579
+   ]
+  }
+ },
+ "rusted_wheel_rim_01": {
+  "file": "models/rusted_wheel_rim_01/rusted_wheel_rim_01.gltf",
+  "bytesHi": 285116,
+  "bytesLo": 141328,
+  "tris": 5634,
+  "srcTris": 16440,
+  "min": [
+   -0.202,
+   -0.202,
+   -0.075
+  ],
+  "max": [
+   0.202,
+   0.202,
+   0.075
+  ],
+  "nodes": [
+   "rusted_wheel_rim_01"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/rusted_wheel_rim_01",
+   "license": "CC0 1.0",
+   "name": "Rusted Wheel Rim 01",
+   "authors": [
+    "John Hutcheson"
+   ],
+   "dimensions_mm": [
+    402.85147726535797,
+    154.13154661655426,
+    395.4814374446869
+   ]
+  }
+ },
+ "concrete_road_barrier": {
+  "file": "models/concrete_road_barrier/concrete_road_barrier.gltf",
+  "bytesHi": 765359,
+  "bytesLo": 297463,
+  "tris": 7998,
+  "srcTris": 60928,
+  "min": [
+   -0.774,
+   -0.008,
+   -0.295
+  ],
+  "max": [
+   0.771,
+   0.822,
+   0.344
+  ],
+  "nodes": [
+   "concrete_road_barrier"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/concrete_road_barrier",
+   "license": "CC0 1.0",
+   "name": "Concrete Road Barrier",
+   "authors": [
+    "Amal Kumar"
+   ],
+   "dimensions_mm": [
+    1545.3570485115051,
+    640.9457623958588,
+    835.279269143939
+   ]
+  }
+ },
+ "modular_electricity_poles": {
+  "file": "models/modular_electricity_poles/modular_electricity_poles.gltf",
+  "bytesHi": 1701850,
+  "bytesLo": 797823,
+  "tris": 22541,
+  "srcTris": 30928,
+  "min": [
+   -3.1,
+   0,
+   -1.531
+  ],
+  "max": [
+   -1.9,
+   6.13,
+   0.426
+  ],
+  "nodes": [
+   "preset_01_bolt_small_01",
+   "preset_01_bolt_small_02",
+   "preset_01_bolt_small_03",
+   "preset_01_bolt_small_04",
+   "preset_01_bolt_small_05",
+   "preset_01_bolt_small_06",
+   "preset_01_bolt_small_07",
+   "preset_01_bolt_small_08",
+   "preset_01_bolt_small_09",
+   "preset_01_cap",
+   "preset_01_connection_large_02",
+   "preset_01_connection_single_01",
+   "preset_01_connection_small_02",
+   "preset_01_fastener",
+   "preset_01_fastener_connection",
+   "preset_01_fastener_loop",
+   "preset_01_fuse_01",
+   "preset_01_fuse_02",
+   "preset_01_nail_bent",
+   "preset_01_pole",
+   "preset_01_ring_large",
+   "preset_01_ring_small",
+   "preset_01_ring_small_01",
+   "preset_01_ring_small_02",
+   "preset_01_ring_small_03",
+   "preset_01_transformer_01",
+   "preset_01_transformer_02"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/modular_electricity_poles",
+   "license": "CC0 1.0",
+   "name": "Modular Electricity Poles",
+   "authors": [
+    "James Ray Cock"
+   ],
+   "dimensions_mm": [
+    13119.13776397705,
+    1957.2706818580627,
+    7000.0002812594175
+   ]
+  }
+ },
+ "covered_car": {
+  "file": "models/covered_car/covered_car.gltf",
+  "bytesHi": 2241704,
+  "bytesLo": 733255,
+  "tris": 12592,
+  "srcTris": 12592,
+  "min": [
+   -0.847,
+   0,
+   -2.166
+  ],
+  "max": [
+   0.942,
+   1.411,
+   2.214
+  ],
+  "nodes": [
+   "covered_car_wheel_01",
+   "covered_car_wheel_02",
+   "covered_car_wheel_03",
+   "covered_car_wheel_04",
+   "covered_car"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/covered_car",
+   "license": "CC0 1.0",
+   "name": "Covered Car",
+   "authors": [
+    "MP"
+   ],
+   "dimensions_mm": [
+    1788.962960243225,
+    4380.25426864624,
+    1411.1130833625793
+   ]
+  }
+ },
+ "street_lamp_01": {
+  "file": "models/street_lamp_01/street_lamp_01.gltf",
+  "bytesHi": 688740,
+  "bytesLo": 308304,
+  "tris": 10148,
+  "srcTris": 30610,
+  "min": [
+   -0.352,
+   0,
+   -0.193
+  ],
+  "max": [
+   0.352,
+   3.871,
+   0.193
+  ],
+  "nodes": [
+   "street_lamp_01"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/street_lamp_01",
+   "license": "CC0 1.0",
+   "name": "Street Lamp 01",
+   "authors": [
+    "Josh Dean"
+   ],
+   "dimensions_mm": [
+    704.3362259864807,
+    386.49316132068634,
+    3870.5554008483887
+   ]
+  }
+ },
+ "utility_box_01": {
+  "file": "models/utility_box_01/utility_box_01.gltf",
+  "bytesHi": 212974,
+  "bytesLo": 96928,
+  "tris": 4404,
+  "srcTris": 4404,
+  "min": [
+   -0.26,
+   0,
+   -0.21
+  ],
+  "max": [
+   0.26,
+   1.12,
+   0.222
+  ],
+  "nodes": [
+   "utility_box_01_box"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/utility_box_01",
+   "license": "CC0 1.0",
+   "name": "Utility Box 01",
+   "authors": [
+    "James Ray Cock"
+   ],
+   "dimensions_mm": [
+    520.0002193450928,
+    431.999996304512,
+    1120.3334331512451
+   ]
+  }
+ },
+ "modular_chainlink_fence": {
+  "file": "models/modular_chainlink_fence/modular_chainlink_fence.gltf",
+  "bytesHi": 1538828,
+  "bytesLo": 821158,
+  "tris": 23861,
+  "srcTris": 89232,
+  "min": [
+   -6.04,
+   0,
+   -2.075
+  ],
+  "max": [
+   2.074,
+   2.522,
+   0.074
+  ],
+  "nodes": [
+   "modular_chainlink_fence_door_latch",
+   "modular_chainlink_fence_door_gate",
+   "modular_chainlink_fence_corner_outer",
+   "modular_chainlink_fence_start_01_corner_01",
+   "modular_chainlink_post_middle",
+   "modular_chainlink_fence_end_01",
+   "modular_chainlink_fence_end_02",
+   "modular_chainlink_fence_door_frame",
+   "modular_chainlink_fence_bar_bracket_01",
+   "modular_chainlink_fence_post_bracket_02",
+   "modular_chainlink_fence_bar_bracket_02",
+   "modular_chainlink_fence_post_bracket_01",
+   "modular_chainlink_fence_double",
+   "modular_chainlink_fence",
+   "modular_chainlink_fence_post_bracket_03",
+   "modular_chainlink_fence_bar_bracket_03",
+   "modular_chainlink_fence_post",
+   "modular_chainlink_fence_corner_support",
+   "modular_chainlink_fence_corner_inner",
+   "modular_chainlink_fence_start_01_corner_02"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/modular_chainlink_fence",
+   "license": "CC0 1.0",
+   "name": "Modular Chainlink Fence",
+   "authors": [
+    "James Ray Cock",
+    "Amal Kumar"
+   ],
+   "dimensions_mm": [
+    8115.001916885376,
+    2149.1531878709793,
+    2522.9129791259766
+   ]
+  }
+ },
+ "portable_searchlight": {
+  "file": "models/portable_searchlight/portable_searchlight.gltf",
+  "bytesHi": 306025,
+  "bytesLo": 159423,
+  "tris": 7998,
+  "srcTris": 18802,
+  "min": [
+   -0.083,
+   -0.083,
+   -0.127
+  ],
+  "max": [
+   0.083,
+   0.103,
+   0.126
+  ],
+  "nodes": [
+   "portable_searchlight"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/portable_searchlight",
+   "license": "CC0 1.0",
+   "name": "Portable Searchlight",
+   "authors": [
+    "Elijah Cragg"
+   ],
+   "dimensions_mm": [
+    165.27599096298218,
+    253.3835619688034,
+    185.3470355272293
+   ]
+  }
+ },
+ "stone_fire_pit": {
+  "file": "models/stone_fire_pit/stone_fire_pit.gltf",
+  "bytesHi": 752692,
+  "bytesLo": 275313,
+  "tris": 3887,
+  "srcTris": 3887,
+  "min": [
+   -0.736,
+   -0.193,
+   -0.715
+  ],
+  "max": [
+   0.712,
+   0.195,
+   0.718
+  ],
+  "nodes": [
+   "stone_fire_pit"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/stone_fire_pit",
+   "license": "CC0 1.0",
+   "name": "Stone Fire Pit",
+   "authors": [
+    "Sebastian Platen"
+   ],
+   "dimensions_mm": [
+    1448.4962224960327,
+    1433.234453201294,
+    388.32607865333557
+   ]
+  }
+ },
+ "portable_generator": {
+  "file": "models/portable_generator/portable_generator.gltf",
+  "bytesHi": 1077048,
+  "bytesLo": 469613,
+  "tris": 9058,
+  "srcTris": 26419,
+  "min": [
+   -0.415,
+   0.002,
+   -0.282
+  ],
+  "max": [
+   0.402,
+   0.577,
+   0.282
+  ],
+  "nodes": [
+   "portable_generator",
+   "portable_generator_dial",
+   "portable_generator_switch",
+   "portable_generator_toggle"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/portable_generator",
+   "license": "CC0 1.0",
+   "name": "Portable Generator",
+   "authors": [
+    "James Ray Cock"
+   ],
+   "dimensions_mm": [
+    818.3408081531525,
+    564.0000104904175,
+    576.9232391612604
+   ]
+  }
+ },
+ "plastic_monobloc_chair_01": {
+  "file": "models/plastic_monobloc_chair_01/plastic_monobloc_chair_01.gltf",
+  "bytesHi": 248666,
+  "bytesLo": 113201,
+  "tris": 3356,
+  "srcTris": 3356,
+  "min": [
+   -0.321,
+   0,
+   -0.336
+  ],
+  "max": [
+   0.321,
+   0.88,
+   0.292
+  ],
+  "nodes": [
+   "plastic_monobloc_chair_01"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/plastic_monobloc_chair_01",
+   "license": "CC0 1.0",
+   "name": "Plastic Monobloc Chair 01",
+   "authors": [
+    "Kuutti Siitonen"
+   ],
+   "dimensions_mm": [
+    641.8611407279968,
+    627.5919079780579,
+    879.8411972820759
+   ]
+  }
+ },
+ "wooden_bucket_01": {
+  "file": "models/wooden_bucket_01/wooden_bucket_01.gltf",
+  "bytesHi": 262849,
+  "bytesLo": 122541,
+  "tris": 5116,
+  "srcTris": 5116,
+  "min": [
+   -0.184,
+   0,
+   -0.17
+  ],
+  "max": [
+   0.183,
+   0.55,
+   0.172
+  ],
+  "nodes": [
+   "wooden_bucket_01",
+   "wooden_bucket_01_handle"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/wooden_bucket_01",
+   "license": "CC0 1.0",
+   "name": "Wooden Bucket 01",
+   "authors": [
+    "James Ray Cock"
+   ],
+   "dimensions_mm": [
+    366.97085201740265,
+    342.2211855649948,
+    549.862340092659
+   ]
+  }
+ },
+ "watering_can_metal_01": {
+  "file": "models/watering_can_metal_01/watering_can_metal_01.gltf",
+  "bytesHi": 292242,
+  "bytesLo": 141325,
+  "tris": 5999,
+  "srcTris": 11837,
+  "min": [
+   -0.095,
+   -0.001,
+   -0.175
+  ],
+  "max": [
+   0.096,
+   0.196,
+   0.278
+  ],
+  "nodes": [
+   "watering_can_metal_01"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/watering_can_metal_01",
+   "license": "CC0 1.0",
+   "name": "Watering Can Metal 01",
+   "authors": [
+    "Charles Nderitu"
+   ],
+   "dimensions_mm": [
+    191.01857393980026,
+    452.33607292175293,
+    196.81852799840271
+   ]
+  }
+ },
+ "hatchet": {
+  "file": "models/hatchet/hatchet.gltf",
+  "bytesHi": 255840,
+  "bytesLo": 124541,
+  "tris": 5250,
+  "srcTris": 5250,
+  "min": [
+   -0.013,
+   -0.062,
+   -0.027
+  ],
+  "max": [
+   0.013,
+   0.227,
+   0.077
+  ],
+  "nodes": [
+   "hatchet"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/hatchet",
+   "license": "CC0 1.0",
+   "name": "Hatchet",
+   "authors": [
+    "James Ray Cock",
+    "Ulan Cabanilla"
+   ],
+   "dimensions_mm": [
+    26.022234931588173,
+    104.27016951143742,
+    288.7292727828026
+   ]
+  }
+ },
+ "wooden_picnic_table": {
+  "file": "models/wooden_picnic_table/wooden_picnic_table.gltf",
+  "bytesHi": 1259204,
+  "bytesLo": 428036,
+  "tris": 10210,
+  "srcTris": 10210,
+  "min": [
+   -1.121,
+   0,
+   -1.502
+  ],
+  "max": [
+   1.12,
+   0.746,
+   1.521
+  ],
+  "nodes": [
+   "wooden_picnic_table"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/wooden_picnic_table",
+   "license": "CC0 1.0",
+   "name": "Wooden Picnic Table",
+   "authors": [
+    "Ulan Cabanilla"
+   ],
+   "dimensions_mm": [
+    2240.9759759902954,
+    3022.329568862915,
+    745.9869086742401
+   ]
+  }
+ },
+ "rusted_spade_01": {
+  "file": "models/rusted_spade_01/rusted_spade_01.gltf",
+  "bytesHi": 258502,
+  "bytesLo": 109633,
+  "tris": 5000,
+  "srcTris": 11436,
+  "min": [
+   -0.084,
+   -0.503,
+   -0.023
+  ],
+  "max": [
+   0.084,
+   0.598,
+   0.023
+  ],
+  "nodes": [
+   "rusted_spade_01"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/rusted_spade_01",
+   "license": "CC0 1.0",
+   "name": "Rusted Spade 01",
+   "authors": [
+    "Blemonade"
+   ],
+   "dimensions_mm": [
+    168.1148111820221,
+    45.56426405906677,
+    1100.9047627449036
+   ]
+  }
+ },
+ "wooden_ladder": {
+  "file": "models/wooden_ladder/wooden_ladder.gltf",
+  "bytesHi": 301737,
+  "bytesLo": 150828,
+  "tris": 8492,
+  "srcTris": 8492,
+  "min": [
+   -0.485,
+   0,
+   -0.25
+  ],
+  "max": [
+   0.474,
+   1.335,
+   0.25
+  ],
+  "nodes": [
+   "wooden_ladder_supports",
+   "wooden_ladder_steps"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/wooden_ladder",
+   "license": "CC0 1.0",
+   "name": "Wooden Ladder",
+   "authors": [
+    "Miroslav Turura"
+   ],
+   "dimensions_mm": [
+    959.1718018054962,
+    500.0000149011612,
+    1334.923267364502
+   ]
+  }
+ },
+ "old_gas_mask": {
+  "file": "models/old_gas_mask/old_gas_mask.gltf",
+  "bytesHi": 239641,
+  "bytesLo": 124965,
+  "tris": 6000,
+  "srcTris": 18900,
+  "min": [
+   -0.105,
+   -1.005,
+   -0.122
+  ],
+  "max": [
+   0.105,
+   0.121,
+   0.186
+  ],
+  "nodes": [
+   "old_gas_mask"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/old_gas_mask",
+   "license": "CC0 1.0",
+   "name": "Old Gas Mask",
+   "authors": [
+    "Michał Wiśniewski"
+   ],
+   "dimensions_mm": [
+    210.5255424976349,
+    308.7272718548775,
+    1125.6647408008575
+   ]
+  }
+ },
+ "old_bed_frame": {
+  "file": "models/old_bed_frame/old_bed_frame.gltf",
+  "bytesHi": 766272,
+  "bytesLo": 350599,
+  "tris": 11905,
+  "srcTris": 49990,
+  "min": [
+   -0.448,
+   0,
+   -0.998
+  ],
+  "max": [
+   0.457,
+   1.201,
+   1.003
+  ],
+  "nodes": [
+   "old_bed_frame"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/old_bed_frame",
+   "license": "CC0 1.0",
+   "name": "Old Bed Frame",
+   "authors": [
+    "Luca B"
+   ],
+   "dimensions_mm": [
+    904.6578407287598,
+    2001.7260313034058,
+    1201.4837953575998
+   ]
+  }
+ },
+ "vintage_radio_transceiver": {
+  "file": "models/vintage_radio_transceiver/vintage_radio_transceiver.gltf",
+  "bytesHi": 1380764,
+  "bytesLo": 653088,
+  "tris": 13388,
+  "srcTris": 42350,
+  "min": [
+   -0.329,
+   -0.001,
+   -0.138
+  ],
+  "max": [
+   0.245,
+   0.433,
+   0.275
+  ],
+  "nodes": [
+   "vintage_radio_transceiver",
+   "vintage_radio_transceiver_dial",
+   "vintage_radio_transceiver_cable",
+   "vintage_radio_transceiver_antenna",
+   "vintage_radio_transceiver_antenna_plug_a",
+   "vintage_radio_transceiver_antenna_plug_b",
+   "vintage_radio_transceiver_microphone",
+   "vintage_radio_transceiver_microphone_plug",
+   "vintage_radio_transceiver_morse_key_arm",
+   "vintage_radio_transceiver_morse_key_base",
+   "vintage_radio_transceiver_morse_key_plug",
+   "vintage_radio_transceiver_speaker",
+   "vintage_radio_transceiver_speaker_plug",
+   "vintage_radio_transceiver_cables"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/vintage_radio_transceiver",
+   "license": "CC0 1.0",
+   "name": "Vintage Radio Transceiver",
+   "authors": [
+    "Mateusz Sadek"
+   ],
+   "dimensions_mm": [
+    618.1803643703461,
+    417.8741127252579,
+    434.39279100857675
+   ]
+  }
+ },
+ "WoodenTable_01": {
+  "file": "models/WoodenTable_01/WoodenTable_01.gltf",
+  "bytesHi": 514246,
+  "bytesLo": 182665,
+  "tris": 952,
+  "srcTris": 952,
+  "min": [
+   -0.9,
+   0,
+   -0.329
+  ],
+  "max": [
+   0.9,
+   0.549,
+   0.329
+  ],
+  "nodes": [
+   "WoodenTable_01"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/WoodenTable_01",
+   "license": "CC0 1.0",
+   "name": "Wooden Table 01",
+   "authors": [
+    "Ethan Place"
+   ],
+   "dimensions_mm": [
+    1799.6479272842407,
+    657.1746468544006,
+    548.8492709302584
+   ]
+  }
+ },
+ "WoodenChair_01": {
+  "file": "models/WoodenChair_01/WoodenChair_01.gltf",
+  "bytesHi": 290279,
+  "bytesLo": 150443,
+  "tris": 5999,
+  "srcTris": 19992,
+  "min": [
+   -0.344,
+   -0.001,
+   -0.367
+  ],
+  "max": [
+   0.344,
+   2.272,
+   0.291
+  ],
+  "nodes": [
+   "WoodenChair_01"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/WoodenChair_01",
+   "license": "CC0 1.0",
+   "name": "Wooden Chair 01",
+   "authors": [
+    "Jake Mobley"
+   ],
+   "dimensions_mm": [
+    688.1728172302246,
+    658.4618389606476,
+    2273.514856118709
+   ]
+  }
+ },
+ "painted_wooden_cabinet": {
+  "file": "models/painted_wooden_cabinet/painted_wooden_cabinet.gltf",
+  "bytesHi": 551568,
+  "bytesLo": 204415,
+  "tris": 2227,
+  "srcTris": 2227,
+  "min": [
+   -0.595,
+   0,
+   -0.282
+  ],
+  "max": [
+   0.6,
+   1.181,
+   0.334
+  ],
+  "nodes": [
+   "painted_wooden_cabinet",
+   "painted_wooden_cabinet_door_02",
+   "painted_wooden_cabinet_door_01",
+   "painted_wooden_cabinet_drawer_02",
+   "painted_wooden_cabinet_drawer_01"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/painted_wooden_cabinet",
+   "license": "CC0 1.0",
+   "name": "Painted Wooden Cabinet",
+   "authors": [
+    "Kirill Sannikov"
+   ],
+   "dimensions_mm": [
+    1194.674551486969,
+    616.6356205940247,
+    1181.8697528215125
+   ]
+  }
+ },
+ "wooden_bookshelf_worn": {
+  "file": "models/wooden_bookshelf_worn/wooden_bookshelf_worn.gltf",
+  "bytesHi": 787724,
+  "bytesLo": 310268,
+  "tris": 10106,
+  "srcTris": 10106,
+  "min": [
+   -0.687,
+   0,
+   -0.291
+  ],
+  "max": [
+   0.687,
+   2.063,
+   0.291
+  ],
+  "nodes": [
+   "wooden_bookshelf_worn"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/wooden_bookshelf_worn",
+   "license": "CC0 1.0",
+   "name": "Wooden Bookshelf Worn",
+   "authors": [
+    "Ulan Cabanilla"
+   ],
+   "dimensions_mm": [
+    1373.95179271698,
+    581.3020169734955,
+    2063.442051410675
+   ]
+  }
+ },
+ "steel_frame_shelves_01": {
+  "file": "models/steel_frame_shelves_01/steel_frame_shelves_01.gltf",
+  "bytesHi": 444957,
+  "bytesLo": 168293,
+  "tris": 4348,
+  "srcTris": 4348,
+  "min": [
+   -5.486,
+   -0.011,
+   -2.51
+  ],
+  "max": [
+   5.487,
+   21.394,
+   2.51
+  ],
+  "nodes": [
+   "steel_frame_shelves_01"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/steel_frame_shelves_01",
+   "license": "CC0 1.0",
+   "name": "Steel Frame Shelves 01",
+   "authors": [
+    "James Ray Cock"
+   ],
+   "dimensions_mm": [
+    1097.4148511886597,
+    502.1176338195801,
+    2140.5010361922905
+   ]
+  }
+ },
+ "scandinavian_masonry_heater": {
+  "file": "models/scandinavian_masonry_heater/scandinavian_masonry_heater.gltf",
+  "bytesHi": 758358,
+  "bytesLo": 328284,
+  "tris": 9350,
+  "srcTris": 9350,
+  "min": [
+   -0.713,
+   0,
+   -0.477
+  ],
+  "max": [
+   0.455,
+   2.36,
+   0.859
+  ],
+  "nodes": [
+   "scandinavian_masonry_heater"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/scandinavian_masonry_heater",
+   "license": "CC0 1.0",
+   "name": "Scandinavian Masonry Heater",
+   "authors": [
+    "Kuutti Siitonen"
+   ],
+   "dimensions_mm": [
+    1167.6969528198242,
+    1335.2788388729095,
+    2360.4823132336605
+   ]
+  }
+ },
+ "shrub_04": {
+  "file": "models/shrub_04/shrub_04.gltf",
+  "bytesHi": 594061,
+  "bytesLo": 264347,
+  "tris": 4825,
+  "srcTris": 27327,
+  "min": [
+   -0.024,
+   -0.006,
+   -0.075
+  ],
+  "max": [
+   0.559,
+   0.213,
+   0.071
+  ],
+  "nodes": [
+   "shrub_04"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/shrub_04",
+   "license": "CC0 1.0",
+   "name": "Shrub 04",
+   "authors": [
+    "Rico Cilliers"
+   ],
+   "dimensions_mm": [
+    746.7864416539669,
+    186.9201734662056,
+    280.6698549538851
+   ]
+  }
+ },
+ "fern_02": {
+  "file": "models/fern_02/fern_02.gltf",
+  "bytesHi": 458192,
+  "bytesLo": 197021,
+  "tris": 2798,
+  "srcTris": 6232,
+  "min": [
+   -0.528,
+   -0.03,
+   -0.422
+  ],
+  "max": [
+   1.444,
+   0.397,
+   1.302
+  ],
+  "nodes": [
+   "fern_02_b",
+   "fern_02_c",
+   "fern_02_a",
+   "fern_02_d"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/fern_02",
+   "license": "CC0 1.0",
+   "name": "Fern 02",
+   "authors": [
+    "Rob Tuytel",
+    "Rico Cilliers"
+   ],
+   "dimensions_mm": [
+    1972.5302457809448,
+    1724.0281701087952,
+    427.6947118341923
+   ]
+  }
+ },
+ "weed_plant_02": {
+  "file": "models/weed_plant_02/weed_plant_02.gltf",
+  "bytesHi": 696767,
+  "bytesLo": 291069,
+  "tris": 3594,
+  "srcTris": 11116,
+  "min": [
+   -0.086,
+   -0.009,
+   -0.111
+  ],
+  "max": [
+   2.04,
+   0.067,
+   0.18
+  ],
+  "nodes": [
+   "weed_plant_02_a_LOD0",
+   "weed_plant_02_b_LOD0",
+   "weed_plant_02_c_LOD0",
+   "weed_plant_02_d_LOD0",
+   "weed_plant_02_e_LOD0"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/weed_plant_02",
+   "license": "CC0 1.0",
+   "name": "Weed Plant 02",
+   "authors": [
+    "Rob Tuytel",
+    "Rico Cilliers"
+   ],
+   "dimensions_mm": [
+    2125.253051519394,
+    290.9194082021713,
+    75.0729264691472
+   ]
+  }
+ },
+ "nettle_plant": {
+  "file": "models/nettle_plant/nettle_plant.gltf",
+  "bytesHi": 704175,
+  "bytesLo": 321215,
+  "tris": 4171,
+  "srcTris": 31304,
+  "min": [
+   -0.052,
+   -0.005,
+   -0.049
+  ],
+  "max": [
+   1.029,
+   0.208,
+   0.046
+  ],
+  "nodes": [
+   "nettle_plant_medium_a_LOD0",
+   "nettle_plant_medium_b_LOD0",
+   "nettle_plant_small_a_LOD0",
+   "nettle_plant_small_b_LOD0",
+   "nettle_plant_tall_a_LOD0",
+   "nettle_plant_tall_b_LOD0"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/nettle_plant",
+   "license": "CC0 1.0",
+   "name": "Nettle Plant",
+   "authors": [
+    "Rob Tuytel",
+    "Rico Cilliers"
+   ],
+   "dimensions_mm": [
+    1084.1034203767776,
+    94.6834422647953,
+    218.78226287662983
+   ]
+  }
+ },
+ "tree_stump_01": {
+  "file": "models/tree_stump_01/tree_stump_01.gltf",
+  "bytesHi": 808118,
+  "bytesLo": 285297,
+  "tris": 2997,
+  "srcTris": 41046,
+  "min": [
+   -0.784,
+   -0.193,
+   -0.759
+  ],
+  "max": [
+   0.641,
+   0.378,
+   0.83
+  ],
+  "nodes": [
+   "tree_stump_01"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/tree_stump_01",
+   "license": "CC0 1.0",
+   "name": "Tree Stump 01",
+   "authors": [
+    "Rob Tuytel"
+   ],
+   "dimensions_mm": [
+    1425.5504608154297,
+    1590.3143286705017,
+    572.6675391197205
+   ]
+  }
+ },
+ "tree_stump_02": {
+  "file": "models/tree_stump_02/tree_stump_02.gltf",
+  "bytesHi": 794042,
+  "bytesLo": 279314,
+  "tris": 2996,
+  "srcTris": 62345,
+  "min": [
+   -0.717,
+   -0.232,
+   -0.674
+  ],
+  "max": [
+   0.804,
+   0.287,
+   0.718
+  ],
+  "nodes": [
+   "tree_stump_02"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/tree_stump_02",
+   "license": "CC0 1.0",
+   "name": "Tree Stump 02",
+   "authors": [
+    "Rob Tuytel"
+   ],
+   "dimensions_mm": [
+    1521.6976404190063,
+    1392.5331234931946,
+    522.0921486616135
+   ]
+  }
+ },
+ "rock_moss_set_01": {
+  "file": "models/rock_moss_set_01/rock_moss_set_01.gltf",
+  "bytesHi": 631814,
+  "bytesLo": 300199,
+  "tris": 8992,
+  "srcTris": 63127,
+  "min": [
+   -3.914,
+   -0.656,
+   -3.819
+  ],
+  "max": [
+   4.091,
+   1.107,
+   3.124
+  ],
+  "nodes": [
+   "rock_moss_set_01_rock01",
+   "rock_moss_set_01_rock02",
+   "rock_moss_set_01_rock03",
+   "rock_moss_set_01_rock04",
+   "rock_moss_set_01_rock05",
+   "rock_moss_set_01_rock06"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/rock_moss_set_01",
+   "license": "CC0 1.0",
+   "name": "Rock Moss Set 01",
+   "authors": [
+    "Kless Gyzen"
+   ],
+   "dimensions_mm": [
+    8004.603862762451,
+    6948.764801025391,
+    1768.319845199585
+   ]
+  }
+ },
+ "rock_moss_set_02": {
+  "file": "models/rock_moss_set_02/rock_moss_set_02.gltf",
+  "bytesHi": 709806,
+  "bytesLo": 317495,
+  "tris": 8990,
+  "srcTris": 57647,
+  "min": [
+   -3.809,
+   -0.315,
+   -1.915
+  ],
+  "max": [
+   4.467,
+   1.05,
+   1.496
+  ],
+  "nodes": [
+   "rock_moss_set_02_rock08",
+   "rock_moss_set_02_rock09",
+   "rock_moss_set_02_rock12",
+   "rock_moss_set_02_rock13",
+   "rock_moss_set_02_rock10",
+   "rock_moss_set_02_rock11",
+   "rock_moss_set_02_rock07"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/rock_moss_set_02",
+   "license": "CC0 1.0",
+   "name": "Rock Moss Set 02",
+   "authors": [
+    "Kless Gyzen"
+   ],
+   "dimensions_mm": [
+    8278.153419494629,
+    3410.416603088379,
+    1368.368238210678
+   ]
+  }
+ },
+ "dry_branches_medium_01": {
+  "file": "models/dry_branches_medium_01/dry_branches_medium_01.gltf",
+  "bytesHi": 347559,
+  "bytesLo": 187128,
+  "tris": 7245,
+  "srcTris": 16803,
+  "min": [
+   -0.547,
+   -0.016,
+   -0.69
+  ],
+  "max": [
+   0.512,
+   0.324,
+   0.609
+  ],
+  "nodes": [
+   "dry_branches_medium_01_c",
+   "dry_branches_medium_01_b",
+   "dry_branches_medium_01_a"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/dry_branches_medium_01",
+   "license": "CC0 1.0",
+   "name": "Dry Branches Medium 01",
+   "authors": [
+    "Rico Cilliers"
+   ],
+   "dimensions_mm": [
+    1059.486210346222,
+    1299.152910709381,
+    340.9853130578995
+   ]
+  }
+ },
+ "dead_tree_trunk": {
+  "file": "models/dead_tree_trunk/dead_tree_trunk.gltf",
+  "bytesHi": 771374,
+  "bytesLo": 291174,
+  "tris": 5996,
+  "srcTris": 101802,
+  "min": [
+   -1.539,
+   -0.028,
+   -0.171
+  ],
+  "max": [
+   1.512,
+   0.263,
+   0.106
+  ],
+  "nodes": [
+   "dead_tree_trunk"
+  ],
+  "source": {
+   "source": "Poly Haven",
+   "url": "https://polyhaven.com/a/dead_tree_trunk",
+   "license": "CC0 1.0",
+   "name": "Dead Tree Trunk",
+   "authors": [
+    "Rob Tuytel"
+   ],
+   "dimensions_mm": [
+    3051.015019416809,
+    277.52751111984253,
+    290.43155536055565
+   ]
+  }
+ }
+}

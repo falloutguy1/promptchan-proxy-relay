@@ -1,0 +1,1031 @@
+{
+ "textures": {
+  "bark_birch": {
+   "size": 1,
+   "hi": 1024,
+   "lo": 512,
+   "group": "surface",
+   "source": {
+    "source": "ambientCG",
+    "url": "https://ambientcg.com/view?id=Bark005",
+    "license": "CC0 1.0",
+    "name": "Bark005",
+    "authors": [
+     "Lennart Demes (ambientCG)"
+    ]
+   }
+  },
+  "grass": {
+   "size": 2,
+   "hi": 2048,
+   "lo": 1024,
+   "group": "terrain",
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/leafy_grass",
+    "license": "CC0 1.0",
+    "name": "Leafy Grass",
+    "authors": [
+     "Charlotte Baglioni"
+    ],
+    "dimensions_mm": [
+     2000,
+     2000
+    ]
+   }
+  },
+  "soil": {
+   "size": 2,
+   "hi": 2048,
+   "lo": 1024,
+   "group": "terrain",
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/forest_ground_04",
+    "license": "CC0 1.0",
+    "name": "Forest Ground 04",
+    "authors": [
+     "Rob Tuytel",
+     "Rico Cilliers"
+    ],
+    "dimensions_mm": [
+     3150.0000953674316,
+     3150.0000953674316
+    ]
+   }
+  },
+  "forest": {
+   "size": 2,
+   "hi": 2048,
+   "lo": 1024,
+   "group": "terrain",
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/forest_leaves_04",
+    "license": "CC0 1.0",
+    "name": "Forest Leaves 04",
+    "authors": [
+     "Rob Tuytel"
+    ],
+    "dimensions_mm": [
+     1500,
+     1500.0001192092896
+    ]
+   }
+  },
+  "gravel": {
+   "size": 2,
+   "hi": 2048,
+   "lo": 1024,
+   "group": "terrain",
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/rocks_ground_01",
+    "license": "CC0 1.0",
+    "name": "Rocks Ground 01",
+    "authors": [
+     "Rob Tuytel"
+    ],
+    "dimensions_mm": [
+     2000,
+     2000
+    ]
+   }
+  },
+  "mud": {
+   "size": 2,
+   "hi": 2048,
+   "lo": 1024,
+   "group": "terrain",
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/brown_mud_02",
+    "license": "CC0 1.0",
+    "name": "Brown Mud 02",
+    "authors": [
+     "Rob Tuytel"
+    ],
+    "dimensions_mm": [
+     1299.996018409729,
+     1299.996018409729
+    ]
+   }
+  },
+  "rock": {
+   "size": 3,
+   "hi": 2048,
+   "lo": 1024,
+   "group": "terrain",
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/mossy_rock",
+    "license": "CC0 1.0",
+    "name": "Mossy Rock",
+    "authors": [
+     "Rob Tuytel"
+    ],
+    "dimensions_mm": [
+     3000,
+     3000
+    ]
+   }
+  },
+  "asphalt": {
+   "size": 3,
+   "hi": 2048,
+   "lo": 1024,
+   "group": "road",
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/asphalt_02",
+    "license": "CC0 1.0",
+    "name": "Asphalt 02",
+    "authors": [
+     "Rob Tuytel"
+    ],
+    "dimensions_mm": [
+     3000.000238418579,
+     3000
+    ]
+   }
+  },
+  "plaster_mossy": {
+   "size": 1.8,
+   "hi": 2048,
+   "lo": 1024,
+   "group": "surface",
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/worn_mossy_plasterwall",
+    "license": "CC0 1.0",
+    "name": "Worn Mossy Plasterwall",
+    "authors": [
+     "Amal Kumar"
+    ],
+    "dimensions_mm": [
+     1800.0000715255737,
+     1800.0000715255737
+    ]
+   }
+  },
+  "plaster_damaged": {
+   "size": 2,
+   "hi": 2048,
+   "lo": 1024,
+   "group": "surface",
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/damaged_plaster",
+    "license": "CC0 1.0",
+    "name": "Damaged Plaster",
+    "authors": [
+     "Amal Kumar"
+    ],
+    "dimensions_mm": [
+     1850.0001430511475,
+     1850.0001430511475
+    ]
+   }
+  },
+  "plaster_ochre": {
+   "size": 2,
+   "hi": 1024,
+   "lo": 512,
+   "group": "surface",
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/rough_plaster_broken",
+    "license": "CC0 1.0",
+    "name": "Rough Plaster Broken",
+    "authors": [
+     "Rob Tuytel"
+    ],
+    "dimensions_mm": [
+     1500,
+     1500
+    ]
+   }
+  },
+  "brick_white": {
+   "size": 2,
+   "hi": 1024,
+   "lo": 512,
+   "group": "surface",
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/worn_brick_wall",
+    "license": "CC0 1.0",
+    "name": "Worn Brick Wall",
+    "authors": [
+     "Amal Kumar"
+    ],
+    "dimensions_mm": [
+     2000,
+     2000
+    ]
+   }
+  },
+  "brick_red": {
+   "size": 2,
+   "hi": 1024,
+   "lo": 512,
+   "group": "surface",
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/brick_4",
+    "license": "CC0 1.0",
+    "name": "Brick 4",
+    "authors": [
+     "Rob Tuytel"
+    ],
+    "dimensions_mm": [
+     500,
+     500
+    ]
+   }
+  },
+  "concrete": {
+   "size": 2.5,
+   "hi": 1024,
+   "lo": 512,
+   "group": "surface",
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/concrete_wall_006",
+    "license": "CC0 1.0",
+    "name": "Concrete Wall 006",
+    "authors": [
+     "Dario Barresi",
+     "Charlotte Baglioni"
+    ],
+    "dimensions_mm": [
+     2000,
+     2000
+    ]
+   }
+  },
+  "roof_asbestos": {
+   "size": 2,
+   "hi": 2048,
+   "lo": 1024,
+   "group": "surface",
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/asbestos_sheet",
+    "license": "CC0 1.0",
+    "name": "Asbestos Sheet",
+    "authors": [
+     "Amal Kumar"
+    ],
+    "dimensions_mm": [
+     2000,
+     2000
+    ]
+   }
+  },
+  "roof_tiles": {
+   "size": 2,
+   "hi": 1024,
+   "lo": 512,
+   "group": "surface",
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/roof_tiles_14",
+    "license": "CC0 1.0",
+    "name": "Roof Tiles 14",
+    "authors": [
+     "Rob Tuytel"
+    ],
+    "dimensions_mm": [
+     1500,
+     1500
+    ]
+   }
+  },
+  "corr_rust": {
+   "size": 2,
+   "hi": 1024,
+   "lo": 512,
+   "group": "surface",
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/rusty_corrugated_iron",
+    "license": "CC0 1.0",
+    "name": "Rusty Corrugated Iron",
+    "authors": [
+     "Charlotte Baglioni"
+    ],
+    "dimensions_mm": [
+     2000,
+     2000
+    ]
+   }
+  },
+  "corr_worn": {
+   "size": 2,
+   "hi": 1024,
+   "lo": 512,
+   "group": "surface",
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/worn_corrugated_iron",
+    "license": "CC0 1.0",
+    "name": "Worn Corrugated Iron",
+    "authors": [
+     "Jenelle van Heerden",
+     "Dimitrios Savva"
+    ],
+    "dimensions_mm": [
+     1799.9995946884155,
+     1799.9995946884155
+    ]
+   }
+  },
+  "metal_red": {
+   "size": 2,
+   "hi": 1024,
+   "lo": 512,
+   "group": "surface",
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/rusty_painted_metal",
+    "license": "CC0 1.0",
+    "name": "Rusty Painted Metal",
+    "authors": [
+     "Amal Kumar"
+    ],
+    "dimensions_mm": [
+     2200.000047683716,
+     2200.000047683716
+    ]
+   }
+  },
+  "metal_green": {
+   "size": 2,
+   "hi": 1024,
+   "lo": 512,
+   "group": "surface",
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/green_metal_rust",
+    "license": "CC0 1.0",
+    "name": "Green Metal Rust",
+    "authors": [
+     "Rob Tuytel"
+    ],
+    "dimensions_mm": [
+     1000,
+     1000
+    ]
+   }
+  },
+  "metal_white": {
+   "size": 2,
+   "hi": 1024,
+   "lo": 512,
+   "group": "surface",
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/rusty_metal_02",
+    "license": "CC0 1.0",
+    "name": "Rusty Metal 02",
+    "authors": [
+     "Rob Tuytel"
+    ],
+    "dimensions_mm": [
+     1000,
+     1000
+    ]
+   }
+  },
+  "wood_weathered": {
+   "size": 2,
+   "hi": 1024,
+   "lo": 512,
+   "group": "surface",
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/weathered_planks",
+    "license": "CC0 1.0",
+    "name": "Weathered Planks",
+    "authors": [
+     "Dario Barresi",
+     "Dimitrios Savva"
+    ],
+    "dimensions_mm": [
+     2000,
+     2000
+    ]
+   }
+  },
+  "wood_painted": {
+   "size": 2,
+   "hi": 1024,
+   "lo": 512,
+   "group": "surface",
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/wood_peeling_paint_weathered",
+    "license": "CC0 1.0",
+    "name": "Wood Peeling Paint Weathered",
+    "authors": [
+     "Rob Tuytel",
+     "Dimitrios Savva"
+    ],
+    "dimensions_mm": [
+     761.9999647140503,
+     762.0000243186951
+    ]
+   }
+  },
+  "floor_wood": {
+   "size": 2,
+   "hi": 1024,
+   "lo": 512,
+   "group": "surface",
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/old_wood_floor",
+    "license": "CC0 1.0",
+    "name": "Old Wood Floor",
+    "authors": [
+     "Guillaume Monsergent"
+    ],
+    "dimensions_mm": [
+     3000,
+     3000
+    ]
+   }
+  },
+  "wall_interior": {
+   "size": 2,
+   "hi": 1024,
+   "lo": 512,
+   "group": "surface",
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/peeling_painted_wall",
+    "license": "CC0 1.0",
+    "name": "Peeling Painted Wall",
+    "authors": [
+     "Dimitrios Savva"
+    ],
+    "dimensions_mm": [
+     1800.0000715255737,
+     1800.0000715255737
+    ]
+   }
+  },
+  "canvas": {
+   "size": 1,
+   "hi": 1024,
+   "lo": 512,
+   "group": "surface",
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/rough_linen",
+    "license": "CC0 1.0",
+    "name": "Rough Linen",
+    "authors": [
+     "colormass",
+     "Rico Cilliers"
+    ],
+    "dimensions_mm": [
+     270.7081392676629,
+     271.29998803138733
+    ]
+   }
+  },
+  "burlap": {
+   "size": 0.5,
+   "hi": 1024,
+   "lo": 512,
+   "group": "surface",
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/hessian_230",
+    "license": "CC0 1.0",
+    "name": "Hessian 230",
+    "authors": [
+     "colormass",
+     "Rico Cilliers"
+    ],
+    "dimensions_mm": [
+     268.7538661074732,
+     267.1999931335449
+    ]
+   }
+  },
+  "bark_pine": {
+   "size": 1,
+   "hi": 1024,
+   "lo": 512,
+   "group": "surface",
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/pine_bark",
+    "license": "CC0 1.0",
+    "name": "Pine Bark",
+    "authors": [
+     "Dimitrios Savva"
+    ],
+    "dimensions_mm": [
+     1999.9996423721313,
+     1999.9996423721313
+    ]
+   }
+  },
+  "bark_oak": {
+   "size": 1,
+   "hi": 1024,
+   "lo": 512,
+   "group": "surface",
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/bark_brown_02",
+    "license": "CC0 1.0",
+    "name": "Bark Brown 02",
+    "authors": [
+     "Rob Tuytel"
+    ],
+    "dimensions_mm": [
+     999.9990463256836,
+     999.998927116394
+    ]
+   }
+  },
+  "bark_dead": {
+   "size": 1,
+   "hi": 1024,
+   "lo": 512,
+   "group": "surface",
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/bark_willow",
+    "license": "CC0 1.0",
+    "name": "Bark Willow",
+    "authors": [
+     "Dario Barresi",
+     "Dimitrios Savva"
+    ],
+    "dimensions_mm": [
+     1000,
+     1000
+    ]
+   }
+  },
+  "denim": {
+   "size": 0.5,
+   "hi": 512,
+   "lo": 256,
+   "group": "surface",
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/denim_fabric",
+    "license": "CC0 1.0",
+    "name": "Denim Fabric",
+    "authors": [
+     "Rob Tuytel"
+    ],
+    "dimensions_mm": [
+     100.00000149011612,
+     99.99999403953552
+    ]
+   }
+  },
+  "wool": {
+   "size": 0.5,
+   "hi": 512,
+   "lo": 256,
+   "group": "surface",
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/caban",
+    "license": "CC0 1.0",
+    "name": "Caban",
+    "authors": [
+     "colormass",
+     "Rico Cilliers"
+    ],
+    "dimensions_mm": [
+     273.9921411828764,
+     273.2999920845032
+    ]
+   }
+  },
+  "leather": {
+   "size": 0.5,
+   "hi": 512,
+   "lo": 256,
+   "group": "surface",
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/brown_leather",
+    "license": "CC0 1.0",
+    "name": "Brown Leather",
+    "authors": [
+     "Rob Tuytel"
+    ],
+    "dimensions_mm": [
+     400.0000059604645,
+     400.00003576278687
+    ]
+   }
+  }
+ },
+ "atlases": {
+  "fir_twig": {
+   "hi": 2048,
+   "lo": 1024,
+   "dry": false,
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/fir_tree_01",
+    "license": "CC0 1.0",
+    "name": "Fir Tree 01",
+    "authors": [
+     "Rob Tuytel",
+     "Rico Cilliers"
+    ],
+    "dimensions_mm": [
+     26732.96093940735,
+     6541.954040527344,
+     19267.957717180252
+    ]
+   },
+   "sprites": [
+    {
+     "u0": 0,
+     "v0": 0,
+     "u1": 0.2051,
+     "v1": 1,
+     "fill": 0.74
+    },
+    {
+     "u0": 0.3066,
+     "v0": 0.4063,
+     "u1": 0.6406,
+     "v1": 0.7754,
+     "fill": 0.215
+    },
+    {
+     "u0": 0.6367,
+     "v0": 0.4531,
+     "u1": 0.9551,
+     "v1": 0.8301,
+     "fill": 0.17
+    },
+    {
+     "u0": 0.6523,
+     "v0": 0.043,
+     "u1": 0.9355,
+     "v1": 0.3691,
+     "fill": 0.149
+    },
+    {
+     "u0": 0.1895,
+     "v0": 0.0488,
+     "u1": 0.4277,
+     "v1": 0.3125,
+     "fill": 0.155
+    },
+    {
+     "u0": 0.3184,
+     "v0": 0.7109,
+     "u1": 0.9805,
+     "v1": 1,
+     "fill": 0.049
+    },
+    {
+     "u0": 0.4941,
+     "v0": 0.2617,
+     "u1": 0.6309,
+     "v1": 0.4004,
+     "fill": 0.29
+    },
+    {
+     "u0": 0.5391,
+     "v0": 0.0996,
+     "u1": 0.5879,
+     "v1": 0.2285,
+     "fill": 0.361
+    },
+    {
+     "u0": 0.3867,
+     "v0": 0.291,
+     "u1": 0.457,
+     "v1": 0.3828,
+     "fill": 0.343
+    },
+    {
+     "u0": 0.2422,
+     "v0": 0.8066,
+     "u1": 0.2891,
+     "v1": 1,
+     "fill": 0.208
+    }
+   ]
+  },
+  "broadleaf": {
+   "hi": 2048,
+   "lo": 1024,
+   "dry": false,
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/tree_small_02",
+    "license": "CC0 1.0",
+    "name": "Tree Small 02",
+    "authors": [
+     "Rico Cilliers"
+    ],
+    "dimensions_mm": [
+     2921.434998512268,
+     4292.873501777649,
+     4649.933725595474
+    ]
+   },
+   "sprites": [
+    {
+     "u0": 0,
+     "v0": 0,
+     "u1": 1,
+     "v1": 1,
+     "fill": 0.463
+    },
+    {
+     "u0": 0,
+     "v0": 0,
+     "u1": 0.3828,
+     "v1": 0.2988,
+     "fill": 0.322
+    },
+    {
+     "u0": 0.0508,
+     "v0": 0.6875,
+     "u1": 0.252,
+     "v1": 0.8535,
+     "fill": 0.441
+    },
+    {
+     "u0": 0.2344,
+     "v0": 0.748,
+     "u1": 0.4414,
+     "v1": 0.873,
+     "fill": 0.498
+    },
+    {
+     "u0": 0,
+     "v0": 0.8457,
+     "u1": 0.2285,
+     "v1": 1,
+     "fill": 0.274
+    },
+    {
+     "u0": 0.1934,
+     "v0": 0,
+     "u1": 0.3711,
+     "v1": 0.1445,
+     "fill": 0.253
+    }
+   ]
+  },
+  "grass_cards": {
+   "hi": 2048,
+   "lo": 1024,
+   "dry": true,
+   "source": {
+    "source": "Poly Haven",
+    "url": "https://polyhaven.com/a/grass_medium_01",
+    "license": "CC0 1.0",
+    "name": "Grass Medium 01",
+    "authors": [
+     "Rob Tuytel",
+     "Rico Cilliers"
+    ],
+    "dimensions_mm": [
+     7266.327619552612,
+     1259.2098712921143,
+     1177.0583391189575
+    ]
+   },
+   "sprites": [
+    {
+     "u0": 0.0215,
+     "v0": 0.248,
+     "u1": 0.8281,
+     "v1": 0.7891,
+     "fill": 0.104
+    },
+    {
+     "u0": 0.7637,
+     "v0": 0.0645,
+     "u1": 0.957,
+     "v1": 0.6582,
+     "fill": 0.32
+    },
+    {
+     "u0": 0.207,
+     "v0": 0.748,
+     "u1": 0.4961,
+     "v1": 0.9043,
+     "fill": 0.347
+    },
+    {
+     "u0": 0.252,
+     "v0": 0,
+     "u1": 0.8301,
+     "v1": 0.3672,
+     "fill": 0.072
+    },
+    {
+     "u0": 0.5918,
+     "v0": 0.7578,
+     "u1": 0.9141,
+     "v1": 0.8633,
+     "fill": 0.275
+    },
+    {
+     "u0": 0.25,
+     "v0": 0.8906,
+     "u1": 0.4961,
+     "v1": 1,
+     "fill": 0.276
+    },
+    {
+     "u0": 0.0234,
+     "v0": 0.002,
+     "u1": 0.3457,
+     "v1": 0.4883,
+     "fill": 0.047
+    },
+    {
+     "u0": 0.5645,
+     "v0": 0.2949,
+     "u1": 0.6699,
+     "v1": 0.6445,
+     "fill": 0.19
+    },
+    {
+     "u0": 0.5977,
+     "v0": 0.8633,
+     "u1": 0.7891,
+     "v1": 1,
+     "fill": 0.265
+    },
+    {
+     "u0": 0.0332,
+     "v0": 0.8711,
+     "u1": 0.1895,
+     "v1": 1,
+     "fill": 0.242
+    },
+    {
+     "u0": 0.7285,
+     "v0": 0.1602,
+     "u1": 0.7734,
+     "v1": 0.5625,
+     "fill": 0.234
+    },
+    {
+     "u0": 0.7129,
+     "v0": 0.2148,
+     "u1": 0.7461,
+     "v1": 0.5898,
+     "fill": 0.311
+    },
+    {
+     "u0": 0.4805,
+     "v0": 0.8477,
+     "u1": 0.5449,
+     "v1": 0.9023,
+     "fill": 0.464
+    }
+   ]
+  },
+  "birch_leaves": {
+   "hi": 1024,
+   "lo": 512,
+   "dry": false,
+   "source": {
+    "source": "ambientCG",
+    "url": "https://ambientcg.com/view?id=LeafSet009",
+    "license": "CC0 1.0",
+    "name": "LeafSet009",
+    "authors": [
+     "Lennart Demes (ambientCG)"
+    ]
+   },
+   "sprites": [
+    {
+     "u0": 0.3594,
+     "v0": 0.0371,
+     "u1": 0.6387,
+     "v1": 0.4727,
+     "fill": 0.7
+    },
+    {
+     "u0": 0.6875,
+     "v0": 0.0547,
+     "u1": 0.9551,
+     "v1": 0.4707,
+     "fill": 0.691
+    },
+    {
+     "u0": 0.6934,
+     "v0": 0.5469,
+     "u1": 0.9727,
+     "v1": 0.9414,
+     "fill": 0.68
+    },
+    {
+     "u0": 0.0273,
+     "v0": 0.041,
+     "u1": 0.3066,
+     "v1": 0.4512,
+     "fill": 0.653
+    },
+    {
+     "u0": 0.0234,
+     "v0": 0.5625,
+     "u1": 0.3125,
+     "v1": 0.9277,
+     "fill": 0.628
+    },
+    {
+     "u0": 0.375,
+     "v0": 0.5371,
+     "u1": 0.6152,
+     "v1": 0.9316,
+     "fill": 0.669
+    }
+   ]
+  },
+  "leaf_clusters": {
+   "hi": 2048,
+   "lo": 1024,
+   "sprites": [
+    {
+     "u0": 0,
+     "v0": 0,
+     "u1": 0.5,
+     "v1": 0.5,
+     "kind": "birch"
+    },
+    {
+     "u0": 0.5,
+     "v0": 0,
+     "u1": 1,
+     "v1": 0.5,
+     "kind": "birch"
+    },
+    {
+     "u0": 0,
+     "v0": 0.5,
+     "u1": 0.5,
+     "v1": 1,
+     "kind": "broad"
+    },
+    {
+     "u0": 0.5,
+     "v0": 0.5,
+     "u1": 1,
+     "v1": 1,
+     "kind": "broad"
+    }
+   ],
+   "source": {
+    "source": "derived from ambientCG LeafSet009",
+    "license": "CC0 1.0",
+    "url": "https://ambientcg.com/view?id=LeafSet009"
+   }
+  }
+ },
+ "decals": {
+  "leak": {
+   "hi": 1024,
+   "lo": 512,
+   "source": {
+    "source": "ambientCG",
+    "url": "https://ambientcg.com/view?id=Leaking004",
+    "license": "CC0 1.0",
+    "name": "Leaking004",
+    "authors": [
+     "Lennart Demes (ambientCG)"
+    ]
+   }
+  },
+  "roadlines": {
+   "hi": 1024,
+   "lo": 512,
+   "source": {
+    "source": "ambientCG",
+    "url": "https://ambientcg.com/view?id=RoadLines007",
+    "license": "CC0 1.0",
+    "name": "RoadLines007",
+    "authors": [
+     "Lennart Demes (ambientCG)"
+    ]
+   }
+  }
+ }
+}

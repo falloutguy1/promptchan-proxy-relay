@@ -1,0 +1,6 @@
+[
+  { "name": "tree_birch", "time": 10.5, "eval": "window.__wl.lookAtTree('birch', 40, 60, 16)", "frames": 3 },
+  { "name": "tree_conifer", "time": 10.5, "eval": "window.__wl.lookAtTree('conifer', -200, -150, 20)", "frames": 3 },
+  { "name": "tree_oak", "time": 10.5, "eval": "window.__wl.lookAtTree('oak', 0, 120, 18)", "frames": 3 },
+  { "name": "forest_edge", "time": 10.5, "view": { "pos": [-120, 2.0, -60], "target": [-200, 8, -140], "fov": 50 }, "frames": 3 }
+]

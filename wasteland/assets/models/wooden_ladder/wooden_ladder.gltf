@@ -1,0 +1,379 @@
+{
+  "asset": {
+    "generator": "glTF-Transform v4.5.0",
+    "version": "2.0"
+  },
+  "accessors": [
+    {
+      "type": "SCALAR",
+      "componentType": 5123,
+      "count": 14424,
+      "normalized": false,
+      "byteOffset": 0,
+      "bufferView": 0
+    },
+    {
+      "type": "SCALAR",
+      "componentType": 5123,
+      "count": 11052,
+      "normalized": false,
+      "byteOffset": 28848,
+      "bufferView": 0
+    },
+    {
+      "type": "VEC3",
+      "componentType": 5122,
+      "count": 3878,
+      "max": [
+        13069,
+        32767,
+        13401
+      ],
+      "min": [
+        -13069,
+        -32767,
+        -13401
+      ],
+      "normalized": true,
+      "byteOffset": 0,
+      "bufferView": 1
+    },
+    {
+      "type": "VEC3",
+      "componentType": 5122,
+      "count": 3878,
+      "normalized": true,
+      "byteOffset": 0,
+      "bufferView": 2
+    },
+    {
+      "type": "VEC2",
+      "componentType": 5123,
+      "count": 3878,
+      "normalized": true,
+      "byteOffset": 0,
+      "bufferView": 3
+    },
+    {
+      "type": "VEC3",
+      "componentType": 5122,
+      "count": 3348,
+      "max": [
+        14157,
+        32767,
+        12273
+      ],
+      "min": [
+        -14157,
+        -32767,
+        -12273
+      ],
+      "normalized": true,
+      "byteOffset": 0,
+      "bufferView": 4
+    },
+    {
+      "type": "VEC3",
+      "componentType": 5122,
+      "count": 3348,
+      "normalized": true,
+      "byteOffset": 0,
+      "bufferView": 5
+    },
+    {
+      "type": "VEC2",
+      "componentType": 5123,
+      "count": 3348,
+      "normalized": true,
+      "byteOffset": 0,
+      "bufferView": 6
+    }
+  ],
+  "bufferViews": [
+    {
+      "buffer": 1,
+      "byteOffset": 0,
+      "byteLength": 50952,
+      "target": 34963,
+      "extensions": {
+        "EXT_meshopt_compression": {
+          "buffer": 0,
+          "byteOffset": 0,
+          "byteLength": 9494,
+          "mode": "TRIANGLES",
+          "byteStride": 2,
+          "count": 25476
+        }
+      }
+    },
+    {
+      "buffer": 1,
+      "byteOffset": 50952,
+      "byteLength": 31024,
+      "target": 34962,
+      "byteStride": 8,
+      "extensions": {
+        "EXT_meshopt_compression": {
+          "buffer": 0,
+          "byteOffset": 9496,
+          "byteLength": 12883,
+          "mode": "ATTRIBUTES",
+          "byteStride": 8,
+          "count": 3878
+        }
+      }
+    },
+    {
+      "buffer": 1,
+      "byteOffset": 81976,
+      "byteLength": 31024,
+      "target": 34962,
+      "byteStride": 8,
+      "extensions": {
+        "EXT_meshopt_compression": {
+          "buffer": 0,
+          "byteOffset": 22380,
+          "byteLength": 13524,
+          "mode": "ATTRIBUTES",
+          "byteStride": 8,
+          "count": 3878
+        }
+      }
+    },
+    {
+      "buffer": 1,
+      "byteOffset": 113000,
+      "byteLength": 15512,
+      "target": 34962,
+      "byteStride": 4,
+      "extensions": {
+        "EXT_meshopt_compression": {
+          "buffer": 0,
+          "byteOffset": 35904,
+          "byteLength": 9839,
+          "mode": "ATTRIBUTES",
+          "byteStride": 4,
+          "count": 3878
+        }
+      }
+    },
+    {
+      "buffer": 1,
+      "byteOffset": 128512,
+      "byteLength": 26784,
+      "target": 34962,
+      "byteStride": 8,
+      "extensions": {
+        "EXT_meshopt_compression": {
+          "buffer": 0,
+          "byteOffset": 45744,
+          "byteLength": 11465,
+          "mode": "ATTRIBUTES",
+          "byteStride": 8,
+          "count": 3348
+        }
+      }
+    },
+    {
+      "buffer": 1,
+      "byteOffset": 155296,
+      "byteLength": 26784,
+      "target": 34962,
+      "byteStride": 8,
+      "extensions": {
+        "EXT_meshopt_compression": {
+          "buffer": 0,
+          "byteOffset": 57212,
+          "byteLength": 13423,
+          "mode": "ATTRIBUTES",
+          "byteStride": 8,
+          "count": 3348
+        }
+      }
+    },
+    {
+      "buffer": 1,
+      "byteOffset": 182080,
+      "byteLength": 13392,
+      "target": 34962,
+      "byteStride": 4,
+      "extensions": {
+        "EXT_meshopt_compression": {
+          "buffer": 0,
+          "byteOffset": 70636,
+          "byteLength": 9001,
+          "mode": "ATTRIBUTES",
+          "byteStride": 4,
+          "count": 3348
+        }
+      }
+    }
+  ],
+  "samplers": [
+    {
+      "magFilter": 9729,
+      "minFilter": 9987,
+      "wrapS": 10497,
+      "wrapT": 10497
+    }
+  ],
+  "textures": [
+    {
+      "sampler": 0,
+      "extensions": {
+        "KHR_texture_basisu": {
+          "source": 1
+        }
+      }
+    },
+    {
+      "sampler": 0,
+      "extensions": {
+        "KHR_texture_basisu": {
+          "source": 0
+        }
+      }
+    },
+    {
+      "sampler": 0,
+      "extensions": {
+        "KHR_texture_basisu": {
+          "source": 2
+        }
+      }
+    }
+  ],
+  "images": [
+    {
+      "name": "wooden_ladder_nor_gl",
+      "mimeType": "image/ktx2",
+      "uri": "t0_normal.ktx2"
+    },
+    {
+      "name": "wooden_ladder_diff",
+      "mimeType": "image/ktx2",
+      "uri": "t1_color.ktx2"
+    },
+    {
+      "name": "wooden_ladder_metal-wooden_ladder_rough",
+      "mimeType": "image/ktx2",
+      "uri": "t2_linear.ktx2"
+    }
+  ],
+  "buffers": [
+    {
+      "uri": "wooden_ladder.bin",
+      "byteLength": 79640
+    },
+    {
+      "byteLength": 195472,
+      "extensions": {
+        "EXT_meshopt_compression": {
+          "fallback": true
+        }
+      }
+    }
+  ],
+  "materials": [
+    {
+      "name": "wooden_ladder",
+      "extras": {
+        "xyNormal": true
+      },
+      "doubleSided": true,
+      "pbrMetallicRoughness": {
+        "baseColorTexture": {
+          "index": 0
+        },
+        "metallicRoughnessTexture": {
+          "index": 2
+        }
+      },
+      "normalTexture": {
+        "index": 1
+      }
+    }
+  ],
+  "meshes": [
+    {
+      "name": "wooden_step_ladder_02",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 2,
+            "NORMAL": 3,
+            "TEXCOORD_0": 4
+          },
+          "mode": 4,
+          "material": 0,
+          "indices": 0
+        }
+      ]
+    },
+    {
+      "name": "wooden_step_ladder_01",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 5,
+            "NORMAL": 6,
+            "TEXCOORD_0": 7
+          },
+          "mode": 4,
+          "material": 0,
+          "indices": 1
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "name": "wooden_ladder_supports",
+      "translation": [
+        0.2319403924047947,
+        0.6076592579483986,
+        -1.4901161193847656e-8
+      ],
+      "scale": [
+        0.6076592579483986,
+        0.6076592579483986,
+        0.6076592579483986
+      ],
+      "mesh": 0
+    },
+    {
+      "name": "wooden_ladder_steps",
+      "translation": [
+        -0.19649741053581238,
+        0.667461633682251,
+        5.21540641784668e-8
+      ],
+      "scale": [
+        0.667461633682251,
+        0.667461633682251,
+        0.667461633682251
+      ],
+      "mesh": 1
+    }
+  ],
+  "scenes": [
+    {
+      "name": "Scene",
+      "nodes": [
+        0,
+        1
+      ]
+    }
+  ],
+  "scene": 0,
+  "extensionsUsed": [
+    "EXT_meshopt_compression",
+    "KHR_mesh_quantization",
+    "KHR_texture_basisu"
+  ],
+  "extensionsRequired": [
+    "EXT_meshopt_compression",
+    "KHR_mesh_quantization",
+    "KHR_texture_basisu"
+  ]
+}

@@ -1,0 +1,7 @@
+[
+  { "name": "wide_town", "time": 10.5, "rts": [-20, 0, 190, 0.7, 0.1], "frames": 3 },
+  { "name": "rts_default", "time": 10.5, "rts": [0, -30, 70, 0.6, 0], "frames": 3 },
+  { "name": "eye_road", "time": 10.5, "view": { "pos": [-10, 1.7, 22], "target": [60, 1.2, 5], "fov": 55 }, "frames": 3 },
+  { "name": "eye_pond", "time": 10.5, "view": { "pos": [-140, 1.7, 70], "target": [-170, 0.0, 95], "fov": 55 }, "frames": 3 },
+  { "name": "close_ground", "time": 10.5, "view": { "pos": [-60, 2.2, 22], "target": [-60, 0, 16], "fov": 50 }, "frames": 3 }
+]

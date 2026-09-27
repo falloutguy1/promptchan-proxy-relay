@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#14120e">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="Rustwater: a post-apocalyptic colony builder. Command the survivors yourself or hand the settlement to the AI Overseer.">
+  <title>Rustwater Colony</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Barlow:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="css/game.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./vendor/three/build/three.module.js",
+      "three/addons/": "./vendor/three/examples/jsm/",
+      "three/examples/jsm/": "./vendor/three/examples/jsm/",
+      "postprocessing": "./vendor/postprocessing/index.js",
+      "n8ao": "./vendor/n8ao/N8AO.js"
+    }
+  }
+  </script>
+</head>
+<body>
+  <canvas id="view" tabindex="0" aria-label="Game view"></canvas>
+
+  <!-- HUD (hidden until a game starts) -->
+  <div id="hud" class="hidden" aria-live="polite">
+    <header id="topbar">
+      <div class="tb-left">
+        <button class="icon-btn" id="btn-menu" title="Menu (Esc)" aria-label="Menu"><svg><use href="#i-menu"/></svg></button>
+        <div class="clock">
+          <span id="hud-day">Day 1</span>
+          <span id="hud-time">06:00</span>
+          <span id="hud-weather" class="weather"></span>
+        </div>
+      </div>
+      <div id="resources" class="tb-res"></div>
+      <div class="tb-right">
+        <div class="speed" role="group" aria-label="Game speed">
+          <button data-speed="0" title="Pause (Space)"><svg><use href="#i-pause"/></svg></button>
+          <button data-speed="1" title="Normal speed (1)" class="on"><svg><use href="#i-play"/></svg></button>
+          <button data-speed="2" title="Fast (2)"><svg><use href="#i-ff"/></svg></button>
+          <button data-speed="4" title="Fastest (3)"><svg><use href="#i-fff"/></svg></button>
+        </div>
+        <button id="btn-ai" class="ai-toggle" title="Toggle AI Overseer (Tab)"><span class="dot"></span><span class="lbl">AI Overseer</span><span class="state">OFF</span></button>
+      </div>
+    </header>
+
+    <div id="alerts"></div>
+    <div id="objective" class="panel slim"></div>
+
+    <aside id="side-panel" class="panel hidden"></aside>
+
+    <section id="ai-log" class="panel collapsed">
+      <header><svg><use href="#i-brain"/></svg><span>Overseer log</span><button class="mini" id="ai-log-toggle" aria-label="Expand log">▴</button></header>
+      <ol id="ai-log-list"></ol>
+    </section>
+
+    <div id="minimap-wrap" class="panel"><canvas id="minimap" width="200" height="200"></canvas></div>
+
+    <nav id="buildbar" class="panel">
+      <div id="build-cats" role="tablist"></div>
+      <div id="build-items"></div>
+    </nav>
+
+    <div id="place-confirm" class="hidden">
+      <button id="place-rotate" class="round" aria-label="Rotate"><svg><use href="#i-rotate"/></svg></button>
+      <button id="place-ok" class="round ok" aria-label="Place"><svg><use href="#i-check"/></svg></button>
+      <button id="place-cancel" class="round no" aria-label="Cancel"><svg><use href="#i-x"/></svg></button>
+    </div>
+
+    <!-- mobile controls -->
+    <nav id="mobilebar">
+      <button data-m="build"><svg><use href="#i-hammer"/></svg><span>Build</span></button>
+      <button data-m="colony"><svg><use href="#i-people"/></svg><span>Colony</span></button>
+      <button data-m="ai"><svg><use href="#i-brain"/></svg><span>AI</span></button>
+      <button data-m="speed"><svg><use href="#i-play"/></svg><span>1×</span></button>
+      <button data-m="map"><svg><use href="#i-map"/></svg><span>Map</span></button>
+    </nav>
+    <div id="walk-ui" class="hidden">
+      <div id="stick" class="stick"><div class="knob"></div></div>
+      <button id="walk-exit" class="round"><svg><use href="#i-x"/></svg></button>
+      <div class="walk-hint">Survivor view · WASD / stick to move · drag to look · Esc to exit</div>
+    </div>
+    <div id="tooltip" class="hidden"></div>
+  </div>
+
+  <!-- Main menu -->
+  <div id="menu" class="overlay hidden">
+    <div class="menu-inner">
+      <div class="brand">
+        <div class="brand-mark"><svg><use href="#i-logo"/></svg></div>
+        <h1>RUSTWATER</h1>
+        <p class="tag">Nine years after the collapse. One crossroads. Whoever holds it, lives.</p>
+      </div>
+      <div id="menu-main" class="menu-page">
+        <button class="menu-btn primary" data-go="new">New colony</button>
+        <button class="menu-btn" data-go="continue" id="btn-continue">Continue</button>
+        <button class="menu-btn" data-go="settings">Settings</button>
+        <button class="menu-btn" data-go="credits">Credits &amp; licences</button>
+      </div>
+      <div id="menu-new" class="menu-page hidden">
+        <h2>Who runs the settlement?</h2>
+        <div class="mode-cards">
+          <button class="mode-card" data-mode="human">
+            <svg><use href="#i-hand"/></svg>
+            <h3>You command</h3>
+            <p>Place every building, assign every survivor, send the scavenging runs and decide who holds the wall when the dead come.</p>
+          </button>
+          <button class="mode-card" data-mode="ai">
+            <svg><use href="#i-brain"/></svg>
+            <h3>AI Overseer</h3>
+            <p>An autonomous planner runs the colony and explains each decision in the log. Watch, take over any time with Tab.</p>
+          </button>
+        </div>
+        <div class="row">
+          <label>Difficulty</label>
+          <div class="seg" id="difficulty">
+            <button data-v="easy">Scavenger</button>
+            <button data-v="normal" class="on">Survivor</button>
+            <button data-v="hard">Dead zone</button>
+          </div>
+        </div>
+        <div class="row">
+          <button class="menu-btn" data-go="main">Back</button>
+          <button class="menu-btn primary" id="btn-start" disabled>Start</button>
+        </div>
+      </div>
+      <div id="menu-settings" class="menu-page hidden"></div>
+      <div id="menu-credits" class="menu-page hidden"></div>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div id="loading" class="overlay">
+    <div class="load-inner">
+      <div class="brand small">
+        <div class="brand-mark"><svg><use href="#i-logo"/></svg></div>
+        <h1>RUSTWATER</h1>
+      </div>
+      <div class="bar"><div id="load-fill"></div></div>
+      <div id="load-label">Starting…</div>
+      <div id="load-detail"></div>
+      <p class="load-tip" id="load-tip"></p>
+    </div>
+  </div>
+
+  <!-- Fatal / asset errors -->
+  <div id="error" class="overlay hidden" role="alertdialog" aria-labelledby="err-title">
+    <div class="err-inner panel">
+      <h2 id="err-title">Something went wrong</h2>
+      <p id="err-msg"></p>
+      <pre id="err-detail"></pre>
+      <div class="row">
+        <button class="menu-btn" id="err-low">Retry on Low quality</button>
+        <button class="menu-btn primary" id="err-reload">Reload</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="perf" class="hidden"></div>
+
+  <noscript><div class="overlay"><p>Rustwater needs JavaScript and WebGL2.</p></div></noscript>
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-logo" viewBox="0 0 64 64"><path d="M32 4 58 18v28L32 60 6 46V18Z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M20 44V24l12-7 12 7v20M26 44V32h12v12" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="32" cy="26" r="2.5" fill="currentColor"/></symbol>
+      <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></symbol>
+      <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 5l12 7-12 7z" fill="currentColor"/></symbol>
+      <symbol id="i-ff" viewBox="0 0 24 24"><path d="M3 5l9 7-9 7zM12 5l9 7-9 7z" fill="currentColor"/></symbol>
+      <symbol id="i-fff" viewBox="0 0 24 24"><path d="M1 6l7 6-7 6zM8 6l7 6-7 6zM15 6l7 6-7 6z" fill="currentColor"/></symbol>
+      <symbol id="i-brain" viewBox="0 0 24 24"><path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 3 3h1V4zM15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-3 3h-1V4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+      <symbol id="i-hand" viewBox="0 0 24 24"><path d="M8 13V5a1.5 1.5 0 0 1 3 0v6m0-7a1.5 1.5 0 0 1 3 0v7m0-5a1.5 1.5 0 0 1 3 0v8c0 4-3 7-7 7-3 0-5-2-6-4l-2-4a1.5 1.5 0 0 1 2.6-1.5L8 15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-hammer" viewBox="0 0 24 24"><path d="M14 4l6 6-3 3-6-6zM11 7 3 15l3 3 8-8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+      <symbol id="i-people" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3 20c0-4 3-6 6-6s6 2 6 6M16 11a3 3 0 1 0 0-6M17 14c2.5.5 4 2.5 4 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+      <symbol id="i-map" viewBox="0 0 24 24"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+      <symbol id="i-rotate" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-3-6.2M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></symbol>
+      <symbol id="r-food" viewBox="0 0 24 24"><rect x="6" y="5" width="12" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M6 9h12M6 16h12" stroke="currentColor" stroke-width="1.5"/></symbol>
+      <symbol id="r-water" viewBox="0 0 24 24"><path d="M12 3s6 7 6 11a6 6 0 0 1-12 0c0-4 6-11 6-11z" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+      <symbol id="r-wood" viewBox="0 0 24 24"><ellipse cx="6.5" cy="12" rx="3" ry="5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M6.5 7H18c2 0 3 2.2 3 5s-1 5-3 5H6.5" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+      <symbol id="r-scrap" viewBox="0 0 24 24"><path d="M12 3l2 3 3.5-.5.5 3.5 3 2-2 3 .5 3.5-3.5.5-2 3-3-2-3 2-2-3-3.5-.5.5-3.5-2-3 3-2 .5-3.5L10 6z" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+      <symbol id="r-meds" viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 9v7M8.5 12.5h7" stroke="currentColor" stroke-width="2"/></symbol>
+      <symbol id="r-ammo" viewBox="0 0 24 24"><path d="M7 20V9l2-5 2 5v11zM13 20V9l2-5 2 5v11z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+      <symbol id="r-fuel" viewBox="0 0 24 24"><path d="M6 5h9l3 3v12H6zM9 5V3h4v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 11l6 6M15 11l-6 6" stroke="currentColor" stroke-width="1.4"/></symbol>
+      <symbol id="r-pop" viewBox="0 0 24 24"><circle cx="12" cy="7" r="3.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M5 21c0-5 3-8 7-8s7 3 7 8" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+      <symbol id="r-morale" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8.5 14.5c1 1.5 2 2 3.5 2s2.5-.5 3.5-2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="9" cy="10" r="1.1" fill="currentColor"/><circle cx="15" cy="10" r="1.1" fill="currentColor"/></symbol>
+      <symbol id="r-defense" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+      <symbol id="r-power" viewBox="0 0 24 24"><path d="M13 2 5 14h6l-1 8 8-12h-6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+      <symbol id="w-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" stroke="currentColor" stroke-width="1.6"/></symbol>
+      <symbol id="w-cloud" viewBox="0 0 24 24"><path d="M7 18a4 4 0 0 1 0-8 5 5 0 0 1 9.6-1.5A4 4 0 1 1 17 18z" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+      <symbol id="w-rain" viewBox="0 0 24 24"><path d="M7 14a4 4 0 0 1 0-8 5 5 0 0 1 9.6-1.5A4 4 0 1 1 17 14z" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 17l-1 3M12 17l-1 3M16 17l-1 3" stroke="currentColor" stroke-width="1.6"/></symbol>
+      <symbol id="w-fog" viewBox="0 0 24 24"><path d="M4 9h16M2 13h18M5 17h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+      <symbol id="w-moon" viewBox="0 0 24 24"><path d="M15 3a8 8 0 1 0 6 13A7 7 0 0 1 15 3z" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+    </defs>
+  </svg>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
