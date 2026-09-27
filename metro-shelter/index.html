@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Metro Shelter — Station Zarya</title>
+<link rel="stylesheet" href="src/style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/build/three.module.js",
+    "three/addons/": "./vendor/three/addons/"
+  }
+}
+</script>
+</head>
+<body>
+<canvas id="view"></canvas>
+
+<div id="loading" class="screen">
+  <div class="load-box">
+    <h1>STATION ZARYA</h1>
+    <p class="sub">Metro Shelter · Line 2 · Depth 46 m</p>
+    <div class="bar"><div id="load-fill"></div></div>
+    <p id="load-text">Starting…</p>
+    <ul id="load-errors"></ul>
+  </div>
+</div>
+
+<div id="start" class="screen hidden">
+  <div class="load-box">
+    <h1>STATION ZARYA</h1>
+    <p class="sub">You are the Overseer of the last shelter on Line 2.</p>
+    <ul class="howto">
+      <li>Keep <b>Power</b>, <b>Water</b> and <b>Food</b> above zero. Everyone consumes them.</li>
+      <li>Walk to a room and press <kbd>E</kbd> to collect what it has produced.</li>
+      <li>Press <kbd>Tab</kbd> for the shelter overview: assign dwellers and upgrade rooms with <b>military-grade rounds</b>.</li>
+      <li>Rats come up the tunnels. <kbd>LMB</kbd> fires, <kbd>R</kbd> reloads, <kbd>F</kbd> flashlight, <kbd>H</kbd> medkit.</li>
+      <li>Search crates for rounds, scrap and medkits. Survive 10 days.</li>
+    </ul>
+    <button id="btn-start">Enter the station</button>
+    <p class="small">WASD move · Shift run · C crouch · Esc pause/settings</p>
+  </div>
+</div>
+
+<div id="hud" class="hidden">
+  <div id="res">
+    <div class="r" id="r-power"><span class="lab">POWER</span><div class="meter"><i></i></div><span class="val"></span></div>
+    <div class="r" id="r-water"><span class="lab">WATER</span><div class="meter"><i></i></div><span class="val"></span></div>
+    <div class="r" id="r-food"><span class="lab">FOOD</span><div class="meter"><i></i></div><span class="val"></span></div>
+  </div>
+  <div id="meta">
+    <div><span class="lab">DAY</span> <b id="m-day">1</b> <span id="m-clock"></span></div>
+    <div><span class="lab">DWELLERS</span> <b id="m-dwellers">0</b></div>
+    <div><span class="lab">ROUNDS</span> <b id="m-mgr">0</b></div>
+    <div><span class="lab">SCRAP</span> <b id="m-scrap">0</b></div>
+  </div>
+  <div id="vitals">
+    <div><span class="lab">HEALTH</span><div class="meter hp"><i id="hp-fill"></i></div></div>
+    <div id="ammo"><b id="a-mag">8</b> / <span id="a-res">24</span> <span class="lab">9×18</span> · <span class="lab">MEDKITS</span> <b id="a-med">1</b></div>
+  </div>
+  <div id="cross"></div>
+  <div id="prompt" class="hidden"></div>
+  <div id="toast"></div>
+  <div id="markers"></div>
+  <div id="perf" class="hidden"></div>
+  <div id="hurt"></div>
+</div>
+
+<div id="overview" class="screen hidden">
+  <div class="ov-box">
+    <div class="ov-head"><h2>SHELTER OVERVIEW — STATION ZARYA</h2><span class="small">Tab to close · click a dweller, then a room to assign</span></div>
+    <div id="ov-grid"></div>
+    <div id="ov-dwellers"></div>
+  </div>
+</div>
+
+<div id="pause" class="screen hidden">
+  <div class="load-box wide">
+    <h2>PAUSED</h2>
+    <div class="settings">
+      <label>Quality preset
+        <select id="s-quality"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="ultra">Ultra</option></select></label>
+      <label>Render resolution <span id="s-scale-v"></span><input id="s-scale" type="range" min="0.5" max="1" step="0.05"></label>
+      <label>Field of view (vertical) <span id="s-fov-v"></span><input id="s-fov" type="range" min="50" max="75" step="1"></label>
+      <label>Mouse sensitivity <span id="s-sens-v"></span><input id="s-sens" type="range" min="0.3" max="2.5" step="0.05"></label>
+      <label>Volume <span id="s-vol-v"></span><input id="s-vol" type="range" min="0" max="1" step="0.05"></label>
+      <label class="chk"><input id="s-perf" type="checkbox"> Show performance overlay</label>
+    </div>
+    <button id="btn-resume">Resume</button>
+  </div>
+</div>
+
+<div id="end" class="screen hidden"><div class="load-box"><h1 id="end-title"></h1><p id="end-text"></p><button onclick="location.reload()">Start again</button></div></div>
+
+<noscript><div class="screen"><div class="load-box">This game needs JavaScript and WebGL2.</div></div></noscript>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
