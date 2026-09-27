@@ -68,12 +68,12 @@ export class Grass {
     this.uniforms = {
       tHeight: { value: hTex }, tMask: { value: this.maskTex }, tSplatB: { value: t.splatB }, tDry: { value: dry }, tNoise: { value: macroNoiseTexture() },
       uTerrain: { value: new THREE.Vector3(t.size, t.half, t.n) },
-      uCam: { value: new THREE.Vector3() }, uCenter: { value: new THREE.Vector2() }, uTile: { value: 32 }, uFade: { value: new THREE.Vector2(0, 16) },
+      uCam: { value: new THREE.Vector3() }, uCenter: { value: new THREE.Vector2() }, uTile: { value: 32 }, uFade: { value: new THREE.Vector2(0, 16) }, uViewK: { value: 0 },
     };
     const geo = clumpGeometry();
     const tiles = [
       { size: 30, spacing: 0.34 / Math.sqrt(density), fade: [0, 15], scale: [0.42, 0.75] },
-      { size: far * 2, spacing: 0.85 / Math.sqrt(density), fade: [13, far], scale: [0.55, 0.95] },
+      { size: far * 2, spacing: 0.85 / Math.sqrt(density), fade: [13, far], scale: [0.55, 0.95], viewScale: 1 },
     ];
     this.meshes = [];
     tiles.forEach((tile, ti) => {
@@ -115,7 +115,7 @@ export class Grass {
 
   #material(set, tile) {
     const m = new THREE.MeshStandardMaterial({ map: set.map, alphaTest: 0.38, side: THREE.DoubleSide, roughness: 0.92, metalness: 0 });
-    const u = { ...this.uniforms, uTile: { value: tile.size }, uFade: { value: new THREE.Vector2(tile.fade[0], tile.fade[1]) } };
+    const u = { ...this.uniforms, uTile: { value: tile.size }, uFade: { value: new THREE.Vector2(tile.fade[0], tile.fade[1]) }, uViewScale: { value: tile.viewScale ?? 0 } };
     m.onBeforeCompile = (shader) => {
       Object.assign(shader.uniforms, G, u);
       shader.vertexShader = shader.vertexShader
@@ -132,6 +132,8 @@ uniform vec3 uCam;
 uniform vec2 uCenter;
 uniform float uTile;
 uniform vec2 uFade;
+uniform float uViewK;
+uniform float uViewScale;
 uniform float uTime;
 uniform vec4 uWind;
 varying float vGrassH;
@@ -158,7 +160,9 @@ float terrainH( vec2 p ) {
 	vec4 nz = texture2D( tNoise, wp / 23.0 );
 	float dist3 = length( vec3( wp.x, terrainH( wp ), wp.y ) - uCam );
 	float fadeIn = smoothstep( uFade.x - 2.0, uFade.x + 1.0, dist );
-	float fadeOut = 1.0 - smoothstep( uFade.y * 0.55, uFade.y, dist3 );
+	// seen from above (strategy view) the far tile fades by distance from the focus, not the camera
+	float distF = mix( dist3, dist * 1.1, uViewK * uViewScale );
+	float fadeOut = 1.0 - smoothstep( uFade.y * 0.55, uFade.y, distF );
 	float dens = smoothstep( 0.18 + ( nz.r - 0.5 ) * 0.3, 0.55, mask ) * fadeIn;
 	float keep = step( gRnd.z, dens ) * step( gRnd.z * 0.35, fadeOut );
 	// far clumps shrink smoothly instead of popping, so the field melts into the terrain
@@ -202,7 +206,7 @@ float terrainH( vec2 p ) {
 		reflectedLight.indirectDiffuse += diffuseColor.rgb * uSunLight * back * 0.1 * vGrassH;
 	}`);
     };
-    m.customProgramCacheKey = () => 'grass-v1';
+    m.customProgramCacheKey = () => 'grass-v2';
     return m;
   }
 
@@ -216,5 +220,6 @@ float terrainH( vec2 p ) {
     const f = focus || c;
     const k = Math.min(1, Math.max(0, (c.y - this.terrain.height(c.x, c.z) - 3) / 40));
     this.uniforms.uCenter.value.set(c.x + (f.x - c.x) * k, c.z + (f.z - c.z) * k);
+    this.uniforms.uViewK.value = k;
   }
 }

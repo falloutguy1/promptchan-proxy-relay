@@ -281,7 +281,7 @@ export class Terrain {
         // bare soil patches, trampled lots, farmland
         soil = smoothstep(0.7, 1.0, nz3 * 0.5 + 0.5 + nz1 * 0.1) * 0.14 + this.lotMask[i] * 0.4 * smoothstep(-0.2, 0.6, nz1 + nz2 * 0.5) + this.field[i] * 0.55;
         const sd = Math.hypot(x - START.x, z - START.z);
-        soil += (1 - smoothstep(START.radius * 0.35, START.radius * 1.1, sd)) * 0.5;
+        soil += (1 - smoothstep(START.radius * 0.2, START.radius * 0.9, sd)) * 0.12 * smoothstep(-0.3, 0.5, nz1 + nz2 * 0.4);
         // roads: gravel shoulders on the highway, gravel/dirt tracks
         if (rk === 1) {
           const sh = 1.6;
@@ -351,7 +351,7 @@ export class Terrain {
    * Paint a rotated rectangle: layer weights toward soil/gravel, grass cleared.
    * Used for building footprints, yards, forecourts and colony structures.
    */
-  paintRect(cx, cz, w, d, rot = 0, { soil = 0.8, gravel = 0, clearGrass = 1, feather = 1.5 } = {}) {
+  paintRect(cx, cz, w, d, rot = 0, { soil = 0.8, gravel = 0, mud = 0, clearGrass = 1, feather = 1.5, stripes = 0 } = {}) {
     const S = this.n - 1, c = Math.cos(rot), s = Math.sin(rot);
     const ext = Math.hypot(w, d) / 2 + feather + 1;
     const A = this.splatDataA, B = this.splatDataB;
@@ -365,11 +365,14 @@ export class Terrain {
       const t = 1 - smoothstep(-feather * 0.3, feather, dist + n);
       if (t <= 0) continue;
       const o = (iz * S + ix) * 4;
-      const tot = soil + gravel;
+      // stripes > 0: alternate soil ridges and muddy furrows across local v (crop rows)
+      let so = soil, mu = mud;
+      if (stripes > 0) { const f = 0.5 + 0.5 * Math.cos((lv / stripes) * Math.PI * 2); so = soil * f; mu = mud + soil * (1 - f); }
+      const tot = so + gravel + mu;
       const keep = 1 - t * Math.min(1, tot);
       for (let k = 0; k < 4; k++) A[o + k] *= keep;
       B[o] *= keep; B[o + 1] *= keep;
-      A[o + 1] += 255 * t * soil; A[o + 3] += 255 * t * gravel;
+      A[o + 1] += 255 * t * so; A[o + 3] += 255 * t * gravel; B[o] += 255 * t * mu;
       const gi = iz * S + ix;
       this.grassMask[gi] = this.grassMask[gi] * (1 - t * clearGrass);
     }

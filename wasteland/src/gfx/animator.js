@@ -26,6 +26,7 @@ export class Animator {
     this.speed = 0;
     this.work = 'build';
     this.dead = 0;
+    this.carrying = false;
     this.limp = infected ? 0.25 + (seed % 7) * 0.05 : 0;
     this._q = new THREE.Quaternion();
     this._e = new THREE.Euler();
@@ -82,6 +83,10 @@ export class Animator {
         p.thighR.x *= 1 - this.limp; p.shinR.x = 0.15;
         p.upperArmL.x = -1.2 + 0.1 * sL; p.upperArmR.x = -0.9 + 0.1 * sR; p.foreArmL.x = -0.35; p.foreArmR.x = -0.5;
         p.lean = 0.3; p.head.z = 0.3 * Math.sin(ph * 0.5); p.head.x = 0.25; p.chest.z = 0.12 * Math.sin(ph);
+      } else if (this.carrying) {
+        // load held against the chest: arms locked, shorter lean-back stride
+        p.upperArmL.x = -0.75; p.upperArmR.x = -0.75; p.upperArmL.z = 0.12; p.upperArmR.z = -0.12;
+        p.foreArmL.x = -1.1; p.foreArmR.x = -1.1; p.lean = -0.04; p.chest.y *= 0.4;
       }
     } else if (state === 'work') {
       const k = this.work;
@@ -119,6 +124,10 @@ export class Animator {
     } else if (state === 'sit') {
       p.thighL.x = -1.5; p.thighR.x = -1.5; p.shinL.x = 1.5; p.shinR.x = 1.5; p.rootY = -0.48; p.lean = 0.1;
       p.upperArmL.x = -0.6; p.upperArmR.x = -0.6; p.foreArmL.x = -0.9; p.foreArmR.x = -0.9; p.head.x = 0.15;
+    } else if (state === 'sleep') {
+      p.rootZ = 1;
+      p.upperArmL.z = 0.2; p.upperArmR.z = -0.25; p.foreArmL.x = -0.5; p.foreArmR.x = -0.2;
+      p.thighL.x = -0.35; p.shinL.x = 0.6; p.thighR.x = -0.1; p.shinR.x = 0.2; p.head.y = 0.45 + Math.sin(t * 0.4) * 0.02; p.chest.x = Math.sin(t * 1.1) * 0.015;
     } else if (state === 'dead') {
       p.rootZ = 1; // handled in apply: lie down
       p.upperArmL.z = 0.9; p.upperArmR.z = -0.6; p.thighL.z = 0.15; p.thighR.z = -0.25; p.shinL.x = 0.4; p.head.y = 0.6;

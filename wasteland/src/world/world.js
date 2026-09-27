@@ -68,7 +68,6 @@ export class World {
     this.trees?.update(camera, focus, this.settings.values.shadowDistance * 0.9);
     this.grass?.update(camera, focus);
     this.props?.update(camera, this.settings.values.grassDistance / 64);
-    this.characters?.update(dt, camera);
     for (const u of this.updatables) u(dt, camera);
   }
 }

@@ -80,6 +80,7 @@ export class CameraRig {
     this.walk.pitch = clamp(this.walk.pitch - dy, -1.35, 1.35);
   }
   #blocked(x, z) {
+    if (this.hash) return this.hash.blocked(x, z, 0.3);
     for (const c of this.colliders) {
       if (c.r !== undefined) { if ((x - c.x) ** 2 + (z - c.z) ** 2 < (c.r + 0.3) ** 2) return true; }
       else {

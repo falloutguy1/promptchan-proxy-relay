@@ -84,12 +84,22 @@
       <button data-m="ai"><svg><use href="#i-brain"/></svg><span>AI</span></button>
       <button data-m="speed"><svg><use href="#i-play"/></svg><span>1×</span></button>
       <button data-m="map"><svg><use href="#i-map"/></svg><span>Map</span></button>
+      <button data-m="log"><svg><use href="#i-list"/></svg><span>Log</span></button>
     </nav>
     <div id="walk-ui" class="hidden">
+      <div id="crosshair"></div>
+      <div id="walk-vitals"></div>
+      <div id="walk-prompt" class="hidden"><span></span><div class="bar"><i></i></div></div>
       <div id="stick" class="stick"><div class="knob"></div></div>
-      <button id="walk-exit" class="round"><svg><use href="#i-x"/></svg></button>
-      <div class="walk-hint">Survivor view · WASD / stick to move · drag to look · Esc to exit</div>
+      <div id="walk-btns">
+        <button id="walk-use" class="round" aria-label="Use"><svg><use href="#i-hand"/></svg></button>
+        <button id="walk-fire" class="round" aria-label="Fire"><svg><use href="#i-target"/></svg></button>
+      </div>
+      <button id="walk-exit" class="round" aria-label="Leave survivor view"><svg><use href="#i-x"/></svg></button>
+      <div class="walk-hint">Survivor view · WASD move · Shift run · mouse look · click shoot · hold E use · Esc exit</div>
     </div>
+    <div id="labels" aria-hidden="true"></div>
+    <div id="modal" class="panel hidden" role="dialog" aria-live="assertive"></div>
     <div id="tooltip" class="hidden"></div>
   </div>
 
@@ -136,6 +146,23 @@
       </div>
       <div id="menu-settings" class="menu-page hidden"></div>
       <div id="menu-credits" class="menu-page hidden"></div>
+      <div id="menu-pause" class="menu-page hidden"></div>
+      <div id="menu-end" class="menu-page hidden"></div>
+      <div id="menu-help" class="menu-page hidden">
+        <h2>How to play</h2>
+        <div class="credits help">
+          <p>Keep the survivors at the crossroads alive: shelter, water, food, then defences against the dead, then power and the radio mast that calls the evacuation convoy (48 hours on air).</p>
+          <h3>Two ways to run it</h3>
+          <p><b>You command:</b> place every structure, set each survivor's job, send people where you want them. <b>AI Overseer:</b> a planner does all of that and writes its reasoning in the log. Switch at any time (Tab / the AI button); survivors you give direct orders to are locked to you.</p>
+          <h3>Desktop</h3>
+          <p>Drag or WASD to pan · right-drag or Q/E to rotate · wheel to zoom · click to select · right-click with a survivor selected to order (move, chop a tree, scavenge a building, build a site, attack) · B build categories, 1–3 speed, Space pause, C colony, H camp, V first person, F follow, Esc menu.</p>
+          <h3>Touch</h3>
+          <p>One finger pans, two fingers pinch-zoom and twist to rotate · tap to select · with a survivor selected, tap a target to give an order · Build opens the construction sheet: tap to position, ✓ to confirm, long-press or ↻ to rotate.</p>
+          <h3>First person</h3>
+          <p>Take control of a survivor to walk the camp at eye level: shoot, chop, search houses and help build by hand.</p>
+        </div>
+        <div class="row"><button class="menu-btn" data-go="pause">Back</button></div>
+      </div>
     </div>
   </div>
 
@@ -167,6 +194,7 @@
   </div>
 
   <div id="perf" class="hidden"></div>
+  <div id="rotate-hint"><svg><use href="#i-rotate"/></svg>Turn your phone sideways for the full view</div>
 
   <noscript><div class="overlay"><p>Rustwater needs JavaScript and WebGL2.</p></div></noscript>
 
@@ -201,6 +229,29 @@
       <symbol id="w-cloud" viewBox="0 0 24 24"><path d="M7 18a4 4 0 0 1 0-8 5 5 0 0 1 9.6-1.5A4 4 0 1 1 17 18z" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
       <symbol id="w-rain" viewBox="0 0 24 24"><path d="M7 14a4 4 0 0 1 0-8 5 5 0 0 1 9.6-1.5A4 4 0 1 1 17 14z" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 17l-1 3M12 17l-1 3M16 17l-1 3" stroke="currentColor" stroke-width="1.6"/></symbol>
       <symbol id="w-fog" viewBox="0 0 24 24"><path d="M4 9h16M2 13h18M5 17h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+      <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+      <symbol id="i-walk" viewBox="0 0 24 24"><circle cx="13" cy="4.5" r="2" fill="currentColor"/><path d="M10 21l2-6 3 3v3M7 12l3-3.5 3 .5 2 3 3 1M12 15l-1-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+      <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5" stroke="currentColor" stroke-width="1.8"/></symbol>
+      <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="4" cy="6" r="1.2" fill="currentColor"/><circle cx="4" cy="12" r="1.2" fill="currentColor"/><circle cx="4" cy="18" r="1.2" fill="currentColor"/></symbol>
+      <symbol id="s-tent" viewBox="0 0 24 24"><path d="M2 20L12 4l10 16zM12 4v16M9 20l3-6 3 6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+      <symbol id="s-shack" viewBox="0 0 24 24"><path d="M3 10l18-4v3M4 10v10h16V8.5M9 20v-6h4v6M15 12h3v3h-3z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+      <symbol id="s-fire" viewBox="0 0 24 24"><path d="M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3 0-6 1-9zM4 21l16-3M4 18l16 3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+      <symbol id="s-storage" viewBox="0 0 24 24"><path d="M3 9h18v11H3zM3 9l2-4h14l2 4M3 14.5h18M12 9v11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+      <symbol id="s-rain" viewBox="0 0 24 24"><path d="M3 4h18l-7 7v2h-4v-2zM8 15h8v6H8z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+      <symbol id="s-well" viewBox="0 0 24 24"><path d="M3 9l9-6 9 6M6 8v5M18 8v5M6 10h12M4 13h16v8H4zM12 10v4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+      <symbol id="s-farm" viewBox="0 0 24 24"><path d="M12 21V10M12 13c-4 0-6-3-6-6 4 0 6 2 6 6zM12 11c0-4 2-6 6-6 0 3-2 6-6 6zM3 21h18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+      <symbol id="s-workshop" viewBox="0 0 24 24"><path d="M14.5 5.5a4 4 0 0 0 5 5L11 19a2 2 0 0 1-3-3l8.5-8.5a4 4 0 0 0-2-2z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+      <symbol id="s-tower" viewBox="0 0 24 24"><path d="M6 8h12l-2-4H8zM7 8v3h10V8M8 11l-2 10M16 11l2 10M8 11l8 10M16 11L8 21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+      <symbol id="s-wall" viewBox="0 0 24 24"><path d="M4 21V7l2-3 2 3v14M10 21V6l2-3 2 3v15M16 21V7l2-3 2 3v14M2 11h20M2 16h20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+      <symbol id="s-gate" viewBox="0 0 24 24"><path d="M3 21V5M21 21V5M3 6h18M5 8h6v12H5zM13 8h6v12h-6zM5 20l6-12M13 20l6-12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+      <symbol id="s-lamp" viewBox="0 0 24 24"><path d="M12 21V8M8 7l4-3 4 3-4 3zM6 13l-3 3M18 13l3 3M12 12v1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+      <symbol id="s-infirmary" viewBox="0 0 24 24"><path d="M2 20l4-12h12l4 12zM12 10v6M9 13h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+      <symbol id="s-generator" viewBox="0 0 24 24"><path d="M3 8h18v11H3zM6 8V6h4v2M13 10l-3 4h4l-3 4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+      <symbol id="s-radio" viewBox="0 0 24 24"><path d="M12 8L8 21M12 8l4 13M9.5 16h5M12 8V4M7 5a7 7 0 0 0 0 7M17 5a7 7 0 0 1 0 7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+      <symbol id="j-axe" viewBox="0 0 24 24"><path d="M14 4l6 6-3 1-4-4zM13 7L4 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="j-bag" viewBox="0 0 24 24"><path d="M6 8h12l1 12H5zM9 8V6a3 3 0 0 1 6 0v2M8 13h8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+      <symbol id="j-idle" viewBox="0 0 24 24"><path d="M5 20h14M7 20v-4h10v4M9 16c0-2 1-3 3-3s3 1 3 3M14 4h4l-4 4h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
       <symbol id="w-moon" viewBox="0 0 24 24"><path d="M15 3a8 8 0 1 0 6 13A7 7 0 0 1 15 3z" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
     </defs>
   </svg>

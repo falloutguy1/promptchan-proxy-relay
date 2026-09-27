@@ -81,7 +81,7 @@ export class Town {
       for (const c of res.colliders) {
         const p = new THREE.Vector3(c.x, 0, c.z).applyMatrix4(g.matrixWorld);
         if (c.r !== undefined) this.world.colliders.push({ x: p.x, z: p.z, r: c.r });
-        else this.world.colliders.push({ x: p.x, z: p.z, hw: c.hw, hd: c.hd, rot: -(lot.rot + (c.rot || 0)) });
+        else this.world.colliders.push({ x: p.x, z: p.z, hw: c.hw, hd: c.hd, rot: lot.rot + (c.rot || 0) }); // rot = yaw of the box frame
       }
     }
     for (const [key, list] of merged) {

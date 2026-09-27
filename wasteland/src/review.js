@@ -69,6 +69,29 @@ export function installReviewApi(game) {
       return states.length;
     },
     wet(v) { game.world.sky.rain = v; },
+    /** Start a colony without the menu. */
+    newGame(mode = 'human', difficulty = 'normal') { game.newGame({ mode, difficulty }); return this.state(); },
+    /** Advance the simulation by h game hours without rendering (fixed steps). */
+    simulate(h = 1, dt = 0.25) {
+      const sim = game.sim, n = Math.ceil((h * 30) / dt), t0 = performance.now();
+      for (let i = 0; i < n && !sim.ended; i++) sim.step(dt);
+      sim.structures.flush();
+      return { ms: Math.round(performance.now() - t0), ...this.state() };
+    },
+    state() {
+      const s = game.sim;
+      if (!s.started && !s.ended) return { started: false };
+      return {
+        day: s.day, hour: +s.hour.toFixed(2), speed: s.speed, ai: s.ai.enabled,
+        res: Object.fromEntries(Object.entries(s.res).map(([k, v]) => [k, Math.round(v)])),
+        pop: s.alive().length, beds: s.housing, morale: Math.round(s.morale), infected: s.infected.filter((z) => z.alive).length,
+        structures: s.structures.list.map((q) => `${q.type}${q.built ? '' : ':' + Math.round(q.progress * 100) + '%'}`),
+        jobs: s.alive().map((q) => `${q.first}:${q.job}:${q.activity}:hp${Math.round(q.hp)}`),
+        log: s.logList.slice(-10).map((e) => `D${e.day} ${e.hour.toFixed(1)} ${e.text}`), ended: s.ended, stats: { ...s.stats }, paths: { ...s.nav.stats },
+        objective: s.objectiveProgress()?.title,
+      };
+    },
+    ai(on = true) { game.hud.toggleAI(on); },
     /** Render n frames with a fixed timestep (review mode has no rAF loop). */
     async frames(n = 3, dt = 1 / 30) {
       for (let i = 0; i < n; i++) {
@@ -76,6 +99,23 @@ export function installReviewApi(game) {
         await new Promise((r) => setTimeout(r, 0));
       }
       return game.perf;
+    },
+    /** Timed frames: CPU time of step() and wall time including a GPU sync (readPixels). */
+    async timedFrames(n = 10, dt = 1 / 60) {
+      const gl = game.renderer.getContext(), px = new Uint8Array(4), cpu = [], wall = [];
+      for (let i = 0; i < n; i++) {
+        const t0 = performance.now();
+        game.step(dt);
+        const t1 = performance.now();
+        gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+        const t2 = performance.now();
+        cpu.push(t1 - t0); wall.push(t2 - t0);
+        await new Promise((r) => setTimeout(r, 0));
+      }
+      const avg = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+      const info = game.renderer.info;
+      return { cpu: +avg(cpu).toFixed(2), wall: +avg(wall).toFixed(1), wallMax: +Math.max(...wall).toFixed(1), calls: info.render.calls, tris: info.render.triangles,
+        geometries: info.memory.geometries, textures: info.memory.textures, px: [game.renderer.domElement.width, game.renderer.domElement.height] };
     },
     stats() {
       const i = game.renderer.info;

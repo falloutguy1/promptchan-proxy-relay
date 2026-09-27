@@ -11,7 +11,7 @@ import { LAYERS } from './terrain.js';
 // tile size in metres and colour grading per layer
 const LAYER_CFG = {
   grass: { scale: 2.6, tint: [0.68, 0.9, 0.5] },
-  soil: { scale: 2.4, tint: [0.82, 0.78, 0.72] },
+  soil: { scale: 2.4, tint: [0.98, 0.92, 0.84] },
   forest: { scale: 2.5, tint: [0.78, 0.74, 0.66] },
   gravel: { scale: 2.2, tint: [0.92, 0.91, 0.9] },
   mud: { scale: 2.6, tint: [0.85, 0.83, 0.8] },
@@ -121,7 +121,16 @@ vec2 wlRot( vec2 p, float a ) { float c = cos( a ), s = sin( a ); return vec2( c
 		vec2 uvB = wlRot( vTPos.xz, fi * 1.31 + 2.1 ) / ( uLayerScale[ i ] * 3.7 ) + 0.37;
 		float bb = clamp( 0.28 + ( macro2.r - 0.5 ) * 0.9 + farT * 0.45, 0.0, 0.92 );
 		vec3 c = mix( texture( tAlb, vec3( uvA, fi ) ).rgb, texture( tAlb, vec3( uvB, fi ) ).rgb, bb ) * uLayerTint[ i ];
-		if ( i == 0 ) c = mix( c, c * vec3( 1.16, 1.04, 0.72 ), dryness * 0.3 );
+		if ( i == 0 ) {
+			// meadow patchwork: lush dark-green swards and dry straw-coloured patches at 5-25 m,
+			// plus clumpy value noise that stands in for grass blades beyond the grass draw distance
+			float n1 = texture2D( tMacro, vTPos.xz / 23.0 + 0.71 ).g;
+			float n2 = texture2D( tMacro, vTPos.xz / 6.1 + 0.23 ).b;
+			float lush = smoothstep( 0.32, 0.78, n1 * 0.72 + n2 * 0.28 );
+			c = mix( c * vec3( 1.1, 1.02, 0.74 ), c * vec3( 0.8, 0.93, 0.72 ), lush );
+			c *= mix( 1.0, 0.8 + 0.3 * n2, farT );
+			c = mix( c, c * vec3( 1.16, 1.04, 0.72 ), dryness * 0.3 );
+		}
 		if ( i == 2 ) c = mix( c, vec3( dot( c, vec3( 0.3, 0.55, 0.15 ) ) ), 0.45 ) * 0.9;
 		vec4 nA = texture( tNrm, vec3( uvA, fi ) );
 		vec4 nB = texture( tNrm, vec3( uvB, fi ) );
@@ -167,7 +176,7 @@ vec2 wlRot( vec2 p, float a ) { float c = cos( a ), s = sin( a ); return vec2( c
 	}
 `);
   };
-  mat.customProgramCacheKey = () => 'terrain-v1';
+  mat.customProgramCacheKey = () => 'terrain-v2';
   return mat;
 }
 

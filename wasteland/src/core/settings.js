@@ -5,19 +5,19 @@ const STORE_KEY = 'rustwater.settings.v1';
 export const PRESETS = {
   low: {
     renderScale: 0.65, dprCap: 1, shadowSize: 1024, shadowRadius: 1.5, shadowDistance: 70, ao: 'off', bloom: false, aa: 'fxaa',
-    grassDensity: 0.3, grassDistance: 34, treeDetail: 0.5, drawDistance: 520, anisotropy: 2, texTier: 'lo', maxPointLights: 2, envRes: 128,
+    grassDensity: 0.3, grassDistance: 34, treeDetail: 0.5, drawDistance: 520, anisotropy: 2, texTier: 'lo', maxPointLights: 1, envRes: 128,
   },
   medium: {
     renderScale: 0.85, dprCap: 1.5, shadowSize: 2048, shadowRadius: 2, shadowDistance: 100, ao: 'half', bloom: true, aa: 'smaa',
-    grassDensity: 0.55, grassDistance: 48, treeDetail: 0.75, drawDistance: 750, anisotropy: 4, texTier: 'lo', maxPointLights: 4, envRes: 256,
+    grassDensity: 0.55, grassDistance: 48, treeDetail: 0.75, drawDistance: 750, anisotropy: 4, texTier: 'lo', maxPointLights: 2, envRes: 256,
   },
   high: {
     renderScale: 1, dprCap: 2, shadowSize: 4096, shadowRadius: 2.5, shadowDistance: 140, ao: 'full', bloom: true, aa: 'smaa',
-    grassDensity: 1, grassDistance: 64, treeDetail: 1, drawDistance: 1000, anisotropy: 8, texTier: 'hi', maxPointLights: 6, envRes: 256,
+    grassDensity: 1, grassDistance: 64, treeDetail: 1, drawDistance: 1000, anisotropy: 8, texTier: 'hi', maxPointLights: 4, envRes: 256,
   },
   ultra: {
     renderScale: 1, dprCap: 2.5, shadowSize: 4096, shadowRadius: 3, shadowDistance: 190, ao: 'full', bloom: true, aa: 'msaa',
-    grassDensity: 1.35, grassDistance: 86, treeDetail: 1, drawDistance: 1400, anisotropy: 16, texTier: 'hi', maxPointLights: 8, envRes: 512,
+    grassDensity: 1.35, grassDistance: 86, treeDetail: 1, drawDistance: 1400, anisotropy: 16, texTier: 'hi', maxPointLights: 6, envRes: 512,
   },
 };
 

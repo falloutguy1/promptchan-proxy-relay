@@ -178,8 +178,8 @@ function boxPart(M, c, sx, sy, sz, bone, col, rough, rot = null) {
 
 const BI = Object.fromEntries(BONES.map((b, i) => [b, i]));
 
-/** Build one character. kind: 'survivor' | 'infected'. */
-export function buildHumanoid(seed, kind = 'survivor', fabric) {
+/** Build one character. kind: 'survivor' | 'infected'. opts: { rifle, pack } force gear. */
+export function buildHumanoid(seed, kind = 'survivor', fabric, opts = {}) {
   const rng = new RNG(seed);
   const P = PALETTES[kind];
   const infected = kind === 'infected';
@@ -276,7 +276,8 @@ export function buildHumanoid(seed, kind = 'survivor', fabric) {
     boxPart(M, an.clone().add(new THREE.Vector3(0, -0.078, 0.065)), 0.108, 0.02, 0.285, BI[`foot${s}`], hex('#161412'), 0.7);
   }
   // gear
-  if (!infected && rng.chance(0.75)) {
+  const hasPack = !infected && (opts.pack ?? rng.chance(0.75));
+  if (hasPack) {
     const packCol = hex(rng.pick(['#3b4030', '#4a3e2e', '#2d3033', '#5a4a30'])), z0 = -0.2 * bulk;
     const pb = [[BI.chest, 1]];
     loft(M, [
@@ -301,19 +302,8 @@ export function buildHumanoid(seed, kind = 'survivor', fabric) {
       limb(M, new THREE.Vector3(sx * bulk * 1.05, 1.44, 0.075 * bulk), new THREE.Vector3(sx * bulk * 1.15, 1.2, 0.128 * bulk), 0.02, 0.018, BI.chest, null, hex('#1f1c19'), R.leather, { seg: 6, rings: 2, flat: 0.4 });
     }
   }
-  if (!infected && rng.chance(0.4)) {
-    // slung rifle across the back: wooden stock, steel receiver/barrel, magazine
-    const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, 0.9));
-    const o = new THREE.Vector3(0.02, 1.2, -0.31 * bulk);
-    const at = (x, y, z) => new THREE.Vector3(x, y, z).applyQuaternion(q).add(o);
-    const wood = hex(rng.pick(['#5a3a22', '#6b4a2c', '#4a3020'])), steel = hex('#23252a');
-    boxPart(M, at(0, -0.36, 0), 0.04, 0.26, 0.07, BI.chest, wood, 0.5, q);
-    boxPart(M, at(0, -0.08, 0), 0.045, 0.3, 0.06, BI.chest, steel, R.metal, q);
-    boxPart(M, at(0, 0.15, 0), 0.042, 0.16, 0.05, BI.chest, wood, 0.5, q);
-    limb(M, at(0, 0.05, 0.012), at(0, 0.5, 0.012), 0.011, 0.01, BI.chest, null, steel, R.metal, { seg: 6, rings: 1, flat: 1 });
-    boxPart(M, at(0, -0.02, 0.06), 0.03, 0.06, 0.1, BI.chest, steel, R.metal, q.clone().multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.3, 0, 0))));
-  }
-
+  const hasRifle = !infected && (opts.rifle ?? rng.chance(0.4));
+  const woodTone = hex(rng.pick(['#5a3a22', '#6b4a2c', '#4a3020']));
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(M.pos, 3));
   g.setAttribute('normal', new THREE.Float32BufferAttribute(M.nor, 3));
@@ -345,7 +335,112 @@ export function buildHumanoid(seed, kind = 'survivor', fabric) {
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   mesh.frustumCulled = true;
-  return { mesh, bones, height, scale, infected, rest: Object.fromEntries(BONES.map((n) => [n, bones[n].position.clone()])) };
+  const rig = { mesh, bones, height, scale, infected, bulk, rest: Object.fromEntries(BONES.map((n) => [n, bones[n].position.clone()])), rifle: null, carry: null, tool: null };
+  if (hasRifle) {
+    const rifle = new THREE.Mesh(rifleGeometry(scale, woodTone), humanMaterial(fabric));
+    rifle.castShadow = true;
+    rifle.userData.slung = { p: new THREE.Vector3(0.02, -0.07, -0.31 * bulk).multiplyScalar(scale), q: new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, 0.9)) };
+    rifle.userData.aim = { p: new THREE.Vector3(-0.13, 0.14, 0.4).multiplyScalar(scale), q: new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -0.35, 0)).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0))) };
+    rifle.userData.muzzle = new THREE.Vector3(0, 0.5 * scale, 0.012 * scale);
+    bones.chest.add(rifle);
+    rig.rifle = rifle;
+    setRifleAim(rig, 0);
+  }
+  return rig;
+}
+
+/** Blend the rifle between slung on the back (0) and shouldered (1). */
+export function setRifleAim(rig, w) {
+  const r = rig.rifle;
+  if (!r) return;
+  const a = r.userData.slung, b = r.userData.aim;
+  const k = w > 0.5 ? 1 : 0;
+  if (r.userData.k === k) return;
+  r.userData.k = k;
+  r.position.copy(k ? b.p : a.p);
+  r.quaternion.copy(k ? b.q : a.q);
+}
+
+function rifleGeometry(scale, wood) {
+  const M = new Mesher(scale);
+  const steel = hex('#23252a');
+  const tilt = new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.3, 0, 0));
+  boxPart(M, new THREE.Vector3(0, -0.36, 0), 0.04, 0.26, 0.07, 0, wood, 0.5);
+  boxPart(M, new THREE.Vector3(0, -0.08, 0), 0.045, 0.3, 0.06, 0, steel, 0.4);
+  boxPart(M, new THREE.Vector3(0, 0.15, 0), 0.042, 0.16, 0.05, 0, wood, 0.5);
+  limb(M, new THREE.Vector3(0, 0.05, 0.012), new THREE.Vector3(0, 0.5, 0.012), 0.011, 0.01, 0, null, steel, 0.4, { seg: 6, rings: 1, flat: 1 });
+  boxPart(M, new THREE.Vector3(0, -0.02, 0.06), 0.03, 0.06, 0.1, 0, steel, 0.4, tilt);
+  return staticGeometry(M);
+}
+
+function staticGeometry(M) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(M.pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(M.nor, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(M.uv, 2));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(M.col, 3));
+  g.setAttribute('rough', new THREE.Float32BufferAttribute(M.rough, 1));
+  g.setIndex(M.idx);
+  fixWinding(g);
+  g.computeBoundingSphere();
+  return g;
+}
+
+// ---- carried loads (chest bone) and hand tools (right hand bone), shared geometry
+const _props = new Map();
+function propGeometry(kind) {
+  if (_props.has(kind)) return _props.get(kind);
+  const M = new Mesher(1);
+  const V = (x, y, z) => new THREE.Vector3(x, y, z);
+  if (kind === 'wood') {
+    for (const [y, z] of [[-0.04, 0.3], [-0.04, 0.44], [0.08, 0.37]]) limb(M, V(-0.36, y, z), V(0.36, y + 0.01, z), 0.065, 0.06, 0, null, hex('#6e5a44'), 0.9, { seg: 8, rings: 1, flat: 1 });
+  } else if (kind === 'sack') {
+    ellipsoid(M, V(0, -0.04, 0.3), 0.2, 0.2, 0.14, 0, hex('#8a7a5a'), 0.95, { seg: 10, rings: 7 });
+    limb(M, V(0, 0.14, 0.3), V(0, 0.22, 0.3), 0.04, 0.02, 0, null, hex('#7a6a4a'), 0.95, { seg: 6, rings: 1, flat: 1 });
+  } else if (kind === 'water') {
+    boxPart(M, V(0, -0.04, 0.3), 0.3, 0.34, 0.14, 0, hex('#3a4a32'), 0.5);
+    boxPart(M, V(0, 0.16, 0.3), 0.14, 0.04, 0.04, 0, hex('#2a3424'), 0.5);
+  } else if (kind === 'axe') {
+    limb(M, V(0, -0.02, 0), V(0, -0.68, 0), 0.016, 0.018, 0, null, hex('#7a5a3a'), 0.6, { seg: 6, rings: 1, flat: 1 });
+    boxPart(M, V(0, -0.66, 0.05), 0.02, 0.07, 0.14, 0, hex('#3a3c40'), 0.35);
+  } else if (kind === 'shovel') {
+    limb(M, V(0, 0.2, 0), V(0, -0.85, 0), 0.016, 0.016, 0, null, hex('#7a5a3a'), 0.6, { seg: 6, rings: 1, flat: 1 });
+    boxPart(M, V(0, -0.98, 0.0), 0.2, 0.26, 0.015, 0, hex('#4a4038'), 0.5);
+  } else if (kind === 'hammer') {
+    limb(M, V(0, -0.02, 0), V(0, -0.34, 0), 0.013, 0.014, 0, null, hex('#7a5a3a'), 0.6, { seg: 6, rings: 1, flat: 1 });
+    boxPart(M, V(0, -0.33, 0.02), 0.03, 0.03, 0.12, 0, hex('#2e3034'), 0.35);
+  }
+  const g = staticGeometry(M);
+  _props.set(kind, g);
+  return g;
+}
+
+/** Show a carried load (wood | sack | water | null) in front of the chest. */
+export function setCarry(rig, kind) {
+  if (rig.carryKind === kind) return;
+  rig.carryKind = kind;
+  if (rig.carry) { rig.bones.chest.remove(rig.carry); rig.carry = null; }
+  if (!kind) return;
+  const m = new THREE.Mesh(propGeometry(kind), _mat);
+  m.castShadow = true;
+  m.scale.setScalar(rig.scale);
+  rig.bones.chest.add(m);
+  rig.carry = m;
+}
+
+/** Tool in the right hand (axe | shovel | hammer | null). */
+export function setTool(rig, kind) {
+  if (rig.toolKind === kind) return;
+  rig.toolKind = kind;
+  if (rig.tool) { rig.bones.handR.remove(rig.tool); rig.tool = null; }
+  if (!kind) return;
+  const m = new THREE.Mesh(propGeometry(kind), _mat);
+  m.castShadow = true;
+  m.scale.setScalar(rig.scale);
+  m.position.set(0, -0.07 * rig.scale, 0.01);
+  m.rotation.x = kind === 'shovel' ? 0.2 : -1.2;
+  rig.bones.handR.add(m);
+  rig.tool = m;
 }
 
 function fixWinding(g) {

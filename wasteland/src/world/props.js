@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { RNG } from '../core/rng.js';
 import { enhance } from '../core/shaderlib.js';
-import { LOTS, CHECKPOINT, FORESTS, POND, inPlay } from './layout.js';
+import { LOTS, CHECKPOINT, FORESTS, POND, START, inPlay } from './layout.js';
 import { Geo } from './arch/geom.js';
 import { TILES } from './arch/house.js';
 import { CulledSet, viewFrustum } from './instancing.js';
@@ -59,8 +59,10 @@ export class Props {
     const ids = [...new Set(this.items.map((i) => i.id))];
     const models = new Map();
     await Promise.all(ids.map(async (id) => models.set(id, await assets.model(id))));
+    // plants: wind sway; leaves never get glossy (tiny cut-out leaves sparkle otherwise, worst at night)
+    const matte = (shader) => { shader.fragmentShader = shader.fragmentShader.replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n\troughnessFactor = max( roughnessFactor, 0.72 );'); };
     for (const [id, g] of models) if (g && PLANTS[id]) {
-      g.scene.traverse((o) => { if (o.isMesh) enhance(o.material, { wind: { amp: 0.12, flutter: 0.04, height: PLANTS[id] }, porosity: 0.6, key: 'plant' }); });
+      g.scene.traverse((o) => { if (o.isMesh) enhance(o.material, { wind: { amp: 0.12, flutter: 0.04, height: PLANTS[id] }, porosity: 0.6, key: 'plant-matte', extra: matte }); });
     }
     this.#instance(models);
     this.group.add(cables);
@@ -185,9 +187,15 @@ export class Props {
         else if (r < 0.8) this.add(R.chance(0.5) ? 'tree_stump_01' : 'tree_stump_02', x, z, { ry: R.float(0, 6.28), s: R.float(0.7, 1.1), sink: 0.1 });
         else if (r < 0.9) this.add(R.chance(0.5) ? 'rock_moss_set_01' : 'rock_moss_set_02', x, z, { ry: R.float(0, 6.28), s: R.float(0.6, 1.4), variant: R.int(0, 5), sink: 0.15 });
         else this.add('dry_branches_medium_01', x, z, { ry: R.float(0, 6.28), variant: R.int(0, 2), shadow: false });
-      } else if (f > 0.08 && f <= 0.35 && R.chance(0.3)) {
-        // forest edge: shrubs
-        this.add(R.chance(0.6) ? 'shrub_03' : 'shrub_04', x, z, { ry: R.float(0, 6.28), s: R.float(0.9, 1.6), variant: R.int(0, 3), shadow: true });
+      } else if (f > 0.08 && f <= 0.35 && R.chance(0.1) && Math.hypot(x - START.x, z - START.z) > 42) {
+        // forest edge: shrubs grow in thickets where the ground suits them, not evenly
+        const cl = t.noise.noise(x / 37, z / 37) * 0.7 + t.noise.noise(x / 11 + 9, z / 11) * 0.3;
+        if (cl < 0.12) continue;
+        const n = 1 + Math.floor(R.float(0, 3) * cl * 2);
+        for (let k = 0; k < n; k++) {
+          const a = R.float(0, 6.28), r = R.float(0, 2.2) * Math.sqrt(k);
+          this.add(R.chance(0.55) ? 'shrub_03' : 'shrub_04', x + Math.cos(a) * r, z + Math.sin(a) * r, { ry: R.float(0, 6.28), s: R.float(0.6, 1.5) * (k ? 0.8 : 1), variant: R.int(0, 3), shadow: true });
+        }
       } else if (f <= 0.08 && R.chance(0.012)) {
         if (slope > 0.12 && R.chance(0.6)) this.add(R.chance(0.5) ? 'rock_moss_set_01' : 'rock_moss_set_02', x, z, { ry: R.float(0, 6.28), s: R.float(0.5, 1.1), variant: R.int(0, 5), sink: 0.12 });
         else this.add('shrub_03', x, z, { ry: R.float(0, 6.28), s: R.float(0.8, 1.3), variant: R.int(0, 3) });
