@@ -44,7 +44,7 @@ export class Colony {
     this.colliders = new ColliderHash(8);
     for (const c of w.colliders) this.colliders.add(c);
     this.navVersion = 0;
-    this.dyn = new DynModels(assets);
+    this.dyn = new DynModels(assets, { richShadows: this.game.settings.values.shadowSize >= 4096 });
     await this.dyn.preload([...STRUCTURE_MODELS, 'tree_stump_01', 'tree_stump_02']);
     w.scene.add(this.dyn.group);
     this.structures = new Structures(this);
@@ -367,8 +367,13 @@ export class Colony {
   }
   pickTree(sv) {
     const T = this.world.trees, cx = this.center.x, cz = this.center.z, R2 = 160 * 160;
-    const tree = T.nearest(sv.pos.x, sv.pos.z, (it) => !this.treeReserved.has(it) && (it.x - cx) ** 2 + (it.z - cz) ** 2 < R2 && (it.x - cx) ** 2 + (it.z - cz) ** 2 > 100 && inPlay(it.x, it.z, 10) && it.kind !== 'dead');
-    if (!tree) return null;
+    const tree = T.nearestWithin(sv.pos.x, sv.pos.z, 90, (it) => !this.treeReserved.has(it) && (it.x - cx) ** 2 + (it.z - cz) ** 2 < R2 && (it.x - cx) ** 2 + (it.z - cz) ** 2 > 100 && inPlay(it.x, it.z, 10) && it.kind !== 'dead');
+    const pick = tree || T.nearest(sv.pos.x, sv.pos.z, (it) => !this.treeReserved.has(it) && (it.x - cx) ** 2 + (it.z - cz) ** 2 < R2 && inPlay(it.x, it.z, 10) && it.kind !== 'dead');
+    if (!pick) return null;
+    return this.#trunk(pick);
+  }
+  #trunk(tree) {
+    const T = this.world.trees;
     tree.trunk = T.variants[tree.kind][tree.vi].lod0.trunkRadius * tree.s;
     return tree;
   }
@@ -999,7 +1004,7 @@ export class Colony {
   // ================================================================== save / load
   serialize() {
     return {
-      v: 1, mode: this.mode, difficulty: this.difficulty, seed: this.seed, day: this.day, hour: this.hour, clock: this.clock,
+      v: 1, mode: this.mode, ai: !!this.ai?.enabled, difficulty: this.difficulty, seed: this.seed, day: this.day, hour: this.hour, clock: this.clock,
       res: this.res, stats: this.stats, morale: this.morale, moraleMods: this.moraleMods, objective: this.objective, broadcast: this.broadcast,
       nextId: this.nextId, center: this.center, weather: this.world.sky.weather, weatherT: this.weatherT, graveyard: this.graveyard || null,
       structures: this.structures.list.map((s) => ({ id: s.id, type: s.type, x: +s.x.toFixed(2), z: +s.z.toFixed(2), rot: +s.rot.toFixed(3), progress: s.progress, hp: Math.round(s.hp), seed: s.seed, growth: s.extra.growth || 0, built: s.built })),
@@ -1027,7 +1032,7 @@ export class Colony {
     try { d = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch { d = null; }
     if (!d || d.v !== 1) return false;
     this.#clear();
-    this.mode = d.mode; this.difficulty = d.difficulty; this.diff = DIFFICULTY[d.difficulty] || DIFFICULTY.normal;
+    this.mode = d.mode; this.savedAi = d.ai ?? d.mode === 'ai'; this.difficulty = d.difficulty; this.diff = DIFFICULTY[d.difficulty] || DIFFICULTY.normal;
     this.seed = d.seed; this.rng = new RNG(d.seed + d.day * 7 + 1);
     this.day = d.day; this.hour = d.hour; this.clock = d.clock;
     this.res = d.res; this.stats = d.stats; this.morale = d.morale; this.moraleMods = d.moraleMods || [];

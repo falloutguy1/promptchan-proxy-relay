@@ -2,15 +2,22 @@
   "name": "wasteland-tools",
   "private": true,
   "type": "module",
-  "description": "Offline asset pipeline, vendoring and visual-review tooling for the Wasteland Colony browser game. Not deployed.",
+  "description": "Offline asset pipeline, vendoring and test/review tooling for Rustwater Colony. Not deployed.",
   "scripts": {
     "vendor": "node vendor.mjs",
     "fetch-assets": "node fetch-assets.mjs",
     "build-textures": "node build-textures.mjs",
+    "build-skies": "node build-skies.mjs",
     "build-models": "node build-models.mjs",
+    "build-foliage": "node build-foliage.mjs",
     "serve": "node serve.mjs",
     "shots": "node shots.mjs",
-    "bench": "node bench.mjs"
+    "play-shots": "node play_shots.mjs",
+    "smoke": "node smoke.mjs",
+    "ui-flow": "node ui_flow.mjs",
+    "bench": "node bench.mjs",
+    "drawstats": "node drawstats.mjs",
+    "profile": "node profile.mjs"
   },
   "devDependencies": {
     "@gltf-transform/core": "^4.5.0",

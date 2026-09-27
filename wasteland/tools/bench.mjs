@@ -5,7 +5,7 @@
 // GPU sync. NB: in this container WebGL runs on SwiftShader (CPU rasteriser), so
 // wall times are far slower than any real GPU; they are only comparable relative
 // to each other. CPU/JS times are more representative.
-// usage: node bench.mjs [--presets low,medium,high] [--w 1280 --h 720] [--frames 8] [--mobile]
+// usage: node bench.mjs [--presets low,medium,high] [--w 1280 --h 720] [--frames 8] [--mobile] [--gpu]
 import { chromium } from 'playwright';
 import { writeFileSync } from 'node:fs';
 
@@ -16,7 +16,11 @@ const W = Number(opt('w', 1280)), H = Number(opt('h', 720)), N = Number(opt('fra
 const mobile = args.includes('--mobile');
 const out = opt('out', '');
 const rows = [];
-const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--enable-webgl'] });
+// --gpu: use the machine's GPU (headed browser) instead of SwiftShader
+const gpu = args.includes('--gpu');
+const browser = await chromium.launch(gpu
+  ? { headless: false, args: ['--ignore-gpu-blocklist', '--enable-gpu-rasterization'] }
+  : { args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--enable-webgl'] });
 for (const q of presets) {
   const ctx = await browser.newContext(mobile ? { viewport: { width: W, height: H }, deviceScaleFactor: 2, isMobile: true, hasTouch: true } : { viewport: { width: W, height: H } });
   const page = await ctx.newPage();

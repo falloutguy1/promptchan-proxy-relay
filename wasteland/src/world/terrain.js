@@ -397,6 +397,7 @@ export class Terrain {
       mesh.matrixAutoUpdate = false;
       mesh.userData.lods = lods;
       mesh.userData.center = new THREE.Vector3(x0 + chunk / 2, 0, z0 + chunk / 2);
+      mesh.userData.half = chunk / 2;
       mesh.userData.lod = 1;
       group.add(mesh);
       this.chunks.push(mesh);
@@ -459,10 +460,12 @@ export class Terrain {
   /** Pick chunk LODs from camera distance. detail: 1 (full) .. 0.5 (mobile) */
   updateLod(camPos, detail = 1) {
     if (!this.chunks) return;
-    const d0 = 90 * detail, d1 = 200 * detail, d2 = 380 * detail;
+    // distances to the chunk's footprint (not its centre), so chunk size does not matter
+    const d0 = 50 * detail, d1 = 160 * detail, d2 = 340 * detail;
     for (const m of this.chunks) {
-      const c = m.userData.center;
-      const d = Math.hypot(camPos.x - c.x, camPos.z - c.z) + Math.max(0, camPos.y - 40) * 0.6;
+      const c = m.userData.center, hh = m.userData.half;
+      const dx = Math.max(0, Math.abs(camPos.x - c.x) - hh), dz = Math.max(0, Math.abs(camPos.z - c.z) - hh);
+      const d = Math.hypot(dx, dz) + Math.max(0, camPos.y - 40) * 0.6;
       let lod = d < d0 ? 0 : d < d1 ? 1 : d < d2 ? 2 : 3;
       if (detail < 0.75) lod = Math.max(lod, 1);
       if (lod !== m.userData.lod) { m.geometry = m.userData.lods[lod]; m.userData.lod = lod; }

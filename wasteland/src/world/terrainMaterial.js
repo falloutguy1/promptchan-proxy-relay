@@ -126,9 +126,9 @@ vec2 wlRot( vec2 p, float a ) { float c = cos( a ), s = sin( a ); return vec2( c
 			// plus clumpy value noise that stands in for grass blades beyond the grass draw distance
 			float n1 = texture2D( tMacro, vTPos.xz / 23.0 + 0.71 ).g;
 			float n2 = texture2D( tMacro, vTPos.xz / 6.1 + 0.23 ).b;
-			float lush = smoothstep( 0.32, 0.78, n1 * 0.72 + n2 * 0.28 );
-			c = mix( c * vec3( 1.1, 1.02, 0.74 ), c * vec3( 0.8, 0.93, 0.72 ), lush );
-			c *= mix( 1.0, 0.8 + 0.3 * n2, farT );
+			float lush = smoothstep( 0.2, 0.9, n1 * 0.72 + n2 * 0.28 );
+			c = mix( c * vec3( 1.03, 1.0, 0.84 ), c * vec3( 0.86, 0.95, 0.8 ), lush );
+			c *= mix( 1.0, 0.84 + 0.24 * n2, farT );
 			c = mix( c, c * vec3( 1.16, 1.04, 0.72 ), dryness * 0.3 );
 		}
 		if ( i == 2 ) c = mix( c, vec3( dot( c, vec3( 0.3, 0.55, 0.15 ) ) ), 0.45 ) * 0.9;
@@ -176,7 +176,7 @@ vec2 wlRot( vec2 p, float a ) { float c = cos( a ), s = sin( a ); return vec2( c
 	}
 `);
   };
-  mat.customProgramCacheKey = () => 'terrain-v2';
+  mat.customProgramCacheKey = () => 'terrain-v3';
   return mat;
 }
 

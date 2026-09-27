@@ -63,6 +63,7 @@ export class Trees {
     const detail = this.settings.values.treeDetail;
     const texMan = await assets.json('manifest-textures.json');
     const sprites = { fir: texMan.atlases.fir_twig.sprites, clusters: texMan.atlases.leaf_clusters.sprites };
+    this.sprites = sprites;
     const [barkSets, firSet, leafSet] = await Promise.all([
       Promise.all(['bark_pine', 'bark_birch', 'bark_oak', 'bark_dead'].map((n) => assets.textureSet(n))),
       assets.textureSet('fir_twig', 'atlas'),
@@ -158,6 +159,21 @@ export class Trees {
         tint: new THREE.Color(rng.float(0.88, 1.08), rng.float(0.9, 1.06), rng.float(0.82, 1.02)),
         lod: -1,
       });
+    }
+    // spatial cells (48 m) so culling and proximity queries skip whole regions
+    this.cellSize = 48;
+    this.cellMap = new Map();
+    for (const it of this.instances) {
+      const k = `${Math.floor(it.x / this.cellSize)},${Math.floor(it.z / this.cellSize)}`;
+      let c = this.cellMap.get(k);
+      if (!c) { c = { items: [], x0: Math.floor(it.x / this.cellSize) * this.cellSize, z0: Math.floor(it.z / this.cellSize) * this.cellSize, ymin: Infinity, ymax: -Infinity }; this.cellMap.set(k, c); }
+      c.items.push(it);
+      c.ymin = Math.min(c.ymin, it.y); c.ymax = Math.max(c.ymax, it.y + it.h);
+    }
+    this.cells = [...this.cellMap.values()];
+    for (const c of this.cells) {
+      c.cx = c.x0 + this.cellSize / 2; c.cz = c.z0 + this.cellSize / 2; c.cy = (c.ymin + c.ymax) / 2;
+      c.r = Math.hypot(this.cellSize / 2, this.cellSize / 2, (c.ymax - c.ymin) / 2) + 8;
     }
     // colliders for walk mode (trunks)
     for (const it of this.instances) if (inPlay(it.x, it.z, -40)) this.world.colliders.push({ x: it.x, z: it.z, r: Math.max(0.2, this.variants[it.kind][it.vi].lod0.trunkRadius * it.s * 1.2) });
@@ -347,6 +363,21 @@ export class Trees {
     if (best) { best.removed = true; this.lastCam.set(1e9, 0, 0); }
     return best;
   }
+  /** Nearest standing tree within r metres (cell lookup). */
+  nearestWithin(x, z, r, filter = () => true) {
+    const S = this.cellSize;
+    let best = null, bd = r * r;
+    for (let cz = Math.floor((z - r) / S); cz <= Math.floor((z + r) / S); cz++) for (let cx = Math.floor((x - r) / S); cx <= Math.floor((x + r) / S); cx++) {
+      const c = this.cellMap.get(`${cx},${cz}`);
+      if (!c) continue;
+      for (const it of c.items) {
+        if (it.removed || !filter(it)) continue;
+        const d = (it.x - x) ** 2 + (it.z - z) ** 2;
+        if (d < bd) { bd = d; best = it; }
+      }
+    }
+    return best;
+  }
   nearest(x, z, filter = () => true) {
     let best = null, bd = Infinity;
     for (const it of this.instances) {
@@ -366,19 +397,29 @@ export class Trees {
     this.lastCam.copy(cp); this.lastDir.copy(dir);
     _pm.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
     this.frustum.setFromProjectionMatrix(_pm);
-    const d0 = 52 * this.settings.values.treeDetail + 10, d1 = Math.min(this.settings.values.drawDistance * 0.19, 190);
-    const counters = new Map();
+    // full-detail trees only close by on the lighter presets; LOD1 hands over to impostors sooner
+    const td = this.settings.values.treeDetail;
+    const d0 = td >= 1 ? 62 : 40 * td + 8, d1 = Math.min(this.settings.values.drawDistance * (td >= 1 ? 0.19 : 0.135), 190);
     for (const m of this.meshes) m.count = 0;
     let imp = 0;
+    const sph = _sph;
     const iPos = this.impPos.array, iSlot = this.impSlot.array, iSize = this.impSize.array;
-    const sph = new THREE.Sphere();
-    for (const it of this.instances) {
+    const draw = this.settings.values.drawDistance, sr = Math.sqrt(sr2);
+    for (const cell of this.cells) {
+      // whole cells: skip unless visible or inside the shadow range around the focus
+      const fx = cell.cx - focus.x, fz = cell.cz - focus.z;
+      const shadowCell = fx * fx + fz * fz < (sr + cell.r) ** 2;
+      sph.center.set(cell.cx, cell.cy, cell.cz); sph.radius = cell.r;
+      const visCell = this.frustum.intersectsSphere(sph) && Math.hypot(cp.x - cell.cx, cp.z - cell.cz) - cell.r < draw;
+      if (!visCell && !shadowCell) continue;
+    for (const it of cell.items) {
       if (it.removed) continue;
       const lods = this.byKey.get(`${it.kind}:${it.vi}`);
-      if ((it.x - focus.x) ** 2 + (it.z - focus.z) ** 2 < sr2) {
+      if (shadowCell && (it.x - focus.x) ** 2 + (it.z - focus.z) ** 2 < sr2) {
         _m.compose(_p.set(it.x, it.y, it.z), _q.setFromAxisAngle(_up, it.rot), _s.setScalar(it.s));
         for (const mesh of lods.proxy) mesh.setMatrixAt(mesh.count++, _m);
       }
+      if (!visCell) continue;
       sph.center.set(it.x, it.y + it.h * 0.5, it.z); sph.radius = Math.max(it.r, it.h * 0.55);
       if (!this.frustum.intersectsSphere(sph)) continue;
       const dist = Math.hypot(cp.x - it.x, cp.z - it.z, (cp.y - it.y) * 0.5);
@@ -402,6 +443,7 @@ export class Trees {
         iSize[k * 2] = slot.w; iSize[k * 2 + 1] = slot.h;
       }
     }
+    }
     for (const m of this.meshes) {
       m.visible = m.count > 0;
       m.instanceMatrix.clearUpdateRanges(); m.instanceMatrix.addUpdateRange(0, m.count * 16); m.instanceMatrix.needsUpdate = true;
@@ -414,4 +456,5 @@ export class Trees {
 }
 
 const _white = new THREE.Color(1, 1, 1);
+const _sph = new THREE.Sphere();
 const _v = new THREE.Vector3(), _pm = new THREE.Matrix4(), _m = new THREE.Matrix4(), _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0);

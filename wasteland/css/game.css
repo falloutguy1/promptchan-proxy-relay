@@ -380,3 +380,7 @@ body.touch .jobs { grid-template-columns: repeat(3, 1fr); }
   body.touch #rotate-hint { display: flex; position: fixed; left: 50%; bottom: calc(76px + var(--safe-b)); transform: translateX(-50%); z-index: 45; gap: 8px; align-items: center; padding: 8px 14px; border-radius: 18px; background: var(--panel-solid); border: 1px solid var(--panel-border); color: var(--ink-dim); font-size: 13px; white-space: nowrap; pointer-events: none; }
   body.touch .tb-res .res:nth-child(n+5) { display: none; }
 }
+#asset-warn { padding: 10px 14px; font-size: 12.5px; color: var(--ink-dim); border-left: 3px solid var(--warn); }
+#asset-warn b { color: var(--warn); font-family: var(--font-head); letter-spacing: 0.04em; }
+#asset-warn p { margin: 4px 0; }
+#asset-warn ul { margin: 4px 0 0; padding-left: 18px; }

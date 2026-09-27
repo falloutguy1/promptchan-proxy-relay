@@ -42,12 +42,22 @@ export class Menu {
   }
   hide() { this.el.classList.add('hidden'); }
 
+  /** Non-fatal asset failures: say what is missing and that placeholders are in use. */
+  assetWarning(failures) {
+    if (!failures?.length) return;
+    let box = document.getElementById('asset-warn');
+    if (!box) { box = document.createElement('div'); box.id = 'asset-warn'; box.className = 'panel'; this.el.querySelector('.menu-inner').appendChild(box); }
+    const items = failures.slice(0, 6).map((f) => `<li>${esc(f.what)}</li>`).join('');
+    box.innerHTML = `<b>${failures.length} asset${failures.length > 1 ? 's' : ''} could not be loaded</b><p>The game runs with plain placeholder materials or leaves those objects out. Check the connection and reload.</p><ul>${items}${failures.length > 6 ? `<li>… and ${failures.length - 6} more</li>` : ''}</ul>`;
+  }
+
   page(name) {
     if (!name) return;
     for (const p of this.el.querySelectorAll('.menu-page')) p.classList.toggle('hidden', p.id !== `menu-${name}`);
     this.el.classList.toggle('in-game', this.game.sim.started && !this.game.sim.ended);
     if (name === 'settings') this.#settings();
     if (name === 'credits') this.#credits();
+    if (name === 'help') document.getElementById('help-back').dataset.go = this.back;
     if (name === 'main') this.back = 'main';
     if (name === 'pause') this.back = 'pause';
   }
@@ -147,7 +157,7 @@ export class Menu {
       for (const [k, s] of Object.entries(sky)) add(s.source, 'sky (HDRI)');
       const seen = new Set();
       const list = rows.filter((r) => { const key = r.url; if (seen.has(key)) return false; seen.add(key); return true; }).sort((x, y) => (x.source + x.name).localeCompare(y.source + y.name));
-      const by = (src) => list.filter((r) => r.source === src).map((r) => `<li><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.name)}</a> — ${esc((r.authors || []).join(', ') || 'unknown')} · ${esc(r.what)} · ${esc(r.license)}</li>`).join('');
+      const by = (src) => list.filter((r) => r.source === src || (src === 'ambientCG' && /ambientCG/.test(r.source))).map((r) => `<li><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.name)}</a> — ${esc((r.authors || []).join(', ') || 'unknown')} · ${esc(r.what)} · ${esc(r.license)}</li>`).join('');
       p.querySelector('.credits').innerHTML = `
         <p>Rustwater is built with Three.js on WebGL2. Every scanned model, material, foliage atlas and sky photograph is CC0 (public domain) and was converted to KTX2 / meshopt glTF by the project's asset pipeline. Buildings, colony structures, trees, grass placement, characters and animation are procedural.</p>
         <h3>Poly Haven</h3><ul>${by('Poly Haven')}</ul>

@@ -6,8 +6,13 @@ import * as THREE from 'three';
 
 const _m = new THREE.Matrix4();
 
+// models big enough that their shadow matters on the lighter presets
+const BIG = new Set(['old_bed_frame', 'WoodenTable_01', 'steel_frame_shelves_01', 'stone_fire_pit', 'portable_generator', 'Barrel_01', 'Barrel_02', 'barrel_stove', 'old_military_crate', 'wooden_crate_01']);
+const NEVER = new Set(['nettle_plant', 'russian_food_cans_01', 'hatchet', 'medical_box', 'rusted_wheel_rim_01', 'watering_can_metal_01']);
+
 export class DynModels {
-  constructor(assets) {
+  constructor(assets, { richShadows = true } = {}) {
+    this.richShadows = richShadows;
     this.assets = assets;
     this.group = new THREE.Group();
     this.group.name = 'dyn-models';
@@ -36,7 +41,8 @@ export class DynModels {
       const wp = new THREE.Vector3().setFromMatrixPosition(kid.matrixWorld);
       recentre.makeTranslation(-wp.x, 0, -wp.z);
     } else root.traverse((o) => { if (o.isMesh) parts.push(o); });
-    k = { key, slots: [], meshes: parts.map((p) => ({ src: p, local: new THREE.Matrix4().multiplyMatrices(recentre, p.matrixWorld), im: null, cap: 0 })) };
+    const shadow = !NEVER.has(id) && (this.richShadows || BIG.has(id));
+    k = { key, slots: [], shadow, meshes: parts.map((p) => ({ src: p, local: new THREE.Matrix4().multiplyMatrices(recentre, p.matrixWorld), im: null, cap: 0 })) };
     this.kinds.set(key, k);
     return k;
   }
@@ -46,9 +52,10 @@ export class DynModels {
       if (part.cap >= n) continue;
       const cap = Math.max(8, part.cap * 2, n);
       const im = new THREE.InstancedMesh(part.src.geometry, part.src.material, cap);
-      im.castShadow = part.src.castShadow; im.receiveShadow = true;
-      im.frustumCulled = false;
+      im.castShadow = k.shadow && part.src.castShadow; im.receiveShadow = true;
+      im.frustumCulled = true; // bounding sphere over the instances is kept current in update()
       im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      im.matrixAutoUpdate = false;
       if (part.im) {
         im.instanceMatrix.array.set(part.im.instanceMatrix.array.subarray(0, part.cap * 16));
         this.group.remove(part.im);
@@ -61,18 +68,22 @@ export class DynModels {
   }
 
   /** Add an instance; returns a handle for remove()/set(). */
-  add(id, matrix, variant = -1, { shadow = true } = {}) {
+  add(id, matrix, variant = -1) {
     const k = this.#kind(id, variant);
     if (!k) return null;
     const h = { k, i: k.slots.length, m: matrix.clone() };
     this.#ensure(k, k.slots.length + 1);
     k.slots.push(h);
-    for (const part of k.meshes) {
-      part.im.count = k.slots.length;
-      part.im.castShadow = shadow && part.src.castShadow;
-    }
+    for (const part of k.meshes) part.im.count = k.slots.length;
     this.#write(h);
     return h;
+  }
+
+  /** Refresh bounding spheres of changed meshes so frustum culling stays right. */
+  update() {
+    if (!this.dirty?.size) return;
+    for (const im of this.dirty) if (im.count > 0) im.computeBoundingSphere();
+    this.dirty.clear();
   }
 
   set(h, matrix) { if (!h || h.i < 0) return; h.m.copy(matrix); this.#write(h); }
@@ -82,7 +93,7 @@ export class DynModels {
     const k = h.k, last = k.slots.pop();
     if (last !== h) { last.i = h.i; k.slots[h.i] = last; this.#write(last); }
     h.i = -1;
-    for (const part of k.meshes) { part.im.count = k.slots.length; part.im.instanceMatrix.needsUpdate = true; part.im.visible = part.im.count > 0; }
+    for (const part of k.meshes) { part.im.count = k.slots.length; part.im.instanceMatrix.needsUpdate = true; part.im.visible = part.im.count > 0; (this.dirty ||= new Set()).add(part.im); }
   }
 
   #write(h) {
@@ -91,6 +102,7 @@ export class DynModels {
       part.im.setMatrixAt(h.i, _m);
       part.im.instanceMatrix.needsUpdate = true;
       part.im.visible = part.im.count > 0;
+      (this.dirty ||= new Set()).add(part.im);
     }
   }
 }

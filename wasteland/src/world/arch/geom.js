@@ -8,6 +8,14 @@
 import * as THREE from 'three';
 
 const _v = new THREE.Vector3(), _n = new THREE.Vector3(), _m3 = new THREE.Matrix3();
+const WHITE = new THREE.Color(1, 1, 1);
+const _tints = new Map();
+/** '#rrggbb' -> linear-space colour (cached). */
+function tintColor(hex) {
+  let c = _tints.get(hex);
+  if (!c) { c = new THREE.Color(hex); _tints.set(hex, c); }
+  return c;
+}
 
 export class Geo {
   constructor(tiles = {}) {
@@ -16,6 +24,7 @@ export class Geo {
     this.stack = [new THREE.Matrix4()];
     this.baseY = 0;             // world height of the building's ground for 'wear'
     this.exposure = 1;
+    this._col = WHITE;
   }
   get m() { return this.stack[this.stack.length - 1]; }
   push(mat) { this.stack.push(this.m.clone().multiply(mat)); return this; }
@@ -25,9 +34,16 @@ export class Geo {
   }
   pop() { if (this.stack.length > 1) this.stack.pop(); return this; }
 
+  /**
+   * Geometry bucket for a material key. 'set:#rrggbb' tints become per-vertex
+   * colours, so every tint of a set shares one material (and one batch).
+   */
   part(key) {
-    let p = this.parts.get(key);
-    if (!p) { p = { pos: [], nor: [], uv: [], wear: [], idx: [] }; this.parts.set(key, p); }
+    const c = key.indexOf(':#');
+    const set = c >= 0 ? key.slice(0, c) : key;
+    this._col = c >= 0 ? tintColor(key.slice(c + 1)) : WHITE;
+    let p = this.parts.get(set);
+    if (!p) { p = { pos: [], nor: [], uv: [], wear: [], col: [], idx: [] }; this.parts.set(set, p); }
     return p;
   }
   tile(key) { const k = key.split(':')[0]; return this.tiles[k] || this.tiles[key] || 2; }
@@ -41,6 +57,7 @@ export class Geo {
     p.nor.push(_n.x, _n.y, _n.z);
     p.uv.push(u, v);
     p.wear.push(_v.y - this.baseY, this.exposure);
+    p.col.push(this._col.r, this._col.g, this._col.b);
     return p.pos.length / 3 - 1;
   }
 
@@ -220,7 +237,7 @@ export class Geo {
   #vertWorld(p, x, y, z, n, u, v) {
     _m3.getNormalMatrix(this.m);
     _n.copy(n).applyMatrix3(_m3).normalize();
-    p.pos.push(x, y, z); p.nor.push(_n.x, _n.y, _n.z); p.uv.push(u, v); p.wear.push(y - this.baseY, this.exposure);
+    p.pos.push(x, y, z); p.nor.push(_n.x, _n.y, _n.z); p.uv.push(u, v); p.wear.push(y - this.baseY, this.exposure); p.col.push(this._col.r, this._col.g, this._col.b);
     return p.pos.length / 3 - 1;
   }
 
@@ -332,6 +349,7 @@ export class Geo {
       g.setAttribute('normal', new THREE.Float32BufferAttribute(p.nor, 3));
       g.setAttribute('uv', new THREE.Float32BufferAttribute(p.uv, 2));
       g.setAttribute('wear', new THREE.Float32BufferAttribute(p.wear, 2));
+      g.setAttribute('color', new THREE.Float32BufferAttribute(p.col, 3));
       g.setIndex(p.idx);
       g.computeBoundingBox(); g.computeBoundingSphere();
       out.set(key, g);

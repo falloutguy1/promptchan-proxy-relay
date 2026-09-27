@@ -59,17 +59,18 @@ export class ArchMaterials {
     if (this.cache.has(ck)) return this.cache.get(ck);
     let m;
     if (key === 'glass') {
-      m = new THREE.MeshPhysicalMaterial({ color: new THREE.Color(0.58, 0.64, 0.6), roughness: 0.14, metalness: 0, transparent: true, opacity: 0.32, ior: 1.52, depthWrite: false, side: THREE.DoubleSide, envMapIntensity: 1.2 });
+      m = new THREE.MeshPhysicalMaterial({ color: new THREE.Color(0.58, 0.64, 0.6), roughness: 0.14, metalness: 0, transparent: true, opacity: 0.32, ior: 1.52, depthWrite: false, side: THREE.DoubleSide, envMapIntensity: 1.2, vertexColors: true });
       enhance(m, { wet: false, key: 'glass' });
     } else if (key === 'dark') {
-      m = new THREE.MeshStandardMaterial({ color: 0x0a0a09, roughness: 1 });
+      m = new THREE.MeshStandardMaterial({ color: 0x0a0a09, roughness: 1, vertexColors: true });
       enhance(m, { wet: false, key: 'dark' });
     } else {
-      const [name, tint] = key.split(':');
+      // tints arrive as vertex colours (see Geo.part), so one material serves every tint of a set
+      const name = key.split(':')[0];
       const set = this.sets[name];
       m = new THREE.MeshStandardMaterial({
         map: set.map, normalMap: set.normalMap, roughnessMap: set.ormMap, aoMap: set.ormMap, metalnessMap: opts.metal ? set.ormMap : null,
-        metalness: opts.metal ?? 0, roughness: opts.rough ?? 1, color: tint ? new THREE.Color(tint) : new THREE.Color(1, 1, 1),
+        metalness: opts.metal ?? 0, roughness: opts.rough ?? 1, vertexColors: true,
         side: opts.side ?? THREE.FrontSide,
       });
       m.name = key;

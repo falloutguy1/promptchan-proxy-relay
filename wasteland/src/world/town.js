@@ -14,8 +14,9 @@ import { picketFence } from './arch/fence.js';
 
 function mergeGeos(a, b) {
   const out = new THREE.BufferGeometry();
-  for (const name of ['position', 'normal', 'uv', 'wear']) {
+  for (const name of ['position', 'normal', 'uv', 'wear', 'color']) {
     const A = a.attributes[name], B = b.attributes[name];
+    if (!A || !B) continue;
     const arr = new Float32Array(A.array.length + B.array.length);
     arr.set(A.array, 0); arr.set(B.array, A.array.length);
     out.setAttribute(name, new THREE.BufferAttribute(arr, A.itemSize));

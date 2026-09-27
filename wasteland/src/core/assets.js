@@ -63,7 +63,9 @@ export class Assets {
   async json(path) {
     const key = 'json:' + path;
     if (this.cache.has(key)) return this.cache.get(key);
-    const p = this.track(path, fetch(this.url(path)).then((r) => {
+    // manifests are always revalidated: binaries may be cached for a week
+    // (netlify.toml), the index that names them must match the deployed code
+    const p = this.track(path, fetch(this.url(path), { cache: 'no-cache' }).then((r) => {
       if (!r.ok) throw new Error(`${r.status} ${r.statusText} for ${path}`);
       return r.json();
     }));

@@ -10,10 +10,10 @@ import { RNG } from '../../core/rng.js';
 import { TILES } from './house.js';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
-export const COLONY_TILES = { ...TILES, lamp: 1, beacon: 1, redcross: 1 };
+export const COLONY_TILES = { ...TILES, lamp: 1, beacon: 1, redcross: 1, sign: 1 };
 
-const WOOD = ['wood_weathered:#c9bda8', 'wood_weathered:#d6cab4', 'wood_weathered:#b8aa94'];
-const DARKWOOD = 'wood_weathered:#a39480';
+const WOOD = ['wood_weathered:#b9ad98', 'wood_weathered:#c4b8a2', 'wood_weathered:#a99b86'];
+const DARKWOOD = 'wood_weathered:#94866f';
 const CHAR = 'wood_weathered:#4a4038';
 const ROPE = 'burlap:#8c7a5a';
 const SHEETS = ['corr_rust', 'corr_worn'];
@@ -370,13 +370,12 @@ const BUILDERS = {
       model(out, 'watering_can_metal_01', -3.3, 0, 2.75, rng.float(0, 6));
     }
     if (at(1) && growth > 0.02) {
-      // potato rows on the ridges between furrows
-      // the scanned plant is ~20 cm tall at scale 1; potato haulms grow to ~55 cm
-      const s0 = (0.25 + 0.75 * Math.min(1, growth)) * 3.0;
-      const vars = [0, 1, 4, 5];
+      // potato rows on the ridges between furrows (leaf-card plants, see cropGeometry)
+      out.crops = [];
+      const s0 = 0.2 + 0.8 * Math.min(1, growth);
       for (let r = 0; r < 5; r++) for (let i = 0; i < 12; i++) {
         const x = -3.3 + i * 0.6 + rng.float(-0.06, 0.06), z = -2.2 + r * 1.1 + rng.float(-0.05, 0.05);
-        model(out, 'nettle_plant', x, 0.0, z, rng.float(0, 6), s0 * rng.float(0.8, 1.1), vars[rng.int(0, 3)]);
+        out.crops.push({ x, z, s: s0 * rng.float(0.8, 1.15), rot: rng.float(0, Math.PI), sprite: rng.int(0, 1), phase: rng.float(0, 6) });
       }
     }
     const work = [];
@@ -512,6 +511,14 @@ const BUILDERS = {
     const L = 4.0;
     for (const s of [-1, 1]) if (at(0.1)) g.beam(DARKWOOD, V(s * (L / 2 - 0.12), -0.4, 0), V(s * (L / 2 - 0.12), 2.35, 0), 0.2, 0.2, 0.015);
     if (at(0.3)) g.beam(DARKWOOD, V(-L / 2 - 0.1, 2.25, 0), V(L / 2 + 0.1, 2.25, 0), 0.14, 0.16, 0.012);
+    if (at(0.9)) {
+      // hand-painted name board hung under the lintel, a little crooked
+      g.pushTRS(0.15, 1.98, 0.1, 0, 0, rng.float(-0.05, 0.05));
+      g.box(rng.pick(WOOD), 0, 0, 0, 1.7, 0.36, 0.03, 0.006);
+      g.quad('sign:RUSTWATER', V(-0.8, -0.16, 0.017), V(0.8, -0.16, 0.017), V(0.8, 0.16, 0.017), V(-0.8, 0.16, 0.017), V(0, 0, 1), [[0, 0], [1, 0], [1, 1], [0, 1]]);
+      g.pop();
+      for (const x of [-0.7, 1.0]) rope(g, V(x, 2.18, 0.08), V(x, 2.15, 0.1), 0.0);
+    }
     if (at(0.5)) for (const s of [-1, 1]) {
       // leaf hinged on its post; swung inward (-Z) when open
       g.pushTRS(s * (L / 2 - 0.25), 0.1, 0, open ? s * 1.25 : 0);
@@ -698,4 +705,49 @@ export function footprintOutline(w, d) {
   const c = [[w / 2 - r, d / 2 - r, 0], [-w / 2 + r, d / 2 - r, Math.PI / 2], [-w / 2 + r, -d / 2 + r, Math.PI], [w / 2 - r, -d / 2 + r, Math.PI * 1.5]];
   for (const [cx, cz, a0] of c) for (let i = 0; i <= segs; i++) { const a = a0 + (i / segs) * Math.PI / 2; pts.push([cx + Math.cos(a) * r, cz + Math.sin(a) * r]); }
   return pts;
+}
+
+/**
+ * Crop plants as three crossed leaf cards each, textured from the broadleaf
+ * cluster atlas (sprites: atlas rects with kind 'broad'). Attributes match the
+ * tree foliage material (uv, colour, wind), so crops share its shader.
+ */
+export function cropGeometry(crops, sprites) {
+  const broad = sprites.filter((q) => q.kind === 'broad');
+  const pos = [], nor = [], uv = [], col = [], wind = [], wear = [], idx = [];
+  for (const c of crops) {
+    const rect = broad[c.sprite % broad.length];
+    const w = 0.62 * c.s, h = 0.55 * c.s;
+    for (let k = 0; k < 3; k++) {
+      const a = c.rot + (k * Math.PI) / 3;
+      const rx = Math.cos(a), rz = Math.sin(a);
+      const base = pos.length / 3;
+      const corners = [[-0.5, 0], [0.5, 0], [-0.5, 1], [0.5, 1]];
+      const uvs = [[rect.u0, rect.v1], [rect.u1, rect.v1], [rect.u0, rect.v0], [rect.u1, rect.v0]];
+      for (let q = 0; q < 4; q++) {
+        const [cu, cv] = corners[q];
+        // cards splay outward a little at the top, normals bend up for soft volume shading
+        const x = c.x + rx * cu * w * (1 + 0.25 * cv), z = c.z + rz * cu * w * (1 + 0.25 * cv), y = 0.02 + cv * h;
+        pos.push(x, y, z);
+        const nx = -rz * 0.5 + rx * cu * 0.4, ny = 0.75, nz = rx * 0.5 + rz * cu * 0.4, l = Math.hypot(nx, ny, nz);
+        nor.push(nx / l, ny / l, nz / l);
+        uv.push(uvs[q][0], uvs[q][1]);
+        const ao = 0.55 + 0.45 * cv;
+        col.push(0.78 * ao, 0.92 * ao, 0.68 * ao);
+        wind.push(0.12 * cv, 0.35 * cv, c.phase);
+        wear.push(y, 1);
+      }
+      idx.push(base, base + 1, base + 2, base + 1, base + 3, base + 2);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.setAttribute('wind', new THREE.Float32BufferAttribute(wind, 3));
+  g.setAttribute('wear', new THREE.Float32BufferAttribute(wear, 2));
+  g.setIndex(idx);
+  g.computeBoundingSphere();
+  return g;
 }

@@ -83,6 +83,11 @@ export class Game {
     this.sim.on('sound', (k, p) => this.audio.play(k, p));
     this.sim.on('end', (r) => { this.hud.setSpeed(0); if (this.possessed) this.exitWalk(); setTimeout(() => this.menu.showEnd(r), 1200); });
 
+    // static scenery never moves: freeze its matrices so the per-frame scene update skips it
+    const freeze = (o) => o.traverse((q) => { if (q.isLight) return; q.updateMatrix(); q.matrixAutoUpdate = false; });
+    for (const g of [this.world.terrainGroup, this.world.town.group, this.world.trees.group, this.world.props.group, this.world.grass.group, this.world.roads, this.world.water, this.sim.dyn.group, this.fx.group]) if (g) freeze(g);
+    this.scene.updateMatrixWorld(true);
+
     loading.stageStart(8, 'Compiling shaders');
     await renderer.compileAsync(this.scene, this.camera);
     installReviewApi(this);
@@ -92,6 +97,7 @@ export class Game {
     if (!s.review) {
       this.#menuScene();
       this.menu.show('main');
+      if (this.assets.failures.length) { console.warn('asset failures', this.assets.failures); this.menu.assetWarning(this.assets.failures); }
       this.start();
     }
   }
@@ -114,7 +120,7 @@ export class Game {
   loadGame() {
     if (!this.sim.load()) return false;
     this.menu.hide();
-    this.sim.ai.setEnabled(this.sim.mode === 'ai');
+    this.sim.ai.setEnabled(this.sim.savedAi);
     this.#toColony();
     return true;
   }

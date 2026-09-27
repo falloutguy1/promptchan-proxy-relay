@@ -34,6 +34,7 @@ export class HUD {
     this.#logPanel();
     this.#mobile();
     this.minimap = new Minimap(game, $('minimap'));
+    this.minimap.prepare();
     const sim = this.sim;
     sim.on('alert', (a) => this.toast(a));
     sim.on('log', (e) => this.#logEntry(e));

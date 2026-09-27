@@ -24,6 +24,9 @@ export class Minimap {
     canvas.addEventListener('pointerup', () => { down = false; });
   }
 
+  /** Shaded relief; built once (during loading, see HUD). */
+  prepare() { if (!this.bg) this.#background(); }
+
   #background() {
     const t = this.game.world.terrain;
     const N = 256;

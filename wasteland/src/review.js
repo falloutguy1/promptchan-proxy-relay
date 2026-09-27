@@ -100,6 +100,26 @@ export function installReviewApi(game) {
       }
       return game.perf;
     },
+    /** Approximate draw-call and triangle budget per top-level group (colour + shadow pass). */
+    drawStats() {
+      const cam = game.camera, fr = new THREE.Frustum().setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse));
+      const out = {};
+      const tri = (g) => (g.index ? g.index.count : g.attributes.position.count) / 3;
+      const walk = (o, group, vis) => {
+        if (!o.visible) return;
+        if (o.isMesh || o.isLine || o.isPoints) {
+          const inst = o.isInstancedMesh ? o.count : o.geometry.isInstancedBufferGeometry ? o.geometry.instanceCount : 1;
+          if (!inst) return;
+          if (o.frustumCulled && !o.isInstancedMesh) { if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere(); const sph = o.geometry.boundingSphere.clone().applyMatrix4(o.matrixWorld); if (!fr.intersectsSphere(sph)) return; }
+          const e = (out[group] ||= { calls: 0, shadowCalls: 0, tris: 0 });
+          e.calls++; e.tris += tri(o.geometry) * inst;
+          if (o.castShadow) e.shadowCalls++;
+        }
+        for (const c of o.children) walk(c, group, vis);
+      };
+      for (const c of game.scene.children) walk(c, c.name || c.type, true);
+      return out;
+    },
     /** Timed frames: CPU time of step() and wall time including a GPU sync (readPixels). */
     async timedFrames(n = 10, dt = 1 / 60) {
       const gl = game.renderer.getContext(), px = new Uint8Array(4), cpu = [], wall = [];

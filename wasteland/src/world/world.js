@@ -4,7 +4,9 @@ import * as THREE from 'three';
 import { Terrain } from './terrain.js';
 import { createTerrainMaterial, createHorizonMaterial } from './terrainMaterial.js';
 import { buildRoads } from './roads.js';
-import { buildWater } from './water.js';
+import { buildWater, buildReeds } from './water.js';
+import { Geo } from './arch/geom.js';
+import { WATER_LEVEL } from './layout.js';
 import { Sky } from './sky.js';
 import { Trees } from './vegetation.js';
 import { Grass } from './grass.js';
@@ -36,7 +38,8 @@ export class World {
 
     stage(2, 'Laying ground materials');
     const tMat = await createTerrainMaterial(assets, this.terrain);
-    this.terrainGroup = this.terrain.buildMeshes(tMat);
+    // bigger terrain chunks on the lighter presets: a quarter of the draw calls
+    this.terrainGroup = this.terrain.buildMeshes(tMat, this.settings.values.drawDistance >= 900 ? 64 : 128);
     scene.add(this.terrainGroup);
     scene.add(this.terrain.buildHorizon(createHorizonMaterial()));
 
@@ -45,6 +48,8 @@ export class World {
     scene.add(this.roads);
     this.water = buildWater(this.terrain);
     scene.add(this.water);
+    this.reeds = buildReeds(this.terrain, Geo, WATER_LEVEL);
+    scene.add(this.reeds);
     this.updatables.push(this.water.userData.update);
 
     stage(4, 'Raising the town');

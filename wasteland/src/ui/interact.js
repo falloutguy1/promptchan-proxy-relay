@@ -96,7 +96,7 @@ export class Interaction {
         if (Math.abs(lx) < lot.w / 2 + 1 && Math.abs(lz) < lot.d / 2 + 1.5) return { kind: 'loot', ref: L, ground: g };
       } else if (Math.hypot(g.x - L.x, g.z - L.z) < 9) return { kind: 'loot', ref: L, ground: g };
     }
-    const tree = this.game.world.trees.nearest(g.x, g.z);
+    const tree = this.game.world.trees.nearestWithin(g.x, g.z, 2.5);
     if (tree && Math.hypot(tree.x - g.x, tree.z - g.z) < 2.2) return { kind: 'tree', ref: tree, ground: g };
     return { kind: 'ground', ground: g };
   }
@@ -299,7 +299,7 @@ export class Interaction {
       if (L) target = { kind: 'loot', L, label: `Search ${L.name}` };
     }
     if (!target) {
-      const tree = this.game.world.trees.nearest(p.x, p.z, (it) => !sim.treeReserved.has(it) && it.kind !== 'dead');
+      const tree = this.game.world.trees.nearestWithin(p.x, p.z, 3, (it) => !sim.treeReserved.has(it) && it.kind !== 'dead');
       if (tree && Math.hypot(tree.x - p.x, tree.z - p.z) < 2.4) target = { kind: 'chop', tree, label: `Chop ${tree.kind === 'conifer' ? 'pine' : tree.kind}` };
     }
     if (!target) { this.useT = 0; this.useTarget = null; hud.walkPrompt(''); return; }

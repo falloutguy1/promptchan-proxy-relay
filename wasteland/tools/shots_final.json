@@ -1,0 +1,8 @@
+[
+  { "name": "f_eye_road", "time": 10.5, "view": { "pos": [-10, 1.7, 22], "target": [60, 1.2, 5], "fov": 55 }, "frames": 3 },
+  { "name": "f_eye_pond", "time": 16.5, "view": { "pos": [-140, 1.7, 70], "target": [-170, -0.5, 95], "fov": 55 }, "frames": 3 },
+  { "name": "f_town_house", "time": 10.5, "view": { "pos": [-14, 2.2, -4], "target": [-26, 2.5, -20], "fov": 50 }, "frames": 3 },
+  { "name": "f_forest_edge", "time": 11.0, "view": { "pos": [-120, 2.0, -60], "target": [-200, 8, -140], "fov": 50 }, "frames": 3 },
+  { "name": "f_meadow", "time": 11.0, "view": { "pos": [30, 1.7, -80], "target": [0, 1.0, -40], "fov": 55 }, "frames": 3 },
+  { "name": "f_wide", "time": 10.5, "rts": [-20, 0, 190, 0.7, 0.1], "frames": 3 }
+]

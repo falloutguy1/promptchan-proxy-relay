@@ -14,6 +14,7 @@ import { CulledSet, viewFrustum } from './instancing.js';
 // draw distance per model (m); default 220
 const MAXD = { nettle_plant: 55, weed_plant_02: 55, fern_02: 60, dry_branches_medium_01: 45, shrub_03: 110, shrub_04: 90, tree_stump_01: 120, tree_stump_02: 120, dead_tree_trunk: 140, rock_moss_set_01: 170, rock_moss_set_02: 170, russian_food_cans_01: 30, ammo_box: 40, old_gas_mask: 40, watering_can_metal_01: 50, rusted_spade_01: 50, wooden_bucket_01: 70, trashbag: 90, modular_electricity_poles: 600, covered_car: 400, street_lamp_01: 350 };
 const PLANTS = { nettle_plant: 0.9, weed_plant_02: 0.6, fern_02: 0.8, shrub_03: 1.2, shrub_04: 0.7 };
+const BIG_SHADOW = new Set(['covered_car', 'concrete_road_barrier', 'modular_electricity_poles', 'street_lamp_01', 'rock_moss_set_01', 'rock_moss_set_02', 'dead_tree_trunk', 'Barrel_01', 'Barrel_02', 'old_bed_frame', 'painted_wooden_cabinet', 'wooden_bookshelf_worn', 'scandinavian_masonry_heater', 'WoodenTable_01', 'wooden_picnic_table', 'utility_box_01', 'portable_searchlight']);
 
 const _dir = new THREE.Vector3();
 
@@ -244,8 +245,12 @@ export class Props {
       }
     }
     this.sets = [];
+    // lighter presets: small clutter and plants cast no shadow and are drawn less far
+    const v = this.world.settings.values;
+    const rich = v.shadowSize >= 4096, dScale = v.drawDistance >= 900 ? 1 : v.drawDistance >= 700 ? 0.8 : 0.6;
     for (const b of buckets.values()) {
-      const set = new CulledSet(b.mesh.geometry, b.mesh.material, b.list, { shadow: b.shadow, maxD: MAXD[b.id] ?? 220 });
+      const shadow = b.shadow && (rich || BIG_SHADOW.has(b.id));
+      const set = new CulledSet(b.mesh.geometry, b.mesh.material, b.list, { shadow, maxD: (MAXD[b.id] ?? 220) * (BIG_SHADOW.has(b.id) ? 1 : dScale) });
       set.id = b.id;
       this.sets.push(set);
       this.group.add(set.im);

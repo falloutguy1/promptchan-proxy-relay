@@ -1,3 +1,17 @@
 [build]
   publish = "."
   functions = "netlify/functions"
+
+# Rustwater Colony: compressed textures, models and vendored libraries change only
+# when the asset pipeline is re-run, so browsers may keep them for a week. The
+# JSON manifests in assets/ are fetched with cache: 'no-cache' by the game, so they
+# are revalidated on every load despite this header.
+[[headers]]
+  for = "/wasteland/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+
+[[headers]]
+  for = "/wasteland/vendor/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"

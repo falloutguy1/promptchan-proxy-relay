@@ -137,3 +137,48 @@ export function buildWater(terrain) {
   mesh.userData.update = () => { uniforms.uRain.value = G.uWetness.value; };
   return mesh;
 }
+
+/**
+ * Reeds and cattails in clumps along the pond's shallows (from a little above
+ * the waterline to half a metre deep). One batched mesh; blades are tapered
+ * tubes with a darker base, and wind bends them by height.
+ */
+export function buildReeds(terrain, Geo, WATER) {
+  const rng = { s: 91, next() { this.s = (this.s * 16807) % 2147483647; return this.s / 2147483647; } };
+  const r = (a, b) => a + (b - a) * rng.next();
+  const g = new Geo({ reed: 1 });
+  const base = WATER - 0.6;
+  let clumps = 0;
+  for (let i = 0; i < 900 && clumps < 150; i++) {
+    const a = r(0, Math.PI * 2);
+    const rad = terrain.pondRadiusAt(a) + r(-4, 1.2);
+    const cx = POND.x + Math.cos(a) * rad, cz = POND.z + Math.sin(a) * rad;
+    const depth = WATER - terrain.height(cx, cz);
+    if (depth < -0.3 || depth > 0.55) continue;
+    clumps++;
+    const n = 6 + Math.floor(r(0, 12));
+    for (let k = 0; k < n; k++) {
+      const bx = cx + r(-0.45, 0.45), bz = cz + r(-0.45, 0.45);
+      const y0 = terrain.height(bx, bz) - base - 0.05;
+      const top = WATER - base + r(0.9, 1.9);
+      const lx = r(-0.18, 0.18), lz = r(-0.18, 0.18);
+      const mid = new THREE.Vector3(bx + lx * 0.35, y0 + (top - y0) * 0.5, bz + lz * 0.35);
+      g.tube(`reed:${rng.next() < 0.5 ? '#56633a' : '#4c5a34'}`, [new THREE.Vector3(bx, y0, bz), mid], [0.011, 0.009], 4);
+      g.tube(`reed:${rng.next() < 0.5 ? '#8f8a58' : '#a39862'}`, [mid, new THREE.Vector3(bx + lx, top, bz + lz)], [0.009, 0.002], 4);
+      if (rng.next() < 0.22) {
+        // cattail head on its own stalk
+        const hx = bx + lx * 0.8, hz = bz + lz * 0.8, hy = top - 0.35;
+        g.tube('reed:#5a3d24', [new THREE.Vector3(hx, hy, hz), new THREE.Vector3(hx + lx * 0.08, hy + 0.2, hz + lz * 0.08)], 0.028, 6, true);
+      }
+    }
+  }
+  const geo = g.build().get('reed');
+  const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0, side: THREE.DoubleSide });
+  enhance(mat, { wind: { amp: 0.3, flutter: 0.06, height: 2.4 }, porosity: 0.5, key: 'reeds' });
+  const mesh = new THREE.Mesh(geo || new THREE.BufferGeometry(), mat);
+  mesh.position.y = base;
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.name = 'reeds';
+  return mesh;
+}

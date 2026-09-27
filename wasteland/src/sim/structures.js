@@ -4,7 +4,7 @@
 // navigation/collider registration, ground painting and lights.
 import * as THREE from 'three';
 import { STRUCTURES } from './defs.js';
-import { buildStructure, COLONY_TILES } from '../world/arch/colony.js';
+import { buildStructure, COLONY_TILES, cropGeometry } from '../world/arch/colony.js';
 import { F_STRUCT, F_WALL, F_GATE, F_BLOCK, F_WATER } from './nav.js';
 import { WATER_LEVEL, inPlay } from '../world/layout.js';
 import { enhance } from '../core/shaderlib.js';
@@ -14,7 +14,7 @@ const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _p = new THREE.Vect
 
 export const STRUCTURE_MODELS = [
   'stone_fire_pit', 'barrel_stove', 'old_bed_frame', 'wooden_crate_01', 'plastic_crate_01', 'cardboard_box_01', 'cement_bag', 'Barrel_01', 'Barrel_02',
-  'metal_jerrycan_green', 'plastic_jerrycan', 'russian_food_cans_01', 'wooden_bucket_01', 'nettle_plant', 'rusted_spade_01', 'watering_can_metal_01',
+  'metal_jerrycan_green', 'plastic_jerrycan', 'russian_food_cans_01', 'wooden_bucket_01', 'rusted_spade_01', 'watering_can_metal_01',
   'WoodenTable_01', 'steel_frame_shelves_01', 'propane_tank', 'old_tyre', 'hatchet', 'rusted_wheel_rim_01', 'portable_searchlight', 'old_military_crate',
   'medical_box', 'portable_generator', 'vintage_radio_transceiver',
 ];
@@ -23,11 +23,16 @@ function mergeInto(list) {
   let nv = 0, ni = 0;
   for (const g of list) { nv += g.attributes.position.count; ni += g.index.count; }
   const out = new THREE.BufferGeometry();
-  const attrs = { position: 3, normal: 3, uv: 2, wear: 2 };
+  const attrs = { position: 3, normal: 3, uv: 2, wear: 2, color: 3 };
+  if (list[0].attributes.wind) attrs.wind = 3;
   for (const [name, size] of Object.entries(attrs)) {
     const arr = new Float32Array(nv * size);
     let o = 0;
-    for (const g of list) { const a = g.attributes[name].array; arr.set(a, o); o += a.length; }
+    for (const g of list) {
+      const a = g.attributes[name]?.array, n = g.attributes.position.count * size;
+      if (a) arr.set(a, o); else if (name === 'color') arr.fill(1, o, o + n);
+      o += n;
+    }
     out.setAttribute(name, new THREE.BufferAttribute(arr, size));
   }
   const idx = new Uint32Array(ni);
@@ -81,6 +86,10 @@ export class Structures {
       const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
       m = new THREE.MeshStandardMaterial({ map: t, roughness: 0.95, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2 });
       enhance(m, { porosity: 0.9, key: 'redcross' });
+    } else if (key === 'crop') {
+      m = this.world.trees.materials.oak.leaf;
+    } else if (key.startsWith('sign:')) {
+      m = this.mats.sign(key.slice(5), { bg: '#b5a88f', fg: '#221d18', w: 1024, h: 205, font: 'bold 150px "Arial Black", Impact, sans-serif', fade: 1.2 });
     } else if (key === 'glass') m = this.mats.get('glass');
     else if (key === 'dark') m = this.mats.get('dark');
     else if (key.startsWith('canvas')) m = this.mats.get(key, { side: THREE.DoubleSide });
@@ -115,7 +124,7 @@ export class Structures {
       if (f & (F_BLOCK | F_WATER)) return { ok: false, reason: 'Blocked by a building or steep ground' };
     }
     // trees in the footprint
-    const tr = this.world.trees.nearest(x, z);
+    const tr = this.world.trees.nearestWithin(x, z, Math.max(def.w, def.d) * 0.5 + 1);
     if (tr && Math.hypot(tr.x - x, tr.z - z) < Math.max(def.w, def.d) * 0.5 + 0.4 && def.nav !== 'wall' && def.nav !== 'gate') return { ok: false, reason: 'A tree is in the way' };
     const limit = def.nav === 'wall' || def.nav === 'gate' ? 1.6 : type === 'farm' ? 1.4 : 1.0;
     if (hi - lo > limit) return { ok: false, reason: 'Ground too uneven' };
@@ -152,7 +161,7 @@ export class Structures {
     const def = STRUCTURES[type];
     const res = buildStructure(type, 1, { progress: 1, w: def.w, d: def.d });
     const geos = [...res.geo.values()].map((g) => { const c = new THREE.BufferGeometry(); c.setAttribute('position', g.attributes.position); c.setAttribute('normal', g.attributes.normal); c.setIndex(g.index); return c; });
-    const merged = geos.length ? mergeInto(geos.map((g) => { g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2)); g.setAttribute('wear', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2)); return g; })) : new THREE.BoxGeometry(def.w, 1, def.d);
+    const merged = geos.length ? mergeInto(geos) : new THREE.BoxGeometry(def.w, 1, def.d);
     const mat = new THREE.MeshLambertMaterial({ color: 0x86d07a, transparent: true, opacity: 0.42, depthWrite: false, emissive: 0x1a3a18 });
     const mesh = new THREE.Mesh(merged, mat);
     const pad = new THREE.Mesh(new THREE.PlaneGeometry(def.w, def.d, Math.ceil(def.w * 2), Math.ceil(def.d * 2)).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x86d07a, transparent: true, opacity: 0.22, depthWrite: false }));
@@ -269,13 +278,14 @@ export class Structures {
       else s.spots[k] = v.map((q) => { const w = q.length === 3 && k !== 'seats' ? this.toWorld(s, q[0], q[2], q[1]) : this.toWorld(s, q[0], q[1]); if (k === 'seats') w.yaw = q[2] + s.rot; return w; });
     }
     s.height = res.height;
+    if (res.crops?.length && this.world.trees?.sprites) res.geo.set('crop', cropGeometry(res.crops, this.world.trees.sprites.clusters));
     // models
     for (const h of s.models) this.dyn.remove(h);
     s.models = [];
     const M = this.#matrix(s);
     for (const md of res.models) {
       const lm = new THREE.Matrix4().compose(new THREE.Vector3(md.x, md.y, md.z), new THREE.Quaternion().setFromEuler(new THREE.Euler(md.rx || 0, md.ry || 0, md.rz || 0, 'YXZ')), new THREE.Vector3(md.s, md.s, md.s));
-      const h = this.dyn.add(md.id, M.clone().multiply(lm), md.variant ?? -1, { shadow: md.id !== 'nettle_plant' });
+      const h = this.dyn.add(md.id, M.clone().multiply(lm), md.variant ?? -1);
       if (h) s.models.push(h);
     }
     // geometry: finished structures go to the shared batch, sites keep their own meshes
@@ -297,6 +307,8 @@ export class Structures {
         grp.add(mesh);
       }
       grp.userData.structure = s.id;
+      grp.traverse((q) => { q.updateMatrix(); q.matrixAutoUpdate = false; });
+      grp.updateMatrixWorld(true);
       s.mesh = grp;
       this.building.add(grp);
     }
@@ -314,6 +326,7 @@ export class Structures {
       const mesh = new THREE.Mesh(mergeInto([...map.values()]), this.mat(key));
       mesh.castShadow = key !== 'glass' && key !== 'redcross'; mesh.receiveShadow = true;
       mesh.name = 'colony:' + key;
+      mesh.matrixAutoUpdate = false;
       if (key === 'glass') mesh.renderOrder = 3;
       this.batch.add(mesh);
       this.meshes.set(key, mesh);
@@ -423,6 +436,7 @@ export class Structures {
 
   update(dt, night, powered) {
     this.flush();
+    this.dyn.update();
     const t = performance.now() * 0.001;
     if (this.lampMat) this.lampMat.emissiveIntensity = night && powered ? 7 : 0;
     if (this.beaconMat) this.beaconMat.emissiveIntensity = (t % 1.6) < 0.25 ? (night ? 30 : 8) : 0.2;
