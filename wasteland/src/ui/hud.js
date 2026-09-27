@@ -52,7 +52,7 @@ export class HUD {
   #resources() {
     const el = $('resources');
     const items = [...RES.map((r) => ({ id: r, icon: RES_ICON[r], name: RES_NAME[r] })), { id: 'pop', icon: 'r-pop', name: 'Survivors / beds' }, { id: 'morale', icon: 'r-morale', name: 'Morale' }, { id: 'power', icon: 'r-power', name: 'Power' }];
-    el.innerHTML = items.map((it) => `<div class="res" data-r="${it.id}" data-tip="${esc(it.name)}">${icon(it.icon)}<span class="v">0</span><span class="d"></span></div>`).join('');
+    el.innerHTML = items.map((it) => `<div class="res" data-r="${it.id}" data-tip="${esc(it.name)}">${icon(it.icon)}<span class="vd"><span class="v">0</span><span class="d"></span></span></div>`).join('');
     this.resEls = {};
     for (const it of items) { const n = el.querySelector(`[data-r="${it.id}"]`); this.resEls[it.id] = { el: n, v: n.querySelector('.v'), d: n.querySelector('.d') }; }
     this.#tooltips(el, '.res', (n) => this.#resTip(n.dataset.r));
@@ -465,8 +465,11 @@ export class HUD {
       if (!el) { el = document.createElement('div'); el.className = 'wlabel ' + w.cls; box.appendChild(el); this.labels.set(k, el); }
       el.style.display = vis ? '' : 'none';
       if (!vis) continue;
-      if (el.textContent !== w.text) el.textContent = w.text;
-      el.style.transform = `translate(${((_v.x + 1) / 2) * W}px, ${((1 - _v.y) / 2) * H}px) translate(-50%, -100%)`;
+      if (el.textContent !== w.text) { el.textContent = w.text; el._w = el.offsetWidth; }
+      // keep the whole label on screen when its anchor is near an edge
+      const hw = (el._w || 60) / 2 + 6;
+      const px = Math.min(W - hw, Math.max(hw, ((_v.x + 1) / 2) * W)), py = Math.max(28, ((1 - _v.y) / 2) * H);
+      el.style.transform = `translate(${px}px, ${py}px) translate(-50%, -100%)`;
     }
   }
 

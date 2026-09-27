@@ -61,7 +61,7 @@ await shot('p7_night_eye', () => {
   const g = window.__game, sim = g.sim, f = sim.structures.list.find((s) => s.type === 'campfire');
   window.__wl.view({ pos: [f.x + 5.5, 1.6, f.z + 3.5], target: [f.x, 0.6, f.z], fov: 55 });
   return null;
-}, 4);
+}, 24); // enough frames for the fire's particles to reach a steady state
 await page.evaluate(() => window.__wl.simulate(10));
 await shot('p8_walk', () => {
   const g = window.__game, s = g.sim.alive().find((q) => q.armed) || g.sim.alive()[0];

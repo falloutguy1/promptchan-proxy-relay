@@ -9,15 +9,31 @@ import { G } from '../core/shaderlib.js';
 const MAX = 1600;
 const TILE = { flame: 0, smoke: 1, dot: 2, streak: 3 };
 
+const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+
+// 2x2 atlas, canvas quadrants: flame top-left, smoke top-right, dot bottom-left,
+// streak bottom-right (the texture is flipped on upload, see the vertex shader)
 function atlasTexture() {
   const S = 128, c = document.createElement('canvas');
   c.width = c.height = S * 2;
   const g = c.getContext('2d');
-  // flame: soft teardrop
-  g.save(); g.translate(S / 2, S * 0.62); g.scale(1, 1.7);
-  let gr = g.createRadialGradient(0, 0, 0, 0, 0, S * 0.36);
-  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.35, 'rgba(255,255,255,0.75)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
-  g.fillStyle = gr; g.beginPath(); g.arc(0, 0, S * 0.36, 0, 7); g.fill(); g.restore();
+  // flame: a tongue, rounded at the base, widest low down, licking to a point,
+  // with a little turbulence so overlapping sprites do not read as discs
+  const img = g.createImageData(S, S);
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    const v = 1 - (y + 0.5) / S, u = ((x + 0.5) / S) * 2 - 1;
+    const t = Math.min(1, Math.max(0, (v - 0.03) / 0.95));
+    const w = 0.64 * Math.pow(Math.sin(Math.PI * t), 0.6) * Math.pow(1 - v * 0.97, 0.55) + 1e-4;
+    const bend = 0.09 * Math.sin(v * 5.2 + 0.4) * v;
+    const d = Math.abs(u - bend) / w;
+    let a = (1 - smooth(0.4, 1, d)) * smooth(0, 0.1, v) * (1 - 0.4 * v);
+    a *= 0.86 + 0.14 * Math.sin(u * 13 + v * 7) * Math.sin(v * 19 - u * 5);
+    const o = (y * S + x) * 4;
+    img.data[o] = img.data[o + 1] = img.data[o + 2] = 255;
+    img.data[o + 3] = Math.max(0, Math.min(255, a * 255));
+  }
+  g.putImageData(img, 0, 0);
+  let gr;
   // smoke: lumpy puff
   let seed = 7;
   const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
@@ -51,26 +67,29 @@ void main() {
   float c = cos( iSize.y ), s = sin( iSize.y );
   mv.xy += vec2( position.x * c - position.y * s, position.x * s + position.y * c ) * iSize.x;
   gl_Position = projectionMatrix * mv;
-  vUv = ( uv + vec2( mod( iTile, 2.0 ), floor( iTile / 2.0 ) ) ) * 0.5;
+  // the canvas is flipped on upload: tile row 0 (flame, smoke) is the top half
+  vUv = ( uv + vec2( mod( iTile, 2.0 ), 1.0 - floor( iTile / 2.0 ) ) ) * 0.5;
   vCol = iCol;
   vFog = 1.0 - exp( -uFogDensity * max( 0.0, -mv.z ) );
 }`;
+// additive particles (flames, embers, flashes) emit light; the others (smoke,
+// dust, chips, blood) are lit by the sky and sun like any surface
 const FS = /* glsl */`
-uniform sampler2D tAtlas; uniform vec3 uFogColor;
+uniform sampler2D tAtlas; uniform vec3 uFogColor; uniform vec3 uLight; uniform float uGain;
 varying vec2 vUv; varying vec4 vCol; varying float vFog;
 void main() {
   vec4 t = texture2D( tAtlas, vUv );
   float a = t.a * vCol.a;
   if ( a < 0.004 ) discard;
   #ifdef ADDITIVE
-    gl_FragColor = vec4( vCol.rgb * a * ( 1.0 - vFog ), 0.0 );
+    gl_FragColor = vec4( vCol.rgb * uGain * a * ( 1.0 - vFog ), 0.0 );
   #else
-    gl_FragColor = vec4( mix( vCol.rgb, uFogColor, vFog ) * a, a );
+    gl_FragColor = vec4( mix( vCol.rgb * uLight, uFogColor, vFog ) * a, a );
   #endif
 }`;
 
 class ParticleSystem {
-  constructor(atlas, additive) {
+  constructor(atlas, additive, shared) {
     this.n = 0;
     this.px = new Float32Array(MAX * 3); this.pv = new Float32Array(MAX * 3);
     this.age = new Float32Array(MAX); this.life = new Float32Array(MAX);
@@ -90,7 +109,7 @@ class ParticleSystem {
     g.instanceCount = 0;
     const mat = new THREE.ShaderMaterial({
       vertexShader: VS, fragmentShader: FS, transparent: true, depthWrite: false,
-      uniforms: { tAtlas: { value: atlas }, uFogColor: G.uFogColor, uFogDensity: G.uFogDensity },
+      uniforms: { tAtlas: { value: atlas }, uFogColor: G.uFogColor, uFogDensity: G.uFogDensity, uLight: shared.uLight, uGain: shared.uGain },
       defines: additive ? { ADDITIVE: '' } : {},
       blending: THREE.CustomBlending,
     });
@@ -192,8 +211,9 @@ export class FX {
     this.group.name = 'fx';
     scene.add(this.group);
     const atlas = atlasTexture();
-    this.add = new ParticleSystem(atlas, true);
-    this.alpha = new ParticleSystem(atlas, false);
+    this.shared = { uLight: { value: new THREE.Color(1, 1, 1) }, uGain: { value: 1 } };
+    this.add = new ParticleSystem(atlas, true, this.shared);
+    this.alpha = new ParticleSystem(atlas, false, this.shared);
     this.group.add(this.alpha.mesh, this.add.mesh);
     this.acc = new Map();
     this.wind = new THREE.Vector2(0.6, 0.25);
@@ -212,11 +232,13 @@ export class FX {
     return n;
   }
   fire(key, x, y, z, dt, strength = 1) {
-    for (let i = this.rate(key + 'f', 26 * strength, dt); i > 0; i--) {
-      const a = Math.random() * 6.283, r = Math.random() * 0.22 * strength;
-      const hot = 2.4 + Math.random() * 2.0;
-      this.add.emit(x + Math.cos(a) * r, y, z + Math.sin(a) * r, (Math.random() - 0.5) * 0.15, 0.7 + Math.random() * 0.6, (Math.random() - 0.5) * 0.15, 0.45 + Math.random() * 0.35,
-        0.32 * strength, 0.08, [hot, hot * 0.62, hot * 0.22, 0.9], [hot * 0.8, hot * 0.25, 0.04, 0.0], TILE.flame, { drag: 0.6, rot: (Math.random() - 0.5) * 0.4, spin: (Math.random() - 0.5) * 0.8 });
+    // flame colour of a wood fire: saturated orange (AgX mutes anything paler),
+    // yellow-white where tongues overlap, red at the tips
+    for (let i = this.rate(key + 'f', 30 * strength, dt); i > 0; i--) {
+      const a = Math.random() * 6.283, r = Math.random() * 0.2 * strength;
+      const h = 0.8 + Math.random() * 0.45;
+      this.add.emit(x + Math.cos(a) * r, y + 0.05, z + Math.sin(a) * r, (Math.random() - 0.5) * 0.15, 0.8 + Math.random() * 0.6, (Math.random() - 0.5) * 0.15, 0.5 + Math.random() * 0.4,
+        0.44 * strength, 0.12, [2.4 * h, 0.52 * h, 0, 0.9], [1.5 * h, 0.12 * h, 0, 0], TILE.flame, { drag: 0.6, rot: (Math.random() - 0.5) * 0.4, spin: (Math.random() - 0.5) * 0.8 });
     }
     for (let i = this.rate(key + 'e', 4 * strength, dt); i > 0; i--) {
       this.add.emit(x + (Math.random() - 0.5) * 0.3, y + 0.2, z + (Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.6, 1.4 + Math.random() * 1.4, (Math.random() - 0.5) * 0.6, 1.2 + Math.random(),
@@ -351,6 +373,13 @@ export class FX {
 
   update(dt, camera, sky) {
     this.wind.set(G.uWind.value.x * G.uWind.value.z * 1.5, G.uWind.value.y * G.uWind.value.z * 1.5);
+    // lit particles: sky (horizon radiance) plus a sphere-averaged share of the sun
+    const F = G.uFogColor.value, L = G.uSunLight.value;
+    this.shared.uLight.value.setRGB(F.r + L.r * 0.16, F.g + L.g * 0.16, F.b + L.b * 0.16);
+    // emissive particles do not follow the night exposure boost (the eye adapts to
+    // the fire, not to the moonlight around it), so flames keep their colour
+    // instead of clipping to white
+    if (sky) this.shared.uGain.value = Math.min(1.2, Math.max(0.12, 0.62 / sky.exposure));
     this.add.update(dt, this.wind);
     this.alpha.update(dt, this.wind);
     // tracers

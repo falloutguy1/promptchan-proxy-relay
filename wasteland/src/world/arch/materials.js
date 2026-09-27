@@ -13,6 +13,16 @@ export const ARCH_SETS = {
   wood_weathered: 2.0, wood_painted: 2.0, floor_wood: 2.0, wall_interior: 2.0, canvas: 1.0, burlap: 0.5,
 };
 
+// Albedo corrections for scans that do not suit tinting. The weathered planks scan
+// is dark brown (mean albedo 0.06): tinted it read as charcoal, so it is partly
+// desaturated and brightened until the colony's tints give weathered lumber
+// (albedo ~0.15). The linen scan is blue, so it is used as luminance only,
+// normalised to a mean of 1: the vertex tint is then the cloth's albedo.
+const ALBEDO = {
+  wood_weathered: { gain: 5.7, desat: 0.55 },
+  canvas: { gain: 1 / 0.398, desat: 1 },
+};
+
 const WEATHER = (shader) => {
   shader.uniforms.tWearNoise = { value: macroNoiseTexture() };
   shader.vertexShader = shader.vertexShader
@@ -23,6 +33,9 @@ const WEATHER = (shader) => {
     .replace('#include <common>', '#include <common>\nvarying vec2 vWear;\nvarying vec3 vArchPos;\nuniform sampler2D tWearNoise;')
     .replace('#include <map_fragment>', /* glsl */`
 	#include <map_fragment>
+	#ifdef ALBEDO_DESAT
+		diffuseColor.rgb = mix( diffuseColor.rgb, vec3( dot( diffuseColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) ) ), ALBEDO_DESAT );
+	#endif
 	{
 		float h = vWear.x, ex = vWear.y;
 		vec4 n1 = texture2D( tWearNoise, vArchPos.xz * 0.11 + vArchPos.y * 0.03 );
@@ -74,6 +87,8 @@ export class ArchMaterials {
         side: opts.side ?? THREE.FrontSide,
       });
       m.name = key;
+      const fix = ALBEDO[name];
+      if (fix) { m.color.setScalar(fix.gain); m.defines = { ...m.defines, ALBEDO_DESAT: fix.desat.toFixed(2) }; }
       const porosity = name.startsWith('metal') || name.startsWith('corr') ? 0.35 : name.startsWith('roof') ? 0.6 : 0.9;
       enhance(m, { porosity, key: 'arch', extra: WEATHER });
     }

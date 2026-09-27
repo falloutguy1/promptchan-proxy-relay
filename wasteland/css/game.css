@@ -116,9 +116,12 @@ select { background: #221e18; color: var(--ink); border: 1px solid var(--panel-b
 .weather { display: inline-flex; align-items: center; gap: 4px; color: var(--ink-dim); font-size: 14px; }
 .tb-res { display: flex; gap: 2px; background: var(--panel); border: 1px solid var(--panel-border); border-radius: var(--radius); padding: 0 6px; height: 40px; align-items: center; overflow-x: auto; scrollbar-width: none; min-width: 0; }
 .tb-res::-webkit-scrollbar { display: none; }
-.res { display: flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 4px; font-family: var(--font-head); font-size: 17px; font-variant-numeric: tabular-nums; white-space: nowrap; position: relative; }
-.res svg { width: 17px; height: 17px; color: var(--ink-dim); }
-.res .d { font-size: 12px; color: var(--ink-faint); }
+.res { display: flex; align-items: center; gap: 5px; padding: 3px 7px; border-radius: 4px; font-family: var(--font-head); font-size: 17px; font-variant-numeric: tabular-nums; white-space: nowrap; position: relative; }
+.res svg { width: 17px; height: 17px; color: var(--ink-dim); flex: none; }
+/* the day's change sits under the value so the bar is no wider with it */
+.res .vd { display: flex; flex-direction: column; align-items: flex-start; line-height: 1; }
+.res .d { font-size: 11px; line-height: 1; margin-top: 1px; color: var(--ink-faint); }
+.res .d:empty { display: none; }
 .res .d.up { color: var(--good); }
 .res .d.down { color: var(--danger); }
 .res.low { background: rgba(208, 81, 62, 0.22); }
@@ -354,7 +357,6 @@ body.touch .jobs { grid-template-columns: repeat(3, 1fr); }
 @media (max-width: 1180px) {
   .ai-toggle .lbl { display: none; }
   .res { padding: 3px 5px; font-size: 16px; }
-  .res .d { display: none; }
   .weather span { display: none; }
 }
 @media (max-width: 1000px) {

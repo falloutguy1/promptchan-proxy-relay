@@ -33,6 +33,8 @@
 
   <!-- HUD (hidden until a game starts) -->
   <div id="hud" class="hidden" aria-live="polite">
+    <!-- world labels first so every HUD panel draws over them -->
+    <div id="labels" aria-hidden="true"></div>
     <header id="topbar">
       <div class="tb-left">
         <button class="icon-btn" id="btn-menu" title="Menu (Esc)" aria-label="Menu"><svg><use href="#i-menu"/></svg></button>
@@ -98,7 +100,6 @@
       <button id="walk-exit" class="round" aria-label="Leave survivor view"><svg><use href="#i-x"/></svg></button>
       <div class="walk-hint">Survivor view · WASD move · Shift run · mouse look · click shoot · hold E use · Esc exit</div>
     </div>
-    <div id="labels" aria-hidden="true"></div>
     <div id="modal" class="panel hidden" role="dialog" aria-live="assertive"></div>
     <div id="tooltip" class="hidden"></div>
   </div>
