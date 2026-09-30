@@ -481,6 +481,7 @@ export class Colony {
     for (const z of this.infected) z.hear(pos.x, pos.z, r);
   }
   gunshot(shooter, z, hit) {
+    shooter.c.anim.shoot?.();
     const from = this.world.characters.muzzle(shooter.c);
     const to = new THREE.Vector3(z.pos.x + (hit ? 0 : (Math.random() - 0.5) * 2.5), z.pos.y + 1.2 + (hit ? 0 : Math.random()), z.pos.z + (hit ? 0 : (Math.random() - 0.5) * 2.5));
     this.fx?.flash(from.x, from.y, from.z);

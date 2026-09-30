@@ -120,6 +120,7 @@ export class Survivor extends Agent {
   hurt(n, cause = 'wounds', bite = 0) {
     if (!this.alive) return;
     this.hp -= n;
+    if (cause === 'the infected' || cause === 'wounds') this.c.anim.hit?.();
     if (bite > 0 && Math.random() < bite * (this.has('tough') ? 0.6 : 1)) {
       const was = this.infection;
       // a bite starts the clock (~20 game hours untreated); more bites shorten it a little
@@ -697,6 +698,7 @@ export class Infected extends Agent {
   damage(n, by) {
     if (!this.alive) return;
     this.hp -= n;
+    this.c.anim.hit?.();
     this.sim.fx?.blood(this.pos.x, this.pos.y + 1.3, this.pos.z);
     if (by && this.state !== 'attack') { this.target = by; this.state = 'chase'; }
     if (this.hp <= 0) this.die(by);

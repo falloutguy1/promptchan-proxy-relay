@@ -1970,5 +1970,76 @@
     290.43155536055565
    ]
   }
+ },
+ "characters": {
+  "id": "characters",
+  "kind": "characters",
+  "parts": 41,
+  "bytesHi": 4498427,
+  "bytesLo": 2492806,
+  "source": {
+   "source": "Quaternius",
+   "url": "https://quaternius.com/packs/universalbasecharacters.html",
+   "license": "CC0 1.0",
+   "name": "Universal Base Characters",
+   "authors": [
+    "Quaternius"
+   ]
+  },
+  "sources": [
+   {
+    "source": "Quaternius",
+    "url": "https://quaternius.com/packs/universalbasecharacters.html",
+    "license": "CC0 1.0",
+    "name": "Universal Base Characters",
+    "authors": [
+     "Quaternius"
+    ]
+   },
+   {
+    "source": "Quaternius",
+    "url": "https://quaternius.com/packs/modularcharacteroutfitsfantasy.html",
+    "license": "CC0 1.0",
+    "name": "Modular Character Outfits - Fantasy",
+    "authors": [
+     "Quaternius"
+    ]
+   }
+  ]
+ },
+ "char_anims": {
+  "id": "char_anims",
+  "kind": "animations",
+  "bytesHi": 2104163,
+  "bytesLo": 2104163,
+  "source": {
+   "source": "Quaternius",
+   "url": "https://quaternius.com/packs/universalanimationlibrary.html",
+   "license": "CC0 1.0",
+   "name": "Universal Animation Library",
+   "authors": [
+    "Quaternius"
+   ]
+  },
+  "sources": [
+   {
+    "source": "Quaternius",
+    "url": "https://quaternius.com/packs/universalanimationlibrary.html",
+    "license": "CC0 1.0",
+    "name": "Universal Animation Library",
+    "authors": [
+     "Quaternius"
+    ]
+   },
+   {
+    "source": "Quaternius",
+    "url": "https://quaternius.com/packs/universalanimationlibrary2.html",
+    "license": "CC0 1.0",
+    "name": "Universal Animation Library 2",
+    "authors": [
+     "Quaternius"
+    ]
+   }
+  ]
  }
 }

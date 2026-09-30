@@ -152,14 +152,15 @@ export class Menu {
       const [mm, tm, sky] = await Promise.all([a.json('manifest-models.json'), a.json('manifest-textures.json'), a.json('sky/skies.json')]);
       const rows = [];
       const add = (src, what) => { if (src) rows.push({ ...src, what }); };
-      for (const [k, m] of Object.entries(mm.models || mm)) add(m.source, 'model');
+      for (const [k, m] of Object.entries(mm.models || mm)) for (const src of m.sources || [m.source]) add(src, m.kind === 'characters' ? 'characters' : m.kind === 'animations' ? 'animation' : 'model');
       for (const sec of ['textures', 'atlases', 'decals']) for (const [k, t] of Object.entries(tm[sec] || {})) add(t.source, sec === 'textures' ? 'material' : sec === 'atlases' ? 'foliage' : 'decal');
       for (const [k, s] of Object.entries(sky)) add(s.source, 'sky (HDRI)');
       const seen = new Set();
       const list = rows.filter((r) => { const key = r.url; if (seen.has(key)) return false; seen.add(key); return true; }).sort((x, y) => (x.source + x.name).localeCompare(y.source + y.name));
       const by = (src) => list.filter((r) => r.source === src || (src === 'ambientCG' && /ambientCG/.test(r.source))).map((r) => `<li><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.name)}</a> — ${esc((r.authors || []).join(', ') || 'unknown')} · ${esc(r.what)} · ${esc(r.license)}</li>`).join('');
       p.querySelector('.credits').innerHTML = `
-        <p>Rustwater is built with Three.js on WebGL2. Every scanned model, material, foliage atlas and sky photograph is CC0 (public domain) and was converted to KTX2 / meshopt glTF by the project's asset pipeline. Buildings, colony structures, trees, grass placement, characters and animation are procedural.</p>
+        <p>Rustwater is built with Three.js on WebGL2. Every scanned model, material, foliage atlas and sky photograph, the character bodies, outfits and hairstyles and the animation library are CC0 (public domain), converted to KTX2 / meshopt glTF by the project's asset pipeline. Buildings, colony structures, gear, trees and grass placement are procedural.</p>
+        <h3>Quaternius</h3><ul>${by('Quaternius')}</ul>
         <h3>Poly Haven</h3><ul>${by('Poly Haven')}</ul>
         <h3>ambientCG</h3><ul>${by('ambientCG')}</ul>
         <h3>Libraries</h3><ul>
