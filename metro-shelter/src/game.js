@@ -5,7 +5,9 @@ import { Shelter } from './shelter.js';
 import { Rats } from './rats.js';
 import { Weapon } from './weapon.js';
 import { Audio } from './audio.js';
-import { interactables } from './props.js';
+import { interactables, roomAnchors } from './props.js';
+import { DwellerActors, makeViewArms } from './dwellers.js';
+import { collision } from './collision.js';
 import { settings, saveSettings } from './settings.js';
 import { PRESETS } from './renderer.js';
 import { configureShadows } from './lights.js';
@@ -20,7 +22,13 @@ export function startGame(game) {
   const weapon = new Weapon(camera, scene);
   weapon.setTorchShadow(renderer.preset.shadows);
   const audio = new Audio();
-  Object.assign(game, { player, shelter, rats, weapon, audio });
+  const dwellers = new DwellerActors(scene, shelter);
+  // seats around the fire barrel (stools placed in props.js), facing the fire
+  const fire = new THREE.Vector3(0.2, 0, 1.5);
+  const seats = [[-1.1, 1.0], [1.3, 0.6], [0.7, 2.8], [-0.7, 2.4]].map(([x, z]) => ({ pos: new THREE.Vector3(x, 0, z), face: Math.atan2(fire.x - x, fire.z - z) }));
+  dwellers.init(roomAnchors, seats);
+  if (game.hasDwellers) weapon.setArms(makeViewArms());
+  Object.assign(game, { player, shelter, rats, weapon, audio, dwellers });
   const worldMeshes = [];
   scene.getObjectByName('station').traverse((o) => { if (o.isMesh) worldMeshes.push(o); });
 
@@ -77,7 +85,9 @@ export function startGame(game) {
     $('s-sens').value = settings.sens; $('s-sens-v').textContent = settings.sens.toFixed(2);
     $('s-vol').value = settings.volume; $('s-vol-v').textContent = `${Math.round(settings.volume * 100)}%`;
     $('s-perf').checked = settings.perf;
+    $('s-paint').checked = settings.painterly;
   };
+  $('s-paint').onchange = (e) => { settings.painterly = e.target.checked; renderer.setPainterly(settings.painterly); saveSettings(); };
   $('s-quality').onchange = (e) => {
     settings.quality = e.target.value;
     const p = PRESETS[settings.quality];
@@ -245,6 +255,10 @@ export function startGame(game) {
   let hudT = 0;
   game.onFrame = (dt) => {
     perfHud(dt);
+    if (game.hasDwellers) {
+      dwellers.update(dt, game.t, rats.list.some((r) => !r.dead && r.o.position.y > -0.5), player.pos);
+      collision.dynamic = dwellers.blockers();
+    }
     if (game.debugCamera) return;
     if (!paused) {
       player.update(dt);

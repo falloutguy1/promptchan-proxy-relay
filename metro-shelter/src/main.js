@@ -1,7 +1,8 @@
 // Metro Shelter — bootstrap, loading flow and main loop.
 import * as THREE from 'three';
 import { Renderer, PRESETS } from './renderer.js';
-import { initLoaders, loadModels, manager, errors, loadHDR, pending } from './assets.js';
+import { initLoaders, loadModels, manager, errors, loadHDR, pending, loaders } from './assets.js';
+import { loadDwellerAssets } from './dwellers.js';
 import { buildMaterials } from './materials.js';
 import { buildStation } from './station.js';
 import { dressStation, MODEL_IDS, LOD_IDS, animateProps } from './props.js';
@@ -32,7 +33,8 @@ async function boot() {
   }
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x020202);
-  scene.fog = new THREE.FogExp2(0x0b0a09, 0.028);
+  // Dusty blue-grey haze, the atmospheric colour of the reference paintings.
+  scene.fog = new THREE.FogExp2(0x151b1e, 0.03);
   const camera = new THREE.PerspectiveCamera(settings.fov, innerWidth / innerHeight, 0.05, 140);
   camera.position.set(0, 1.65, 10);
   scene.add(camera);
@@ -52,6 +54,10 @@ async function boot() {
   loadText('Loading props…');
   await loadModels(MODEL_IDS, LOD_IDS);
   dressStation(scene);
+  loadText('Loading dwellers…');
+  try {
+    game.hasDwellers = await loadDwellerAssets(loaders().gltf, loaders().ktx2);
+  } catch (e) { errors.push('characters: ' + (e.message || e)); console.error(e); }
 
   // Dim image-based fill from a real HDR capture of a concrete tunnel (reflections + bounce),
   // replaced by a capture of the lit station once everything is loaded.
@@ -67,6 +73,7 @@ async function boot() {
   await Promise.race([texturesDone, new Promise((r) => setTimeout(r, 120000))]);
   loadText('Decoding textures…');
   await Promise.race([Promise.all(pending), new Promise((r) => setTimeout(r, 60000))]);
+  renderer.painterly = settings.painterly;
   renderer.setup(scene, camera, settings.quality);
   renderer.setScale(settings.scale ?? PRESETS[settings.quality].scale);
   configureShadows(renderer.preset);

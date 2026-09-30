@@ -15,6 +15,8 @@ const models = new Map();   // id -> { scene, lod1 }
 const texCache = new Map();
 export const pending = [];   // material texture assignments still in flight (download + transcode)
 
+export const loaders = () => ({ gltf: gltfLoader, ktx2 });
+
 export function initLoaders(renderer, quality) {
   texRes = quality === 'low' ? '1k' : '2k';
   ktx2 = new KTX2Loader(manager).setTranscoderPath('vendor/three/addons/libs/basis/').detectSupport(renderer);

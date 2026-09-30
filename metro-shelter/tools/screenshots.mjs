@@ -29,7 +29,7 @@ for (const name of shots) {
   if (process.env.UI) await page.screenshot({ path: `tools/out/${name}_ui.png`, timeout: 300000 });
   console.log('shot', name, JSON.stringify(info), `${Date.now() - t0}ms`);
 }
-const perf = await page.evaluate(() => window.__perf && window.__perf());
+const perf = process.env.PERF ? await page.evaluate(() => window.__perf && window.__perf()) : null;
 if (perf) console.log('perf', JSON.stringify(perf));
 console.log(logs.filter((l) => !l.includes('GPU stall')).slice(-40).join('\n'));
 await browser.close();

@@ -35,7 +35,7 @@ function tuneShadow(l, near = 0.1, far = 20) {
 }
 
 // Hanging lamp with a real spot light aimed down and a warm emissive bulb.
-export function hangingLamp(scene, x, y, z, { model = 'hanging_industrial_lamp', cd = 90, color = 0xffe4c8, angle = 1.05, priority = 1, electric = true } = {}) {
+export function hangingLamp(scene, x, y, z, { model = 'hanging_industrial_lamp', cd = 90, color = 0xffecd8, angle = 1.05, priority = 1, electric = true } = {}) {
   const g = new THREE.Group();
   const lamp = instance(model);
   // The fixture surrounds its own light: letting it cast shadows would black out the floor beneath it.
@@ -58,11 +58,11 @@ export function hangingLamp(scene, x, y, z, { model = 'hanging_industrial_lamp',
 }
 
 export function fireLight(scene, x, y, z) {
-  const l = new THREE.PointLight(0xff9a50, 38, 14, 2);
+  const l = new THREE.PointLight(0xff9a50, 24, 14, 2);
   l.position.set(x, y, z);
   tuneShadow(l, 0.2, 14);
   scene.add(l);
-  const rig = { light: l, extra: [], base: 38, electric: false, shadowPriority: 2, phase: 0, kind: 'fire' };
+  const rig = { light: l, extra: [], base: 24, electric: false, shadowPriority: 2, phase: 0, kind: 'fire' };
   rigs.push(rig);
   return rig;
 }

@@ -22,6 +22,30 @@ export const SHOTS = {
     game.scene.add(g); const ax = new game.THREE.AxesHelper(0.5); ax.position.set(0, 1.1, 0); game.scene.add(ax); } },
   viewmodel:     { pos: [0, 1.65, 5], look: [0, 1.6, -5], gun: true },
   player:        { player: true },
+  vm_arms:       { pos: [0.5, 1.65, 8], look: [0.2, 1.5, -4], gun: true, setup(g) { g.weapon.update(0.1, 1, { speed: 0, stride: 0 }); } },
+  portrait:      { setup(g) { if (!g.dwellers.actors.size) { g.shelter.time = 240 * (22 / 24); window.__advance(45); } }, dyn(g, k = 0) {
+    const a = [...g.dwellers.actors.values()][k]; a.g.updateMatrixWorld(true);
+    const head = new THREE.Vector3(); a.root.getObjectByName('Head').getWorldPosition(head);
+    const f = new THREE.Vector3(Math.sin(a.yaw), 0, Math.cos(a.yaw));
+    return { pos: head.clone().addScaledVector(f, 1.1).add(new THREE.Vector3(0.25, 0.05, 0)), look: head.clone().add(new THREE.Vector3(0, -0.15, 0)) };
+  } },
+  portrait2:     { setup(g) { SHOTS.portrait.setup(g); }, dyn(g) { return SHOTS.portrait.dyn(g, 3); } },
+  fullbody:      { setup(g) { SHOTS.portrait.setup(g); }, dyn(g) {
+    const a = [...g.dwellers.actors.values()][1];
+    const f = new THREE.Vector3(Math.sin(a.yaw + 0.5), 0, Math.cos(a.yaw + 0.5));
+    return { pos: a.g.position.clone().addScaledVector(f, 2.6).setY(1.3), look: a.g.position.clone().setY(0.95) };
+  } },
+  vm_side:       { pos: [1.1, 1.55, 7.5], look: [0, 1.5, 7.55], gun: true, setup(g) {
+    const h = g.weapon.holder; g.camera.remove(h); g.scene.add(h); h.position.set(0, 1.65, 8); h.rotation.set(0, 0, 0);
+    h.add(new g.THREE.AxesHelper(0.3)); g.weapon.update(0.1, 1, { speed: 0, stride: 0 });
+    const eye = new g.THREE.Mesh(new g.THREE.SphereGeometry(0.02), new g.THREE.MeshBasicMaterial({ color: 0x00ff00 })); h.add(eye);
+    g.weapon.arms.root.traverse((o) => { if (o.isMesh) o.visible = true; });
+  } },
+  dw_farm:       { pos: [-9.4, 1.6, -13.5], look: [-7.2, 0.9, -19.5], setup(g) { window.__advance(40); } },
+  dw_gen:        { pos: [9.4, 1.55, -17.2], look: [7.4, 0.8, -21], setup(g) { window.__advance(2); } },
+  dw_fire:       { pos: [2.6, 1.6, -1.6], look: [0.1, 0.8, 1.6], setup(g) { g.shelter.time = 240 * (22 / 24); window.__advance(45); } },
+  dw_close:      { pos: [1.3, 1.5, -0.2], look: [0.2, 1.0, 1.4], setup(g) { window.__advance(2); } },
+  dw_walk:       { pos: [0.5, 1.6, 12], look: [0, 1.0, 0], setup(g) { g.shelter.time = 240 * (5.8 / 24); window.__advance(8); } },
   rats_close:    { pos: [-8.2, 0.55, -18.6], look: [-7.2, 0.1, -20.4], setup(game) {
     game.rats.spawnWave(4, -1, -1);
     game.rats.list.slice(-4).forEach((r, i) => { r.o.position.set(-7.0 - i * 0.3, 0, -20.2 + i * 0.35); r.o.rotation.y = i * 1.3; r.wp = []; r.wait = 99; });
@@ -55,8 +79,9 @@ export function installDebug(game) {
     if (!s.player) {
       game.debugCamera = true;
       s.setup?.(game);
-      camera.position.set(...s.pos);
-      camera.lookAt(new THREE.Vector3(...s.look));
+      const d = s.dyn ? s.dyn(game) : null;
+      camera.position.copy(d ? d.pos : new THREE.Vector3(...s.pos));
+      camera.lookAt(d ? d.look : new THREE.Vector3(...s.look));
     }
     // render a few frames so temporal effects settle
     const times = [];

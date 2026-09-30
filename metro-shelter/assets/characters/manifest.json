@@ -1,0 +1,55 @@
+{
+  "source": "Quaternius (CC0): Universal Base Characters, Modular Character Outfits - Fantasy, Universal Animation Library",
+  "heads": {
+    "male": "head_male.glb",
+    "female": "head_female.glb"
+  },
+  "hair": {
+    "male": [
+      "hair_buzzed.glb",
+      "hair_simpleparted.glb",
+      "hair_long.glb"
+    ],
+    "female": [
+      "hair_buns.glb",
+      "hair_long.glb",
+      "hair_buzzedfemale.glb"
+    ],
+    "beard": "hair_beard.glb"
+  },
+  "outfits": {
+    "male": [
+      "outfit_male_peasant.glb",
+      "outfit_male_ranger.glb"
+    ],
+    "female": [
+      "outfit_female_peasant.glb",
+      "outfit_female_ranger.glb"
+    ]
+  },
+  "altTextures": {
+    "MI_Peasant": "tex_peasant_2.ktx2",
+    "MI_Ranger": "tex_ranger_3.ktx2"
+  },
+  "anims": "anims.glb",
+  "clips": {
+    "idle": "Idle_Loop",
+    "talk": "Idle_Talking_Loop",
+    "walk": "Walk_Loop",
+    "jog": "Jog_Fwd_Loop",
+    "run": "Sprint_Loop",
+    "sit": "Sitting_Idle_Loop",
+    "sitTalk": "Sitting_Talking_Loop",
+    "kneel": "Fixing_Kneeling",
+    "work": "Interact",
+    "torch": "Idle_Torch_Loop",
+    "crouch": "Crouch_Idle_Loop",
+    "death": "Death01",
+    "hit": "Hit_Chest",
+    "pickup": "PickUp_Table",
+    "aim": "Pistol_Aim_Neutral",
+    "pistolIdle": "Pistol_Idle_Loop",
+    "shoot": "Pistol_Shoot",
+    "reload": "Pistol_Reload"
+  }
+}

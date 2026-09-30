@@ -19,6 +19,20 @@ Rats slip under the tunnel barricades and head for the farm. Survive 10 days.
 | Esc | pause + settings (quality preset, render resolution, FOV, sensitivity, volume, perf overlay) |
 | F3 | performance overlay (fps, draw calls, triangles, resolution) |
 
+## Characters and art style
+
+- **Dwellers are visible characters**: rigged, animated people assembled at runtime from Quaternius' CC0
+  Universal Base Characters (heads, hair), Modular Character Outfits (peasant work clothes, hooded ranger
+  gear) and Universal Animation Library (walk, jog, sprint, idle, talking, sitting, kneeling repair,
+  interact, torch idle, death). Each dweller walks a route through the pylon passages to the room they are
+  assigned to in the overview, works there with a fitting animation, gathers at the fire barrel at night,
+  runs when rats are loose and plays a death animation. Colourways, skin tone, hair, beard and height vary.
+- **First-person arms**: the Overseer's view uses the same rig (ranger arms and bracers) in a two-handed
+  pistol aim, with a reload animation.
+- **Painterly look** (toggle in the pause menu): a Kuwahara filter turns detail into brush-like patches, a
+  canvas texture is pressed into the image, and the grade follows post-war concept paintings — dusty teal
+  shadows and haze, rust-orange mid-tones, cream highlights, lifted matte blacks.
+
 ## Running
 
 Any static file server works; ES modules need http(s), not `file://`.
@@ -43,6 +57,8 @@ On Netlify (this repo's `publish = "."`) the game is served at `/metro-shelter/`
 - `src/renderer.js` — ACES filmic tone mapping, MSAA, GTAO, restrained bloom, grade/vignette/grain, presets.
 - `src/shelter.js`, `src/rats.js`, `src/weapon.js`, `src/player.js`, `src/audio.js`, `src/game.js` — gameplay.
 - `tools/fetch_assets.py`, `tools/build_assets.mjs` — download CC0 assets and pack them (KTX2 + meshopt + LODs).
+- `tools/build_characters.mjs` — packs the Quaternius character packs (heads cut from the base bodies, outfits, hair, clips).
+- `src/dwellers.js`, `src/outfits.js` — character assembly, per-dweller variation, walking graph and animation state.
 - `tools/screenshots.mjs` — captures views from the running game (used for visual review).
 
 Asset credits: see [ASSETS.md](ASSETS.md).

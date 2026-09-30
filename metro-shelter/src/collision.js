@@ -5,6 +5,7 @@ class Collision {
   constructor() {
     this.boxes = [];   // solid: {x0,x1,z0,z1,y0,y1}
     this.floors = [];  // walkable tops: {x0,x1,z0,z1,y}
+    this.dynamic = []; // moving bodies (dwellers): Vector3 positions, radius 0.28
   }
   addBox(x0, x1, z0, z1, y0 = 0, y1 = 3) { const b = { x0, x1, z0, z1, y0, y1 }; this.boxes.push(b); return b; }
   addFloor(x0, x1, z0, z1, y) { this.floors.push({ x0, x1, z0, z1, y }); }
@@ -40,6 +41,9 @@ class Collision {
     }
     for (const b of this.boxes) {
       if (x + r > b.x0 && x - r < b.x1 && z + r > b.z0 && z - r < b.z1 && y + hgt > b.y0 && y + 0.35 < b.y1) return false;
+    }
+    for (const p of this.dynamic) {
+      if (Math.abs(p.y - y) < 1 && (p.x - x) ** 2 + (p.z - z) ** 2 < (r + 0.28) ** 2) return false;
     }
     return true;
   }

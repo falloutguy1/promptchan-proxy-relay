@@ -86,6 +86,14 @@ Raw downloads are fetched by `tools/fetch_assets.py` into `assets-src/` (git-ign
 - [potted_plant_04](https://polyhaven.com/a/potted_plant_04)
 - [rusted_wheel_rim_01](https://polyhaven.com/a/rusted_wheel_rim_01)
 
+## Characters and animation (Quaternius, CC0 1.0)
+
+Downloaded from [quaternius.com](https://quaternius.com) / itch.io and packed by `tools/build_characters.mjs`:
+
+- [Universal Base Characters](https://quaternius.com/packs/universalbasecharacters.html) — heads (cut from the full bodies so they sit inside the outfits), eyes, eyebrows, six hairstyles incl. beard.
+- [Modular Character Outfits – Fantasy](https://quaternius.com/packs/modularcharacteroutfitsfantasy.html) — peasant work clothes and hooded ranger gear (male/female), plus alternate colourways.
+- [Universal Animation Library](https://quaternius.com/packs/universalanimationlibrary.html) — idle, talking, walk, jog, sprint, sitting, kneeling repair, interact, torch idle, crouch, hit, death, pistol idle/shoot clips on the shared 65-bone skeleton.
+
 ## HDRI
 
 - [concrete_tunnel](https://polyhaven.com/a/concrete_tunnel) — used only as the initial dim image-based fill before the in-game capture of the lit station replaces it.

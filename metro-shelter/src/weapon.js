@@ -41,6 +41,10 @@ export class Weapon {
     this.flashSprite.visible = false;
     this.holder.add(this.flashSprite);
     this.flashT = 0;
+    // faint fill so the Overseer's own hands read in dark areas (short range: barely touches the world)
+    this.fill = new THREE.PointLight(0xffe6cc, 0.35, 1.1, 2);
+    this.fill.position.set(0.05, 0.05, -0.1);
+    this.holder.add(this.fill);
     // flashlight
     this.torch = new THREE.SpotLight(0xfff1dc, 0, 22, 0.42, 0.55, 2);
     this.torch.position.set(0.2, -0.1, 0);
@@ -97,9 +101,19 @@ export class Weapon {
     if (this.holes.length > 40) this.scene.remove(this.holes.shift());
   }
 
+  // Attach rigged first-person arms (see dwellers.makeViewArms).
+  setArms(arms) {
+    if (!arms?.hand || !arms.head) return;
+    this.arms = arms;
+    arms.root.rotation.y = Math.PI;         // rig faces +Z; camera looks down -Z
+    this.holder.add(arms.root);
+    arms.mixer.update(0.01);
+  }
+
   reload(reserve) {
     if (this.reloadT > 0 || this.mag === MAG || reserve <= 0) return 0;
     this.reloadT = 1.6;
+    if (this.arms?.reload) { this.arms.reload.reset().setEffectiveTimeScale(this.arms.reload.getClip().duration / 1.6).fadeIn(0.15).play(); this.arms.aim?.fadeOut(0.15); }
     const take = Math.min(MAG - this.mag, reserve);
     this.pending = take;
     return take;
@@ -123,6 +137,27 @@ export class Weapon {
       this.rest.y - Math.abs(Math.cos(player.stride)) * 0.006 * walk + Math.sin(t * 1.3) * 0.0015 - rl * 0.22,
       this.rest.z + this.recoil * 0.05);
     this.gun.rotation.set(this.recoil * 0.22 + rl * 0.7, 0.04, rl * 0.4);
+    if (this.arms) {
+      const a = this.arms;
+      if (this.reloadT <= 0 && a.reload?.isRunning()) { a.reload.fadeOut(0.2); a.aim?.reset().fadeIn(0.2).play(); }
+      a.mixer.update(dt);
+      a.root.position.set(0, 0, 0);
+      a.root.updateMatrixWorld(true);
+      // pin the rig's eyes to the camera, a little low so the sights sit under the crosshair
+      const head = this.holder.worldToLocal(a.head.getWorldPosition(new THREE.Vector3()));
+      const sway = new THREE.Vector3(Math.sin(player.stride) * 0.006 * walk + Math.sin(t * 0.8) * 0.0015,
+        -Math.abs(Math.cos(player.stride)) * 0.005 * walk + Math.sin(t * 1.3) * 0.0015, this.recoil * 0.045);
+      a.root.position.set(-head.x + 0.04, -head.y - 0.13, -head.z + 0.01).add(sway);
+      a.root.rotation.set(-this.recoil * 0.12, Math.PI, 0);
+      a.root.updateMatrixWorld(true);
+      // the pistol rides in the right hand, pointing where the camera points
+      const hand = this.holder.worldToLocal(a.hand.getWorldPosition(new THREE.Vector3()));
+      this.gun.position.copy(hand).add(new THREE.Vector3(0.012, 0.035, -0.05));
+      this.gun.rotation.set(this.recoil * 0.25, 0, 0);
+    }
+    // muzzle flash sits at the end of the barrel wherever the gun is
+    const muzzle = this.gun.position.clone().add(new THREE.Vector3(0, 0.035, -0.2).applyEuler(this.gun.rotation));
+    this.flash.position.copy(muzzle); this.flashSprite.position.copy(muzzle);
     // slide cycles back on each shot and locks back on an empty magazine
     if (this.slide) this.slide.position.x = this.slideX - (this.mag === 0 && this.reloadT <= 0 ? 0.03 : Math.min(this.recoil * 1.6, 1) * 0.03);
   }

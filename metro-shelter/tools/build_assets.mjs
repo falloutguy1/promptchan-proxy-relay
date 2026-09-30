@@ -2,7 +2,7 @@
 //  - models  -> single GLB, textures resized, KTX2 (ETC1S colour/ORM, UASTC normals), meshopt geometry
 //               plus a simplified *_lod1.glb for heavier meshes
 //  - surface textures -> KTX2 at 2K (high) and 1K (low quality setting)
-// Requires KTX-Software's `toktx` on PATH (https://github.com/KhronosGroup/KTX-Software/releases).
+// Requires KTX-Software >= 4.4 (`toktx` and `ktx`) on PATH (https://github.com/KhronosGroup/KTX-Software/releases).
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
