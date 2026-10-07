@@ -160,7 +160,7 @@ export class CameraRig {
     const sp = w.vel.length();
     w.phase = (w.phase || 0) + sp * dt * 1.9;
     const bob = Math.sin(w.phase * Math.PI) * 0.025 * Math.min(1, sp);
-    next.y = damp(w.pos.y, g + 1.68 + bob, 14, dt);
+    next.y = w.pos.y < g + 1.2 ? g + 1.68 : damp(w.pos.y, g + 1.68 + bob, 14, dt); // never below eye height (e.g. after a teleport)
     w.pos.copy(next);
     this.camera.position.copy(w.pos);
     const dir = new THREE.Vector3(Math.sin(w.yaw) * Math.cos(w.pitch), Math.sin(w.pitch), Math.cos(w.yaw) * Math.cos(w.pitch));

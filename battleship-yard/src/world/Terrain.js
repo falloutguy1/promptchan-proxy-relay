@@ -185,7 +185,7 @@ export class Terrain {
           albedo *= 1.0 - 0.42 * wet;
           float bakedAO = sB.a;
           diffuseColor.rgb *= albedo;`)
-        .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = clamp(armS.g * mix(1.0, 0.35, wet), 0.05, 1.0);')
+        .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = clamp(mix(max(armS.g, 0.72), 0.3, wet), 0.05, 1.0); // dry soil and grass are rough; only wet shore is glossy')
         .replace('#include <metalnessmap_fragment>', 'float metalnessFactor = 0.0;')
         .replace('#include <normal_fragment_maps>', 'normal = normalize((viewMatrix * vec4(nW, 0.0)).xyz);')
         .replace('#include <aomap_fragment>', `
