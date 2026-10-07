@@ -67,7 +67,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 22px; }
 
 #stats { right: 12px; top: 58px; width: 270px; padding: 12px; font-size: 13px; }
 #stats.compact .warn, #stats.compact .wbar, #stats.compact .wleg, #stats.compact .st:nth-child(n+6) { display: none; }
-#stats.compact { top: auto; bottom: 12px; right: 12px; width: 230px; opacity: 0.92; }
+#stats.compact { top: 58px; right: 12px; width: 220px; opacity: 0.92; }
 .sh div { font-weight: 700; font-size: 15px; }
 .sh small { color: var(--muted); }
 .st { display: grid; grid-template-columns: 1fr auto; gap: 1px 8px; margin: 7px 0; }
@@ -84,9 +84,9 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 22px; }
 /* trials */
 #trials-hud { position: absolute; inset: 0; pointer-events: none; }
 #trials-hud > * { pointer-events: auto; position: absolute; }
-.telegraph { left: 14px; top: 50%; transform: translateY(-50%); display: flex; gap: 8px; align-items: stretch; background: var(--bg); padding: 10px 8px; border-radius: var(--r); border: 1px solid var(--line); }
-.tel-labels { display: flex; flex-direction: column; justify-content: space-between; font-size: 11px; color: var(--muted); text-align: right; }
-.throttle { writing-mode: vertical-lr; direction: rtl; width: 34px; height: 210px; }
+.telegraph { left: 14px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 3px; background: var(--bg); padding: 6px; border-radius: var(--r); border: 1px solid var(--line); }
+.telegraph button { font-size: 12px; padding: 7px 10px; text-align: left; min-width: 104px; }
+.telegraph button.on { background: rgba(217, 164, 65, 0.3); border-color: var(--accent); font-weight: 650; }
 .rudder-wrap { left: 50%; bottom: 18px; transform: translateX(-50%); width: min(460px, 60vw); display: flex; gap: 8px; align-items: center; background: var(--bg); padding: 8px 12px; border-radius: var(--r); border: 1px solid var(--line); font-size: 12px; color: var(--muted); }
 .readout { left: 50%; top: 58px; transform: translateX(-50%); display: flex; gap: 6px; }
 .readout > div { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px; min-width: 76px; text-align: center; }
@@ -130,8 +130,7 @@ dialog .btns { display: flex; gap: 8px; justify-content: flex-end; }
   .readout > div { min-width: 0; padding: 4px 6px; }
   .readout b { font-size: 14px; }
   .readout > div:nth-child(3), .readout > div:nth-child(4) { display: none; }
-  .throttle { height: 160px; }
-  .tel-labels { display: none; }
+  .telegraph button { font-size: 11px; padding: 6px 8px; min-width: 84px; }
   .fire { width: 84px; height: 84px; }
   .turrets { right: 104px; bottom: 92px; }
   .rudder-wrap { width: 62vw; bottom: 12px; }

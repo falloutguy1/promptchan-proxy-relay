@@ -120,7 +120,7 @@ export class Terrain {
           if (sUV.x < 0.0 || sUV.y < 0.0 || sUV.x > 1.0 || sUV.y > 1.0) {
             // far ring outside the generated heightfield: procedural weights from slope and altitude
             float sl = 1.0 - normalize(vTNormal).y;
-            float rockF = smoothstep(0.3, 0.5, sl), sandF = 1.0 - smoothstep(0.5, 3.0, vTWorld.y);
+            float rockF = smoothstep(0.3, 0.5, sl), sandF = 1.0 - smoothstep(0.2, 1.2, vTWorld.y);
             float dryF = smoothstep(40.0, 160.0, vTWorld.y) * 0.7;
             sA = vec4((1.0 - dryF) * (1.0 - rockF) * (1.0 - sandF), dryF * (1.0 - rockF) * (1.0 - sandF), 0.0, 0.0);
             sB = vec4(rockF * (1.0 - sandF), sandF, 0.0, 1.0);

@@ -151,6 +151,9 @@ export class Game {
       this.rig.goal.dist = this.ship.length * 1.25;
       this.rig.goal.pitch = 0.22;
       this.rig.goal.yaw = this.ship.heading + Math.PI + 0.5;
+      // snap rather than glide when switching modes
+      this.rig.yaw = this.rig.goal.yaw; this.rig.pitch = this.rig.goal.pitch; this.rig.dist = this.rig.goal.dist;
+      this.rig.target.copy(this.ship.position).setY(this.ship.design.freeboard + 6); this.rig.goalTarget.copy(this.rig.target);
     } else if (mode === 'walk') {
       this.rig.setMode('walk');
     }

@@ -137,11 +137,13 @@ export class Gunnery {
     const s = Math.pow(cal / 0.406, 1.3);
     const H = (hit ? 25 : 55) * s;
     const vy = Math.sqrt(2 * G * H);
-    for (let i = 0; i < 90 * Math.max(0.3, s); i++) {
-      const a = Math.random() * 6.28, r = Math.random() * 5 * s;
-      const up = vy * (0.55 + Math.random() * 0.5);
-      this.spray.emit(p.clone().add(V(Math.cos(a) * r, 0, Math.sin(a) * r)), V(Math.cos(a) * r * 0.9, up, Math.sin(a) * r * 0.9),
-        { life: (2 * up) / G * 0.95, size0: 3 * s, size1: 9 * s, color: [0.92, 0.94, 0.95], alpha: 0.75, drag: 0.15, grav: G });
+    // tall narrow column: fast core, ragged slower sheath that spreads as it falls back
+    for (let i = 0; i < 170 * Math.max(0.3, s); i++) {
+      const a = Math.random() * 6.28, core = Math.random() < 0.55, r = Math.random() * (core ? 2.2 : 4.5) * s;
+      const up = vy * (core ? 0.75 + Math.random() * 0.3 : 0.3 + Math.random() * 0.45);
+      const out = core ? 0.25 : 1.2;
+      this.spray.emit(p.clone().add(V(Math.cos(a) * r, 0, Math.sin(a) * r)), V(Math.cos(a) * r * out, up, Math.sin(a) * r * out),
+        { life: (2 * up) / G * 0.95, size0: 1.6 * s, size1: (core ? 5 : 8) * s, color: [0.93, 0.95, 0.96], alpha: core ? 0.8 : 0.55, drag: 0.12, grav: G });
     }
     for (let i = 0; i < 20; i++) {
       const a = Math.random() * 6.28;

@@ -65,6 +65,7 @@ export class UI {
     $('#trials-hud').hidden = m !== 'trials';
     $('#walk-pad')?.toggleAttribute('hidden', m !== 'walk');
     $('#crosshair').hidden = m !== 'trials';
+    if (m === 'trials') { this.tel?.set(this.game.ship.throttle); this.rud && (this.rud.value = this.game.ship.rudder); }
     if (m === 'trials') this.hint(matchMedia('(pointer: coarse)').matches ? 'Throttle on the left, rudder at the bottom. Tap the sea to fire, binoculars to aim.' : 'W/S throttle · A/D rudder · drag to look · click the sea or Space to fire · Z binoculars');
     if (m === 'walk') this.hint(matchMedia('(pointer: coarse)').matches ? 'Use the pad to walk, drag to look around.' : 'WASD to walk · Shift to hurry · drag to look');
     if (m === 'design') this.hint('Drag to orbit · right-drag/shift to pan · wheel or pinch to zoom');
@@ -177,13 +178,15 @@ export class UI {
     const g = this.game;
     const r = $('#trials-hud');
     r.innerHTML = '';
-    const tel = el('input', { type: 'range', min: -0.5, max: 1, step: 0.25, value: 0, class: 'throttle', 'aria-label': 'Engine telegraph', orient: 'vertical', oninput: (e) => { g.ship.throttle = Number(e.target.value); } });
+    // engine telegraph: discrete orders, large touch targets
+    const orders = [[1, 'Full ahead'], [0.75, 'Half ahead'], [0.5, 'Slow ahead'], [0.25, 'Dead slow'], [0, 'Stop'], [-0.25, 'Slow astern'], [-0.5, 'Full astern']];
+    const tel = el('div', { class: 'telegraph', role: 'radiogroup', 'aria-label': 'Engine telegraph' });
+    tel.set = (v) => { g.ship.throttle = v; for (const b of tel.children) b.classList.toggle('on', Number(b.dataset.v) === v); };
+    for (const [v, label] of orders) tel.append(el('button', { 'data-v': v, class: v === 0 ? 'on' : '', onclick: () => tel.set(v) }, label));
     const rud = el('input', { type: 'range', min: -1, max: 1, step: 0.05, value: 0, class: 'rudder', 'aria-label': 'Rudder', oninput: (e) => { g.ship.rudder = Number(e.target.value); } });
-    rud.addEventListener('pointerup', () => { if (matchMedia('(pointer: coarse)').matches) { /* keep set rudder; centre with double-tap */ } });
     rud.addEventListener('dblclick', () => { rud.value = 0; g.ship.rudder = 0; });
     this.tel = tel; this.rud = rud;
-    const telLabels = el('div', { class: 'tel-labels' }, ...['Full ahead', 'Half', 'Slow', 'Stop', 'Astern'].map((t) => el('span', {}, t)));
-    r.append(el('div', { class: 'telegraph' }, telLabels, tel));
+    r.append(tel);
     r.append(el('div', { class: 'rudder-wrap' }, el('span', {}, 'Port'), rud, el('span', {}, 'Stbd')));
     this.readout = el('div', { class: 'readout' });
     r.append(this.readout);
@@ -218,7 +221,7 @@ export class UI {
       if (e.code === 'KeyW' || e.code === 'KeyS') {
         const i = steps.indexOf(g.ship.throttle);
         const ni = Math.max(0, Math.min(steps.length - 1, (i < 0 ? 2 : i) + (e.code === 'KeyW' ? 1 : -1)));
-        g.ship.throttle = steps[ni]; tel.value = g.ship.throttle;
+        tel.set(steps[ni]);
       }
       if (e.code === 'Space') { e.preventDefault(); g.gunnery.manualAim = false; g.gunnery.fire(); }
       if (e.code === 'KeyF') g.gunnery.fire(true);
