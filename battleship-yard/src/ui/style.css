@@ -13,6 +13,7 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: #0d1216; color: var(--fg); touch-action: none; -webkit-user-select: none; user-select: none; }
 #view { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; outline: none; }
 button, select, input { font: inherit; color: inherit; }
