@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#0d1216" />
+  <title>Kestrel Point Shipyard</title>
+  <link rel="stylesheet" href="/src/ui/style.css" />
+</head>
+<body>
+  <canvas id="view"></canvas>
+
+  <div id="loading" role="status" aria-live="polite">
+    <div class="ld-inner">
+      <div class="ld-title">Kestrel Point Shipyard</div>
+      <div class="ld-sub">Design a battleship. Fit it out. Take it to sea.</div>
+      <div class="ld-bar"><div id="ld-fill"></div></div>
+      <div id="ld-text">Starting…</div>
+      <div id="ld-error" hidden></div>
+    </div>
+  </div>
+
+  <div id="hud" hidden>
+    <header id="topbar">
+      <div class="brand">Kestrel Point <span>Shipyard</span></div>
+      <nav class="modes" role="tablist">
+        <button data-mode="design" class="active" role="tab">Design</button>
+        <button data-mode="trials" role="tab">Sea trials</button>
+        <button data-mode="walk" role="tab">Walk the yard</button>
+      </nav>
+      <div class="tools">
+        <button id="btn-settings" title="Graphics settings" aria-label="Graphics settings">⚙</button>
+        <button id="btn-full" title="Fullscreen" aria-label="Fullscreen">⛶</button>
+      </div>
+    </header>
+
+    <aside id="designer" class="panel"></aside>
+    <section id="stats" class="panel"></section>
+    <section id="trials-hud" hidden></section>
+    <div id="toast" hidden></div>
+    <div id="perf" hidden></div>
+    <div id="crosshair" hidden></div>
+    <div id="hint"></div>
+  </div>
+
+  <dialog id="settings"></dialog>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,720 @@
+[
+ {
+  "id": "kloofendal_48d_partly_cloudy_puresky",
+  "name": "Kloofendal 48d Partly Cloudy (Pure Sky)",
+  "type": "hdri",
+  "authors": [
+   "Greg Zaal",
+   "Jarod Guest"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky"
+ },
+ {
+  "id": "leafy_grass",
+  "name": "Leafy Grass",
+  "type": "texture",
+  "authors": [
+   "Charlotte Baglioni"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/leafy_grass"
+ },
+ {
+  "id": "concrete_floor_worn_001",
+  "name": "Concrete Floor Worn 001",
+  "type": "texture",
+  "authors": [
+   "Dimitrios Savva",
+   "Rico Cilliers"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/concrete_floor_worn_001"
+ },
+ {
+  "id": "gravel_floor",
+  "name": "Gravel Floor",
+  "type": "texture",
+  "authors": [
+   "Jenelle van Heerden",
+   "Matterfield"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/gravel_floor"
+ },
+ {
+  "id": "sparse_grass",
+  "name": "Sparse Grass",
+  "type": "texture",
+  "authors": [
+   "Amal Kumar"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/sparse_grass"
+ },
+ {
+  "id": "coast_sand_rocks_02",
+  "name": "Coast Sand Rocks 02",
+  "type": "texture",
+  "authors": [
+   "Rob Tuytel"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/coast_sand_rocks_02"
+ },
+ {
+  "id": "coast_land_rocks_01",
+  "name": "Coast Land Rocks 01",
+  "type": "texture",
+  "authors": [
+   "Rob Tuytel",
+   "Rico Cilliers"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/coast_land_rocks_01"
+ },
+ {
+  "id": "brown_mud_02",
+  "name": "Brown Mud 02",
+  "type": "texture",
+  "authors": [
+   "Rob Tuytel"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/brown_mud_02"
+ },
+ {
+  "id": "asphalt_02",
+  "name": "Asphalt 02",
+  "type": "texture",
+  "authors": [
+   "Rob Tuytel"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/asphalt_02"
+ },
+ {
+  "id": "concrete_wall_008",
+  "name": "Concrete Wall 008",
+  "type": "texture",
+  "authors": [
+   "Dario Barresi",
+   "Charlotte Baglioni"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/concrete_wall_008"
+ },
+ {
+  "id": "wood_floor_deck",
+  "name": "Wood Floor Deck",
+  "type": "texture",
+  "authors": [
+   "Dimitrios Savva"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/wood_floor_deck"
+ },
+ {
+  "id": "blue_metal_plate",
+  "name": "Blue Metal Plate",
+  "type": "texture",
+  "authors": [
+   "Rob Tuytel"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/blue_metal_plate"
+ },
+ {
+  "id": "corrugated_iron_02",
+  "name": "Corrugated Iron 02",
+  "type": "texture",
+  "authors": [
+   "Jenelle van Heerden",
+   "Sergej Majboroda"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/corrugated_iron_02"
+ },
+ {
+  "id": "metal_plate",
+  "name": "Metal Plate",
+  "type": "texture",
+  "authors": [
+   "Rob Tuytel"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/metal_plate"
+ },
+ {
+  "id": "rusty_corrugated_iron",
+  "name": "Rusty Corrugated Iron",
+  "type": "texture",
+  "authors": [
+   "Charlotte Baglioni"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/rusty_corrugated_iron"
+ },
+ {
+  "id": "factory_brick",
+  "name": "Factory Brick",
+  "type": "texture",
+  "authors": [
+   "Rob Tuytel"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/factory_brick"
+ },
+ {
+  "id": "rust_coarse_01",
+  "name": "Rust Coarse 01",
+  "type": "texture",
+  "authors": [
+   "Dimitrios Savva",
+   "Rico Cilliers"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/rust_coarse_01"
+ },
+ {
+  "id": "bark_brown_02",
+  "name": "Bark Brown 02",
+  "type": "texture",
+  "authors": [
+   "Rob Tuytel"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/bark_brown_02"
+ },
+ {
+  "id": "pine_bark",
+  "name": "Pine Bark",
+  "type": "texture",
+  "authors": [
+   "Dimitrios Savva"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/pine_bark"
+ },
+ {
+  "id": "painted_concrete",
+  "name": "Painted Concrete",
+  "type": "texture",
+  "authors": [
+   "Dario Barresi",
+   "Dimitrios Savva"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/painted_concrete"
+ },
+ {
+  "id": "propane_tank",
+  "name": "Propane Tank",
+  "type": "model",
+  "authors": [
+   "Slinc"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/propane_tank"
+ },
+ {
+  "id": "old_military_crate",
+  "name": "Old Military Crate",
+  "type": "model",
+  "authors": [
+   "Jack Mava"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/old_military_crate"
+ },
+ {
+  "id": "wooden_crate_02",
+  "name": "Wooden Crate 02",
+  "type": "model",
+  "authors": [
+   "James Ray Cock",
+   "Jurita Burger"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/wooden_crate_02"
+ },
+ {
+  "id": "Barrel_01",
+  "name": "Barrel_01",
+  "type": "model",
+  "authors": [
+   "Jorge Camacho"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/Barrel_01"
+ },
+ {
+  "id": "barrel_03",
+  "name": "Barrel 03",
+  "type": "model",
+  "authors": [
+   "Serhii Khromov"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/barrel_03"
+ },
+ {
+  "id": "wooden_crate_01",
+  "name": "Wooden Crate 01",
+  "type": "model",
+  "authors": [
+   "James Ray Cock"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/wooden_crate_01"
+ },
+ {
+  "id": "metal_jerrycan",
+  "name": "Metal Jerrycan",
+  "type": "model",
+  "authors": [
+   "Sean Buckley"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/metal_jerrycan"
+ },
+ {
+  "id": "old_tyre",
+  "name": "Old Tyre",
+  "type": "model",
+  "authors": [
+   "MP"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/old_tyre"
+ },
+ {
+  "id": "portable_generator",
+  "name": "Portable Generator",
+  "type": "model",
+  "authors": [
+   "James Ray Cock"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/portable_generator"
+ },
+ {
+  "id": "portable_welding_cart",
+  "name": "Portable Welding Cart",
+  "type": "model",
+  "authors": [
+   "Georgii Gorbunov"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/portable_welding_cart"
+ },
+ {
+  "id": "metal_tool_chest",
+  "name": "Metal Tool Chest",
+  "type": "model",
+  "authors": [
+   "Yann Kervran",
+   "John Hutcheson"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/metal_tool_chest"
+ },
+ {
+  "id": "street_lamp_01",
+  "name": "Street Lamp 01",
+  "type": "model",
+  "authors": [
+   "Josh Dean"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/street_lamp_01"
+ },
+ {
+  "id": "security_light",
+  "name": "Security Light",
+  "type": "model",
+  "authors": [
+   "Maximilian Schuster"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/security_light"
+ },
+ {
+  "id": "water_manhole_cover",
+  "name": "Water Manhole Cover",
+  "type": "model",
+  "authors": [
+   "Raunox"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/water_manhole_cover"
+ },
+ {
+  "id": "fire_hydrant",
+  "name": "Fire Hydrant",
+  "type": "model",
+  "authors": [
+   "Gonçalo Felício"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/fire_hydrant"
+ },
+ {
+  "id": "concrete_road_barrier",
+  "name": "Concrete Road Barrier",
+  "type": "model",
+  "authors": [
+   "Amal Kumar"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/concrete_road_barrier"
+ },
+ {
+  "id": "lifebuoy",
+  "name": "Lifebuoy",
+  "type": "model",
+  "authors": [
+   "Hank Kaamura"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/lifebuoy"
+ },
+ {
+  "id": "ocean_buoy",
+  "name": "Ocean Buoy",
+  "type": "model",
+  "authors": [
+   "Mateusz Sadek"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/ocean_buoy"
+ },
+ {
+  "id": "lateral_sea_marker",
+  "name": "Lateral Sea Marker",
+  "type": "model",
+  "authors": [
+   "James Ray Cock",
+   "Kuutti Siitonen"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/lateral_sea_marker"
+ },
+ {
+  "id": "modular_chainlink_fence",
+  "name": "Modular Chainlink Fence",
+  "type": "model",
+  "authors": [
+   "James Ray Cock",
+   "Amal Kumar"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/modular_chainlink_fence"
+ },
+ {
+  "id": "rollershutter_door",
+  "name": "Rollershutter Door",
+  "type": "model",
+  "authors": [
+   "MP"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/rollershutter_door"
+ },
+ {
+  "id": "hand_truck",
+  "name": "Hand Truck",
+  "type": "model",
+  "authors": [
+   "Mutanzom3D"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/hand_truck"
+ },
+ {
+  "id": "utility_box_01",
+  "name": "Utility Box 01",
+  "type": "model",
+  "authors": [
+   "James Ray Cock"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/utility_box_01"
+ },
+ {
+  "id": "ladder_sectioned_01",
+  "name": "Ladder Sectioned 01",
+  "type": "model",
+  "authors": [
+   "MP"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/ladder_sectioned_01"
+ },
+ {
+  "id": "cement_bag",
+  "name": "Cement Bag",
+  "type": "model",
+  "authors": [
+   "PierreB3D"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/cement_bag"
+ },
+ {
+  "id": "steel_frame_shelves_01",
+  "name": "Steel Frame Shelves 01",
+  "type": "model",
+  "authors": [
+   "James Ray Cock"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/steel_frame_shelves_01"
+ },
+ {
+  "id": "hanging_industrial_lamp",
+  "name": "Hanging Industrial Lamp",
+  "type": "model",
+  "authors": [
+   "Kuutti Siitonen"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/hanging_industrial_lamp"
+ },
+ {
+  "id": "industrial_wall_lamp",
+  "name": "Industrial Wall Lamp",
+  "type": "model",
+  "authors": [
+   "Kuutti Siitonen"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/industrial_wall_lamp"
+ },
+ {
+  "id": "rock_moss_set_01",
+  "name": "Rock Moss Set 01",
+  "type": "model",
+  "authors": [
+   "Kless Gyzen"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/rock_moss_set_01"
+ },
+ {
+  "id": "rock_moss_set_02",
+  "name": "Rock Moss Set 02",
+  "type": "model",
+  "authors": [
+   "Kless Gyzen"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/rock_moss_set_02"
+ },
+ {
+  "id": "boulder_01",
+  "name": "Boulder 01",
+  "type": "model",
+  "authors": [
+   "Rico Cilliers"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/boulder_01"
+ },
+ {
+  "id": "coast_rocks_01",
+  "name": "Coast Rocks 01",
+  "type": "model",
+  "authors": [
+   "Rob Tuytel",
+   "Rico Cilliers"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/coast_rocks_01"
+ },
+ {
+  "id": "tree_stump_01",
+  "name": "Tree Stump 01",
+  "type": "model",
+  "authors": [
+   "Rob Tuytel"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/tree_stump_01"
+ },
+ {
+  "id": "dry_branches_medium_01",
+  "name": "Dry Branches Medium 01",
+  "type": "model",
+  "authors": [
+   "Rico Cilliers"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/dry_branches_medium_01"
+ },
+ {
+  "id": "plastic_crate_01",
+  "name": "Plastic Crate 01",
+  "type": "model",
+  "authors": [
+   "PierreB3D"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/plastic_crate_01"
+ },
+ {
+  "id": "wooden_military_crate",
+  "name": "Wooden Military Crate",
+  "type": "model",
+  "authors": [
+   "Prabhjinder Singh"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/wooden_military_crate"
+ },
+ {
+  "id": "power_box_01",
+  "name": "Power Box 01",
+  "type": "model",
+  "authors": [
+   "Rico Cilliers",
+   "Yann Kervran"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/power_box_01"
+ },
+ {
+  "id": "exterior_aircon_unit",
+  "name": "Exterior Aircon Unit",
+  "type": "model",
+  "authors": [
+   "Monsta3D"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/exterior_aircon_unit"
+ },
+ {
+  "id": "small_lpg_tank",
+  "name": "Small Lpg Tank",
+  "type": "model",
+  "authors": [
+   "Ulan Cabanilla"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/small_lpg_tank"
+ },
+ {
+  "id": "worn_metal_rack",
+  "name": "Worn Metal Rack",
+  "type": "model",
+  "authors": [
+   "Luca B"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/worn_metal_rack"
+ },
+ {
+  "id": "mounted_fluorescent_lights",
+  "name": "Mounted Fluorescent Lights",
+  "type": "model",
+  "authors": [
+   "Ulan Cabanilla"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/mounted_fluorescent_lights"
+ },
+ {
+  "id": "metal_trash_can",
+  "name": "Metal Trash Can",
+  "type": "model",
+  "authors": [
+   "GurJas Studios"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/metal_trash_can"
+ },
+ {
+  "id": "shrub_03",
+  "name": "Shrub 03",
+  "type": "model",
+  "authors": [
+   "Rico Cilliers"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/shrub_03"
+ },
+ {
+  "id": "fern_02",
+  "name": "Fern 02",
+  "type": "model",
+  "authors": [
+   "Rob Tuytel",
+   "Rico Cilliers"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/fern_02"
+ },
+ {
+  "id": "shrub_02",
+  "name": "Shrub 02",
+  "type": "model",
+  "authors": [
+   "Rico Cilliers"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/shrub_02"
+ },
+ {
+  "id": "shrub_04",
+  "name": "Shrub 04",
+  "type": "model",
+  "authors": [
+   "Rico Cilliers"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/shrub_04"
+ },
+ {
+  "id": "dead_tree_trunk",
+  "name": "Dead Tree Trunk",
+  "type": "model",
+  "authors": [
+   "Rob Tuytel"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/dead_tree_trunk"
+ },
+ {
+  "id": "island_tree_02",
+  "name": "Island Tree 02",
+  "type": "model",
+  "authors": [
+   "Rob Tuytel",
+   "Rico Cilliers"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/island_tree_02"
+ },
+ {
+  "id": "grass_medium_01",
+  "name": "Grass Medium 01",
+  "type": "model",
+  "authors": [
+   "Rob Tuytel",
+   "Rico Cilliers"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/grass_medium_01"
+ },
+ {
+  "id": "pine_tree_01",
+  "name": "Pine Tree 01",
+  "type": "model",
+  "authors": [
+   "Rob Tuytel",
+   "Rico Cilliers"
+  ],
+  "license": "CC0 1.0",
+  "source": "https://polyhaven.com/a/pine_tree_01"
+ }
+]
