@@ -154,7 +154,7 @@ async function sloppy(input, output, targetTris) {
   for (const mesh of doc.getRoot().listMeshes()) for (const p of mesh.listPrimitives()) {
     const idx = p.getIndices(), pos = p.getAttribute('POSITION');
     if (!idx) continue;
-    const want = Math.max(36, Math.floor(((idx.getCount() / 3) * targetTris) / total) * 3);
+    const want = Math.min(idx.getCount(), Math.max(36, Math.floor(((idx.getCount() / 3) * targetTris) / total) * 3));
     const src = new Uint32Array(idx.getArray());
     const [out] = MeshoptSimplifier.simplifySloppy(src, new Float32Array(pos.getArray()), 3, null, want, 0.05);
     idx.setArray(new Uint32Array(out));
