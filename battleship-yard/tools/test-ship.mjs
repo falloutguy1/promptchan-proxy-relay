@@ -13,3 +13,35 @@ for (const [k, d] of Object.entries(PRESETS)) {
   const box = new THREE.Box3().setFromObject(root);
   console.log(k.padEnd(26), (performance.now() - t).toFixed(0) + 'ms', 'meshes', meshes, 'tris', Math.round(tris), 'NaN', nan, 'box', box.min.toArray().map((v) => v.toFixed(1)).join(','), box.max.toArray().map((v) => v.toFixed(1)).join(','));
 }
+
+// Winding checks: procedural surfaces must face outward (a past bug rendered hull/deck/bark inside-out).
+import { generateTree } from '../src/world/TreeGen.js';
+const faceAgree = (g) => {
+  const p = g.attributes.position, n = g.attributes.normal, idx = g.index;
+  const A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3(), N = new THREE.Vector3();
+  let ok = 0, bad = 0;
+  for (let i = 0; i < idx.count; i += 3) {
+    A.fromBufferAttribute(p, idx.getX(i)); B.fromBufferAttribute(p, idx.getX(i + 1)); C.fromBufferAttribute(p, idx.getX(i + 2)); N.fromBufferAttribute(n, idx.getX(i));
+    const f = B.clone().sub(A).cross(C.clone().sub(A));
+    if (f.lengthSq() < 1e-10) continue;
+    f.dot(N) > 0 ? ok++ : bad++;
+  }
+  return bad / Math.max(1, ok + bad);
+};
+let failed = false;
+const root = b.build(PRESETS['Fast battleship (1940)']);
+root.traverse((o) => {
+  if (!o.isMesh || !['hull', 'deck'].includes(o.material.name)) return;
+  const g = o.geometry; let up = 0, outward = 0, n = 0;
+  const nn = g.attributes.normal, pp = g.attributes.position;
+  for (let i = 0; i < nn.count; i++) { n++; if (o.material.name === 'deck' ? nn.getY(i) > 0 : nn.getZ(i) * pp.getZ(i) >= 0) up++; }
+  const frac = up / n;
+  console.log(`winding ${o.material.name}: ${(frac * 100).toFixed(1)}% outward normals`);
+  if (frac < 0.9) failed = true;
+});
+for (const sp of ['pine', 'spruce', 'broadleaf']) {
+  const bad = faceAgree(generateTree(sp, 3, 0).bark);
+  console.log(`winding bark ${sp}: ${(bad * 100).toFixed(1)}% faces disagree with normals`);
+  if (bad > 0.01) failed = true;
+}
+if (failed) { console.error('FAIL: geometry winding'); process.exit(1); }

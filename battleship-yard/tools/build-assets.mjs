@@ -4,7 +4,7 @@
 //  - foliage atlases  -> KTX2 UASTC RGBA
 //  - props            -> GLB, simplified where needed, KTX2 textures, meshopt geometry
 //  - CREDITS.json     -> author + licence for every shipped asset
-// Requires toktx (KTX-Software 4.3). Set TOKTX_DIR to its install dir (bin/ + lib/).
+// Requires KTX-Software >= 4.4 (toktx + ktx). Set TOKTX_DIR to its install dir (bin/ + lib/).
 // Usage: node tools/build-assets.mjs [--only=textures,terrain,foliage,models,hdri]
 import fs from 'fs';
 import path from 'path';
@@ -24,7 +24,7 @@ const SRC = path.join(ROOT, 'assets-src');
 const OUT = path.join(ROOT, 'public', 'assets');
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'bsy-'));
 const TOKTX_DIR = process.env.TOKTX_DIR || path.join(ROOT, 'tools', 'bin');
-const ENV = { ...process.env, PATH: `${TOKTX_DIR}:${TOKTX_DIR}/bin:${process.env.PATH}`, LD_LIBRARY_PATH: `${TOKTX_DIR}/lib:${process.env.LD_LIBRARY_PATH || ''}` };
+const ENV = { ...process.env, PATH: `${TOKTX_DIR}/bin:${TOKTX_DIR}:${process.env.PATH}`, LD_LIBRARY_PATH: `${TOKTX_DIR}/lib:${process.env.LD_LIBRARY_PATH || ''}` };
 const only = (process.argv.find((a) => a.startsWith('--only=')) || '').slice(7).split(',').filter(Boolean);
 const want = (k) => !only.length || only.includes(k);
 
@@ -127,6 +127,11 @@ const BUDGET = {
   metal_tool_chest: 5000, wooden_crate_01: 3000, wooden_crate_02: 3000, propane_tank: 3000,
 };
 // simplification error bound (fraction of mesh size); thin wire meshes need more freedom
+// hand-sized props: 512 px textures, ETC1S only
+const SMALL = new Set(['Barrel_01', 'barrel_03', 'old_military_crate', 'wooden_crate_01', 'wooden_crate_02', 'propane_tank', 'metal_jerrycan', 'old_tyre',
+  'portable_generator', 'portable_welding_cart', 'metal_tool_chest', 'utility_box_01', 'water_manhole_cover', 'fire_hydrant', 'lifebuoy', 'hand_truck',
+  'cement_bag', 'industrial_wall_lamp', 'hanging_industrial_lamp', 'security_light', 'wooden_military_crate', 'plastic_crate_01', 'power_box_01',
+  'small_lpg_tank', 'dry_branches_medium_01', 'tree_stump_01', 'worn_metal_rack']);
 const SIMPLIFY_ERROR = { modular_chainlink_fence: 0.06, boulder_01: 0.08, coast_rocks_01: 0.02 };
 const LOD1 = { coast_rocks_01: 3000, boulder_01: 1000, rock_moss_set_01: 1500, rock_moss_set_02: 1500 };
 
@@ -162,6 +167,26 @@ async function sloppy(input, output, targetTris) {
   await io.write(output, doc);
 }
 
+// Poly Haven ships some cut-out alpha as a separate map; merge it into baseColor and use MASK.
+const ALPHA_FIX = { modular_chainlink_fence: { material: 'wire', alpha: 'textures/wire_alpha_1k.png', fetch: ['wire_alpha', '1k'] } };
+async function alphaFix(file, id) {
+  const cfg = ALPHA_FIX[id];
+  const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
+  const doc = await io.read(file);
+  for (const m of doc.getRoot().listMaterials()) {
+    if (!m.getName().includes(cfg.material)) continue;
+    const tex = m.getBaseColorTexture();
+    const rgb = await sharp(Buffer.from(tex.getImage())).removeAlpha().toColourspace('srgb').raw({ depth: 'uchar' }).toBuffer({ resolveWithObject: true });
+    const { width: w, height: h } = rgb.info;
+    const a = await sharp(path.join(SRC, 'models', id, cfg.alpha)).removeAlpha().toColourspace('b-w').resize(w, h).raw({ depth: 'uchar' }).toBuffer();
+    const out = Buffer.alloc(w * h * 4);
+    for (let i = 0; i < w * h; i++) { out[i * 4] = rgb.data[i * 3]; out[i * 4 + 1] = rgb.data[i * 3 + 1]; out[i * 4 + 2] = rgb.data[i * 3 + 2]; out[i * 4 + 3] = a[i]; }
+    tex.setImage(await sharp(out, { raw: { width: w, height: h, channels: 4 } }).png().toBuffer()).setMimeType('image/png');
+    m.setAlphaMode('MASK').setAlphaCutoff(0.5).setDoubleSided(true);
+  }
+  await io.write(file, doc);
+}
+
 async function models() {
   const o = path.join(OUT, 'models');
   mk(o);
@@ -171,6 +196,7 @@ async function models() {
     if (fresh(dst, src)) continue;
     const a = path.join(TMP, `${id}_a.glb`), b = path.join(TMP, `${id}_b.glb`);
     gt(['copy', src, a]);
+    if (ALPHA_FIX[id]) await alphaFix(a, id);
     gt(['weld', a, b]);
     let cur = b;
     const verts = triCount(cur);
@@ -183,14 +209,19 @@ async function models() {
       cur = c;
       if (triCount(cur) > budget * 1.5) { const d2 = path.join(TMP, `${id}_s.glb`); await sloppy(cur, d2, budget); cur = d2; }
     }
-    const finish = (input, out, maxTex) => {
+    const finish = (input, out, maxTex, normalsUASTC = true) => {
       const r = path.join(TMP, `${path.basename(out)}_r.glb`), e = path.join(TMP, `${path.basename(out)}_e.glb`), u = path.join(TMP, `${path.basename(out)}_u.glb`);
       gt(['resize', input, r, '--width', String(maxTex), '--height', String(maxTex)]);
-      gt(['etc1s', r, e, '--slots', '{baseColorTexture,emissiveTexture}', '--quality', '230']);
-      gt(['uastc', e, u, '--slots', '{normalTexture,metallicRoughnessTexture,occlusionTexture}', '--level', '2', '--rdo', '--rdo-lambda', '2.5', '--zstd', '18']);
-      gt(['meshopt', u, out, '--level', 'medium']);
+      // normals keep UASTC on larger assets; everything else (and small props entirely) is ETC1S
+      if (normalsUASTC) gt(['uastc', r, u, '--slots', 'normalTexture', '--level', '1', '--rdo', '--rdo-lambda', '3', '--zstd', '18']);
+      else fs.copyFileSync(r, u);
+      gt(['etc1s', u, e, '--quality', '200']);
+      gt(['meshopt', e, out, '--level', 'medium']);
+      const report = run(path.join(ROOT, 'node_modules/.bin/gltf-transform'), ['inspect', out, '--format', 'csv']).toString();
+      if (/image\/(jpeg|png)/.test(report)) throw new Error(`${out}: textures were not converted to KTX2 (needs KTX-Software >= 4.4 on TOKTX_DIR)`);
     };
-    finish(cur, dst, 1024);
+    const small = SMALL.has(id);
+    finish(cur, dst, small ? 512 : 1024, !small);
     if (LOD1[id]) {
       const c = path.join(TMP, `${id}_l1.glb`);
       gt(['simplify', lodSrc, c, '--ratio', Math.max(0.002, LOD1[id] / verts).toFixed(4), '--error', '0.03']);

@@ -100,7 +100,7 @@ export async function buildBuildings(assets, lib, quality) {
   const L = lib;
   const mats = {
     brick: L.make('brick', 'factory_brick', { weather: { macro: 0.18, macroScale: 0.08, grimeHeight: Y0, grimeRange: 1.2, grimeAmount: 0.35 } }),
-    clad: L.make('cladding', 'corrugated_iron_02', { color: 0xaeb6b8, metalness: 0.25, useMetalMap: false, weather: { macro: 0.22, macroScale: 0.06, grimeHeight: Y0 + 3, grimeRange: 2.5, grimeAmount: 0.25 } }),
+    clad: L.make('cladding', 'corrugated_iron_02', { color: 0xdfe6e8, metalness: 0.25, useMetalMap: false, weather: { macro: 0.22, macroScale: 0.06, grimeHeight: Y0 + 3, grimeRange: 2.5, grimeAmount: 0.25 } }),
     roof: L.make('roof', 'rusty_corrugated_iron', { color: 0x9a948c, metalness: 0.2, useMetalMap: false, weather: { macro: 0.3, macroScale: 0.05 } }),
     block: L.make('blockwork', 'painted_concrete', { color: 0xc9c4b8, weather: { macro: 0.25, macroScale: 0.12, grimeHeight: Y0, grimeRange: 1.0, grimeAmount: 0.35 } }),
     floor: L.make('shed-floor', 'concrete_floor_worn_001', { color: 0x9a968f, envMapIntensity: 0.35, weather: { macro: 0.3, macroScale: 0.05 } }),

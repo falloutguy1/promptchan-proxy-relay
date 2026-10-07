@@ -48,7 +48,7 @@ function tube(points, radii, radialSegs, rnd, barkScale, irregular = 0.12) {
   const row = radialSegs + 1;
   for (let i = 0; i < n - 1; i++) for (let k = 0; k < radialSegs; k++) {
     const a = i * row + k, b = a + row;
-    idx.push(a, b, a + 1, a + 1, b, b + 1);
+    idx.push(a, a + 1, b, a + 1, b + 1, b); // outward-facing
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
@@ -217,15 +217,15 @@ export function generateTree(species, seed, lod = 0) {
   // leafy twig clusters around branch ends and along outer limbs
   const tint = [0.95 + rnd() * 0.1, 0.95 + rnd() * 0.1, 0.9];
   for (const pts of tipsOut) {
-    const nC = Math.round((8 + rnd() * 6) * cardKeep) + 2;
+    const nC = Math.round((16 + rnd() * 10) * cardKeep) + 3;
     for (let c = 0; c < nC; c++) {
       const f = 0.4 + rnd() * 0.6;
       const p = pts[Math.min(pts.length - 1, Math.floor(f * pts.length))].clone();
-      p.add(new THREE.Vector3(rnd() - 0.5, rnd() - 0.3, rnd() - 0.5).multiplyScalar(1.6 * cardScale));
+      p.add(new THREE.Vector3(rnd() - 0.5, rnd() - 0.3, rnd() - 0.5).multiplyScalar(1.4 * cardScale));
       const out = p.clone().sub(crownC).normalize();
       const along = out.clone().add(new THREE.Vector3((rnd() - 0.5) * 1.2, 0.3 + rnd() * 0.4, (rnd() - 0.5) * 1.2)).normalize();
       const side = along.clone().cross(new THREE.Vector3(rnd() - 0.5, rnd() - 0.5, rnd() - 0.5).normalize()).normalize();
-      const len = (1.7 + rnd() * 0.8) * cardScale;
+      const len = (0.95 + rnd() * 0.45) * cardScale;
       cards.quad(p, along, side, len, len, [0, 1, 1, 0], crownC, crownR, tint, 1);
     }
   }

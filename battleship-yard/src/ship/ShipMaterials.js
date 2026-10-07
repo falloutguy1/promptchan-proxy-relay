@@ -133,7 +133,7 @@ export class ShipMaterials {
     if (this.steelDeck.normalMap) this.steelDeck.normalScale.set(1, -1);
     this.dark = new THREE.MeshStandardMaterial({ name: 'ship-dark', color: 0x151617, roughness: 0.55, metalness: 0.3 });
     this.soot = new THREE.MeshStandardMaterial({ name: 'ship-soot', color: 0x0b0b0b, roughness: 0.95, metalness: 0 });
-    this.canvas = new THREE.MeshStandardMaterial({ name: 'ship-canvas', color: new THREE.Color(0.36, 0.35, 0.3), roughness: 0.95, metalness: 0 });
+    this.canvas = new THREE.MeshStandardMaterial({ name: 'ship-canvas', color: new THREE.Color().setRGB(0.33, 0.32, 0.27, THREE.SRGBColorSpace), roughness: 0.95, metalness: 0 });
     this.glass = new THREE.MeshPhysicalMaterial({ name: 'ship-glass', color: 0x0a0d10, roughness: 0.05, metalness: 0, clearcoat: 1, envMapIntensity: 1.4 });
     this.brass = new THREE.MeshStandardMaterial({ name: 'ship-brass', color: 0x8a6a35, roughness: 0.35, metalness: 1 });
     this.chain = new THREE.MeshStandardMaterial({ name: 'ship-chain', color: 0x2a2725, roughness: 0.7, metalness: 0.8 });

@@ -129,7 +129,8 @@ export class Terrain {
           float camD = length(vTWorld - cameraPosition);
           float nLow = bsy_fbm(vTWorld.xz * 0.012);
           float nMid = bsy_fbm(vTWorld.xz * 0.09 + 7.0);
-          float mixT = smoothstep(0.35, 0.65, bsy_fbm(vTWorld.xz * 0.045 + 3.0)) * (1.0 - smoothstep(120.0, 300.0, camD));
+          float mixT = smoothstep(0.35, 0.65, bsy_fbm(vTWorld.xz * 0.045 + 3.0));
+          float farT = smoothstep(90.0, 450.0, camD); // distance blending: larger-scale sample hides tile repeats
           vec3 Nw = normalize(vTNormal);
           vec4 cols[6]; vec3 nors[6]; vec3 arms[6]; float vals[6];
           float vmax = -1.0;
@@ -152,6 +153,7 @@ export class Terrain {
               arms[i] = texture(tArm, vec3(p.xz, L)).xyz;
             } else {
               cols[i] = sampleArr(tColH, uv, L, mixT);
+              if (farT > 0.01) cols[i] = mix(cols[i], texture(tColH, vec3(uv * 0.213 + 0.37, L)), farT * 0.65);
               vec3 tn = sampleArr(tNor, uv, L, mixT).xyz * 2.0 - 1.0;
               vec3 T = normalize(vec3(1.0, 0.0, 0.0) - Nw * Nw.x);
               vec3 B = normalize(vec3(0.0, 0.0, 1.0) - Nw * Nw.z);
@@ -273,6 +275,9 @@ export class Terrain {
   /** Stream chunk LODs around the camera; builds at most `budget` geometries per call. */
   update(camPos, budget = 2) {
     let built = 0;
+    // after a teleport (mode switch, reset) build everything needed now rather than showing skirts
+    if (!this._last || this._last.distanceTo(camPos) > 120) budget = Infinity;
+    (this._last ||= camPos.clone()).copy(camPos);
     const dists = [380, 800, 1700];
     for (const c of this.chunks) {
       const dx = Math.max(Math.abs(camPos.x - c.center.x) - 128, 0), dz = Math.max(Math.abs(camPos.z - c.center.z) - 128, 0);

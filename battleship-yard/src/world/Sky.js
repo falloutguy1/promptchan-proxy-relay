@@ -10,7 +10,7 @@ export class Sky {
     this.renderer = renderer;
     this.scene = scene;
     this.sunDir = new THREE.Vector3(0.5, 0.75, 0.3).normalize();
-    this.sun = new THREE.DirectionalLight(0xfff1dc, 3.2);
+    this.sun = new THREE.DirectionalLight(0xfff1dc, 2.7);
     this.sun.castShadow = true;
     this.sun.shadow.bias = -0.0004;
     this.sun.shadow.normalBias = 0.6;
@@ -29,7 +29,7 @@ export class Sky {
     this.env = pm.fromEquirectangular(tex).texture;
     pm.dispose();
     this.scene.environment = this.env;
-    this.scene.environmentIntensity = 0.85;
+    this.scene.environmentIntensity = 1.05;
     this.scene.background = tex;
     this.scene.backgroundIntensity = 0.9;
     this.scene.backgroundRotation.set(0, 0, 0);

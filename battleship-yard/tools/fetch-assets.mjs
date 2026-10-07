@@ -44,6 +44,8 @@ export const MANIFEST = {
   ],
 };
 
+const EXTRA_MAPS = { modular_chainlink_fence: [['wire_alpha', 'wire_alpha_1k.png']] };
+
 async function get(url, dest) {
   if (fs.existsSync(dest) && fs.statSync(dest).size > 0) return;
   fs.mkdirSync(path.dirname(dest), { recursive: true });
@@ -98,6 +100,8 @@ async function main() {
     const dir = path.join(SRC, 'models', id);
     await get(g.url, path.join(dir, `${id}.gltf`));
     for (const [rel, v] of Object.entries(g.include)) await get(v.url, path.join(dir, rel));
+    // separate cut-out masks that the glTF export leaves out (merged into baseColor by build-assets)
+    for (const [map, file] of EXTRA_MAPS[id] || []) await get(f[map][res].png.url, path.join(dir, 'textures', file));
     info[id] = await json(`${API}/info/${id}`);
     console.log('model', id);
   });

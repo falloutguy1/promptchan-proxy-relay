@@ -93,7 +93,7 @@ export class HullShape {
       }
       for (let i = 0; i < ns; i++) for (let j = 0; j < ny; j++) {
         const a = base + i * rows + j, b = a + rows, c = a + 1, e = b + 1;
-        if (side > 0) idx.push(a, c, b, b, c, e); else idx.push(a, b, c, b, e, c);
+        if (side > 0) idx.push(a, b, c, b, e, c); else idx.push(a, c, b, b, c, e); // outward-facing
       }
     }
     const hull = new THREE.BufferGeometry();
@@ -117,7 +117,7 @@ export class HullShape {
     }
     for (let i = 0; i < ns; i++) for (let k = 0; k < across; k++) {
       const a = i * (across + 1) + k, b = a + across + 1;
-      di.push(a, b, a + 1, a + 1, b, b + 1);
+      di.push(a, a + 1, b, a + 1, b + 1, b); // counter-clockwise seen from above (+y normal)
     }
     const deck = new THREE.BufferGeometry();
     deck.setAttribute('position', new THREE.Float32BufferAttribute(dp, 3));

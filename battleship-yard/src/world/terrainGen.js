@@ -187,7 +187,7 @@ export function generateTerrain(seed = 1337, onProgress = () => {}) {
       const dl = land[k] ? dist[k] : -dist[k];
       const inYard = Math.abs(x) < QUAY.x1 + 14 && z <= QUAY.edgeZ + 0.5 && z > QUAY.yardZ - 6;
 
-      let rock = smoothstep(0.32, 0.5, slope + nA * 0.08) + smoothstep(0.55, 0.8, nC + nB * 0.15) * smoothstep(60, 140, h) * 0.6;
+      let rock = smoothstep(0.2, 0.34, slope + nA * 0.06) + smoothstep(0.55, 0.8, nC + nB * 0.15) * smoothstep(60, 140, h) * 0.6;
       let sand = (1 - smoothstep(1.2, 3.2, h + nB * 0.8)) * smoothstep(-25, -2, h);
       // seabed: sand with rock outcrops further out
       if (h < -2) { sand = 1; rock = Math.max(rock * 0.5, smoothstep(0.2, 0.6, nA) * 0.7); }
@@ -206,8 +206,8 @@ export function generateTerrain(seed = 1337, onProgress = () => {}) {
       mud = Math.max(mud, shoulder * (0.55 + nB * 0.4));
       // worn margins of the paved yard and around buildings: gravel and tyre-churned mud
       if (!inYard) {
-        const edge = Math.abs(x) < QUAY.x1 + 40 && z < QUAY.edgeZ && z > QUAY.yardZ - 34;
-        if (edge) { gravel = Math.max(gravel, 0.75 + nB * 0.3); mud = Math.max(mud, smoothstep(0.1, 0.5, nA) * 0.8); }
+        const edge = Math.abs(x) < QUAY.x1 + 30 && z < QUAY.edgeZ && z > QUAY.yardZ - 14;
+        if (edge) { gravel = Math.max(gravel, smoothstep(0.35, 0.7, nB) * 0.6); mud = Math.max(mud, smoothstep(0.2, 0.55, nA) * 0.7); }
       } else { gravel = 1; mud = 0.2 + nB * 0.2; grass = 0; dry = 0; rock = 0; sand = 0; }
       if (z > -120 && z < 0 && x > -120 && x < 200) for (const b of blds) {
         const dx = Math.abs(x - b.x) - b.w / 2, dz = Math.abs(z - b.z) - b.d / 2;
