@@ -204,7 +204,7 @@ export async function buildBuildings(assets, lib, quality) {
     b.add(mats.craneYellow, rbox(0.7, 0.9, 0.5, 0.05), V(s.x - 11.2, Y0 + 4.6, s.z + 3));
     // inner lining keeps the interior dim (it does not see the open sky)
     b.add(mats.lining, new THREE.BoxGeometry(s.w - 1, 0.05, s.d - 1), V(s.x, eave - 0.5, s.z));
-    for (const sd of [1, -1]) b.add(mats.lining, new THREE.BoxGeometry(s.w - 1, s.h - 3.4, 0.04), V(s.x, plinth + (s.h - 3.4) / 2 - 0.3, s.z + sd * (s.d / 2 - 0.42)));
+    b.add(mats.lining, new THREE.BoxGeometry(s.w - 1, s.h - 3.4, 0.04), V(s.x, plinth + (s.h - 3.4) / 2 - 0.3, s.z - (s.d / 2 - 0.42))); // back wall only: the front has the door opening
     // lights hanging from the frames
     for (let k = 0; k < 6; k++) {
       const lx = xA + 8 + k * 9.6;
