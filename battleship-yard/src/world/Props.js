@@ -53,16 +53,43 @@ export async function placeProps(assets, lib, terrain) {
   const loaded = await Promise.all(names.map((n) => assets.model(n)));
   const M = Object.fromEntries(names.map((n, i) => [n, loaded[i]]));
   const rnd = mulberry(77);
+  // Repeated props are drawn as instanced meshes (one draw per sub-mesh per model);
+  // per-instance tint gives each copy a different condition.
+  const batches = new Map();
   const put = (name, x, z, yaw = 0, opts = {}) => {
     const src = M[name];
     if (!src) return null;
-    const o = src.clone();
-    o.position.set(x, opts.y ?? Y0, z);
-    o.rotation.set(opts.rx || 0, yaw, opts.rz || 0);
-    if (opts.scale) o.scale.setScalar(opts.scale);
-    if (opts.tint) o.traverse((c) => { if (c.isMesh) { c.material = c.material.clone(); c.material.color.multiplyScalar(opts.tint); } });
-    group.add(o);
-    return o;
+    if (opts.single) {
+      const o = src.clone();
+      o.position.set(x, opts.y ?? Y0, z);
+      o.rotation.set(opts.rx || 0, yaw, opts.rz || 0);
+      if (opts.scale) o.scale.setScalar(opts.scale);
+      group.add(o);
+      return o;
+    }
+    const m = new THREE.Matrix4().compose(V(x, opts.y ?? Y0, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(opts.rx || 0, yaw, opts.rz || 0)), V(1, 1, 1).multiplyScalar(opts.scale || 1));
+    if (!batches.has(name)) batches.set(name, []);
+    batches.get(name).push({ m, tint: opts.tint ?? 1, color: opts.color });
+    return null;
+  };
+  const flush = () => {
+    for (const [name, list] of batches) {
+      const src = M[name];
+      src.updateMatrixWorld(true);
+      src.traverse((part) => {
+        if (!part.isMesh) return;
+        const im = new THREE.InstancedMesh(part.geometry, part.material, list.length);
+        const c = new THREE.Color();
+        list.forEach((it, i) => {
+          im.setMatrixAt(i, it.m.clone().multiply(part.matrixWorld));
+          im.setColorAt(i, it.color ? c.copy(it.color) : c.setScalar(it.tint));
+        });
+        im.castShadow = true; im.receiveShadow = true;
+        im.computeBoundingSphere();
+        im.name = name;
+        group.add(im);
+      });
+    }
   };
   const jit = (a) => (rnd() - 0.5) * a;
   const sh = BUILDINGS.shed, of = BUILDINGS.office, st = BUILDINGS.store;
@@ -151,7 +178,7 @@ export async function placeProps(assets, lib, terrain) {
 
   // --- navigation buoys (floating; driven by the wave model) ---
   for (const [name, x, z, off] of [['lateral_sea_marker', -140, 430, -1.2], ['lateral_sea_marker', 150, 470, -1.2], ['ocean_buoy', -330, 260, -0.4], ['ocean_buoy', 300, 640, -0.4]]) {
-    const o = put(name, x, z, rnd() * 6.28, { y: 0 });
+    const o = put(name, x, z, rnd() * 6.28, { y: 0, single: true });
     if (o) floaters.push({ obj: o, base: V(x, 0, z), offset: off });
   }
   if (M.lateral_sea_marker) {
@@ -159,6 +186,7 @@ export async function placeProps(assets, lib, terrain) {
     const greenOne = floaters.find((f) => f.base.x > 0 && f.obj.name !== 'ocean_buoy');
     greenOne?.obj.traverse((c) => { if (c.isMesh) { c.material = c.material.clone(); c.material.color.setRGB(0.35, 0.9, 0.45); } });
   }
+  flush();
   group.traverse((o) => { if (o.isMesh) { o.castShadow = o.castShadow !== false; o.receiveShadow = true; } });
   return { group, floaters, colliders };
 }

@@ -23,6 +23,8 @@ export class Sky {
 
   setHDRI(tex) {
     tex.mapping = THREE.EquirectangularReflectionMapping;
+    this.analyse(tex);
+    this.clampSun(tex, 24);
     const pm = new THREE.PMREMGenerator(this.renderer);
     this.env = pm.fromEquirectangular(tex).texture;
     pm.dispose();
@@ -31,7 +33,21 @@ export class Sky {
     this.scene.background = tex;
     this.scene.backgroundIntensity = 0.9;
     this.scene.backgroundRotation.set(0, 0, 0);
-    this.analyse(tex);
+  }
+
+  /**
+   * The HDRI contains the sun at full radiance. Left in, it floods the diffuse IBL and doubles
+   * up with the directional light; clamp it so the sky provides fill and the light provides sun.
+   */
+  clampSun(tex, max) {
+    const d = tex.image.data;
+    const half = d instanceof Uint16Array;
+    const lim = half ? THREE.DataUtils.toHalfFloat(max) : max;
+    for (let i = 0; i < d.length; i++) {
+      if ((i & 3) === 3 && d.length % 4 === 0) continue;
+      if (half ? THREE.DataUtils.fromHalfFloat(d[i]) > max : d[i] > max) d[i] = lim;
+    }
+    tex.needsUpdate = true;
   }
 
   /** Locate the sun (brightest region) and the average horizon colour in the equirect HDR. */

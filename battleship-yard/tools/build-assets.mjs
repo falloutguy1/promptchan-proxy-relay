@@ -13,6 +13,9 @@ import { execFileSync } from 'child_process';
 import { createRequire } from 'module';
 import sharp from 'sharp';
 import { MANIFEST } from './fetch-assets.mjs';
+import { NodeIO } from '@gltf-transform/core';
+import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
+import { MeshoptSimplifier } from 'meshoptimizer';
 
 const require = createRequire(import.meta.url);
 const foliage = require('./foliage.cjs');
@@ -115,8 +118,17 @@ async function foliageAtlases() {
 }
 
 // Triangle budgets for props (LOD0). Rocks also get a coarse LOD1.
-const BUDGET = { coast_rocks_01: 40000, boulder_01: 14000, rock_moss_set_01: 16000, rock_moss_set_02: 16000, fire_hydrant: 9000, concrete_road_barrier: 6000, modular_chainlink_fence: 20000, dead_tree_trunk: 12000, tree_stump_01: 8000, portable_welding_cart: 14000, portable_generator: 14000, ladder_sectioned_01: 10000, metal_jerrycan: 6000, street_lamp_01: 14000 };
-const LOD1 = { coast_rocks_01: 6000, boulder_01: 2000, rock_moss_set_01: 3000, rock_moss_set_02: 3000 };
+const BUDGET = {
+  coast_rocks_01: 20000, boulder_01: 6000, rock_moss_set_01: 8000, rock_moss_set_02: 8000, fire_hydrant: 3000, concrete_road_barrier: 3000,
+  modular_chainlink_fence: 3000, dead_tree_trunk: 5000, tree_stump_01: 4000, portable_welding_cart: 6000, portable_generator: 6000,
+  metal_jerrycan: 2000, street_lamp_01: 5000, shrub_02: 3000, shrub_03: 3000, shrub_04: 3000, fern_02: 2500, dry_branches_medium_01: 4000,
+  wooden_military_crate: 3000, plastic_crate_01: 3000, exterior_aircon_unit: 5000, power_box_01: 4000, small_lpg_tank: 4000,
+  metal_trash_can: 5000, old_military_crate: 4000, lifebuoy: 4000, ocean_buoy: 6000, lateral_sea_marker: 6000, hand_truck: 4000,
+  metal_tool_chest: 5000, wooden_crate_01: 3000, wooden_crate_02: 3000, propane_tank: 3000,
+};
+// simplification error bound (fraction of mesh size); thin wire meshes need more freedom
+const SIMPLIFY_ERROR = { modular_chainlink_fence: 0.06, boulder_01: 0.08, coast_rocks_01: 0.02 };
+const LOD1 = { coast_rocks_01: 3000, boulder_01: 1000, rock_moss_set_01: 1500, rock_moss_set_02: 1500 };
 
 function triCount(file) {
   const out = run(path.join(ROOT, 'node_modules/.bin/gltf-transform'), ['inspect', file, '--format', 'csv']).toString();
@@ -132,6 +144,24 @@ function triCount(file) {
   return tris; // vertices, used as a proxy for complexity
 }
 
+/** Fallback when seams stop regular simplification: meshopt sloppy simplifier per primitive. */
+async function sloppy(input, output, targetTris) {
+  await MeshoptSimplifier.ready;
+  const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
+  const doc = await io.read(input);
+  let total = 0;
+  for (const mesh of doc.getRoot().listMeshes()) for (const p of mesh.listPrimitives()) total += p.getIndices()?.getCount() / 3 || 0;
+  for (const mesh of doc.getRoot().listMeshes()) for (const p of mesh.listPrimitives()) {
+    const idx = p.getIndices(), pos = p.getAttribute('POSITION');
+    if (!idx) continue;
+    const want = Math.max(36, Math.floor(((idx.getCount() / 3) * targetTris) / total) * 3);
+    const src = new Uint32Array(idx.getArray());
+    const [out] = MeshoptSimplifier.simplifySloppy(src, new Float32Array(pos.getArray()), 3, null, want, 0.05);
+    idx.setArray(new Uint32Array(out));
+  }
+  await io.write(output, doc);
+}
+
 async function models() {
   const o = path.join(OUT, 'models');
   mk(o);
@@ -144,13 +174,14 @@ async function models() {
     gt(['weld', a, b]);
     let cur = b;
     const verts = triCount(cur);
-    const budget = BUDGET[id] || 12000;
+    const budget = BUDGET[id] || 6000;
     const lodSrc = cur;
     if (verts > budget * 1.2) {
       const ratio = Math.max(0.005, budget / verts);
       const c = path.join(TMP, `${id}_c.glb`);
-      gt(['simplify', cur, c, '--ratio', ratio.toFixed(4), '--error', '0.002']);
+      gt(['simplify', cur, c, '--ratio', ratio.toFixed(4), '--error', String(SIMPLIFY_ERROR[id] || 0.012)]);
       cur = c;
+      if (triCount(cur) > budget * 1.5) { const d2 = path.join(TMP, `${id}_s.glb`); await sloppy(cur, d2, budget); cur = d2; }
     }
     const finish = (input, out, maxTex) => {
       const r = path.join(TMP, `${path.basename(out)}_r.glb`), e = path.join(TMP, `${path.basename(out)}_e.glb`), u = path.join(TMP, `${path.basename(out)}_u.glb`);
@@ -162,8 +193,10 @@ async function models() {
     finish(cur, dst, 1024);
     if (LOD1[id]) {
       const c = path.join(TMP, `${id}_l1.glb`);
-      gt(['simplify', lodSrc, c, '--ratio', Math.max(0.002, LOD1[id] / verts).toFixed(4), '--error', '0.01']);
-      finish(c, path.join(o, `${id}_lod1.glb`), 512);
+      gt(['simplify', lodSrc, c, '--ratio', Math.max(0.002, LOD1[id] / verts).toFixed(4), '--error', '0.03']);
+      let l1 = c;
+      if (triCount(c) > LOD1[id] * 1.5) { l1 = path.join(TMP, `${id}_l1s.glb`); await sloppy(c, l1, LOD1[id]); }
+      finish(l1, path.join(o, `${id}_lod1.glb`), 512);
     }
     console.log('model', id, verts, '->', fs.statSync(dst).size);
   }

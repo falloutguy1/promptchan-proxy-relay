@@ -58,13 +58,6 @@ export function makeTerrainFn(seed = 1337) {
     const yardZ = smoothstep(QUAY.yardZ - 45, QUAY.yardZ - 4, z) * (z <= QUAY.edgeZ + 0.01 ? 1 : 0);
     const yard = yardX * yardZ;
     h = lerp(h, QUAY.topY, yard);
-    // road
-    const r = x > -360 && x < 0 && z < -60 && z > -630 ? roadInfo(x, z) : { d: 1e9, t: 0 };
-    if (r.d < 14) {
-      const base = lerp(QUAY.topY, 0.35 + hills(x, z, dl) * 0.92, smoothstep(0, 160, r.t));
-      const k = 1 - smoothstep(4.5, 13, r.d);
-      h = lerp(h, Math.max(base, QUAY.topY * (1 - smoothstep(0, 60, r.t))), k * (1 - yard * 0.999));
-    }
     return h;
   }
 
@@ -100,6 +93,43 @@ function distanceField(mask, nx, nz, cell) {
   return d;
 }
 
+// Road: a smoothed longitudinal profile sampled from the real terrain, then cut/fill a level
+// carriageway with graded shoulders (so it neither trenches into nor floats over the hillside).
+function carveRoad(heights, nx, nz, T) {
+  const { x0, z0, cell } = WORLD;
+  const Hs = (x, z) => heights[clamp(Math.round((z - z0) / cell), 0, nz - 1) * nx + clamp(Math.round((x - x0) / cell), 0, nx - 1)];
+  const pts = [];
+  let total = 0;
+  for (let k = 0; k < ROAD.length - 1; k++) {
+    const [ax, az] = ROAD[k], [bx, bz] = ROAD[k + 1], L = Math.hypot(bx - ax, bz - az);
+    for (let t = 0; t < L; t += 4) {
+      const x = ax + ((bx - ax) * t) / L, z = az + ((bz - az) * t) / L;
+      let sum = 0, n = 0;
+      for (let dx = -10; dx <= 10; dx += 5) for (let dz = -10; dz <= 10; dz += 5) { sum += Hs(x + dx, z + dz); n++; }
+      pts.push({ t: total + t, h: sum / n });
+    }
+    total += L;
+  }
+  const prof = pts.map((p, i) => {
+    let s = 0, n = 0;
+    for (let k = Math.max(0, i - 8); k <= Math.min(pts.length - 1, i + 8); k++) { s += pts[k].h; n++; }
+    return lerp(QUAY.topY, s / n, smoothstep(0, 70, p.t));
+  });
+  const profAt = (t) => { const f = Math.min(prof.length - 1.001, Math.max(0, t / 4)); const i = Math.floor(f); return lerp(prof[i], prof[i + 1], f - i); };
+  for (let j = 0; j < nz; j++) {
+    const z = z0 + j * cell;
+    if (z > -60 || z < -640) continue;
+    for (let i = 0; i < nx; i++) {
+      const x = x0 + i * cell;
+      if (x < -370 || x > 10) continue;
+      const r = T.roadInfo(x, z);
+      if (r.d > 16) continue;
+      const idx = j * nx + i;
+      heights[idx] = lerp(heights[idx], profAt(r.t), 1 - smoothstep(4.0, 15, r.d));
+    }
+  }
+}
+
 export function generateTerrain(seed = 1337, onProgress = () => {}) {
   const T = makeTerrainFn(seed);
   const { x0, z0, x1, z1, cell } = WORLD;
@@ -119,6 +149,7 @@ export function generateTerrain(seed = 1337, onProgress = () => {}) {
     }
     if (j % 64 === 0) onProgress(0.1 + 0.4 * j / nz);
   }
+  carveRoad(heights, nx, nz, T);
   const H = (i, j) => heights[clamp(j, 0, nz - 1) * nx + clamp(i, 0, nx - 1)];
 
   // Baked horizon AO (sky visibility) — the static indirect light term for the terrain.

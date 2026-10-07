@@ -154,8 +154,8 @@ export class Water {
           vec2 loc = vec2(dot(rel, vec2(shh, ch)), dot(rel, vec2(ch, -shh))); // x along ship, y across
           float hx = loc.x / (uShipDim.x * 0.5), hy = loc.y / (uShipDim.y * 0.5);
           float hullD = (pow(abs(hx), 6.0) + pow(abs(hy), 2.0));
-          float hullFoam = (1.0 - smoothstep(1.0, 1.35 + uShip.w * 0.03, hullD)) * smoothstep(0.85, 1.0, hullD);
-          float bow = smoothstep(0.55, 1.0, hx) * hullFoam * (0.4 + min(uShip.w * 0.08, 1.0));
+          float hullFoam = (1.0 - smoothstep(1.0, 1.06 + uShip.w * 0.025, hullD)) * smoothstep(0.92, 1.0, hullD);
+          float bow = smoothstep(0.55, 1.0, hx) * hullFoam * min(uShip.w * 0.1, 1.0);
           float wakeF = 0.0;
           for (int i = 0; i < MAX_WAKE; i++) {
             vec4 w = uWake[i];
@@ -172,7 +172,7 @@ export class Water {
             float r = s.w * (0.4 + s.z * 1.4);
             wakeF = max(wakeF, (1.0 - smoothstep(r * 0.5, r, dd)) * (1.0 - s.z) * smoothstep(0.25, 0.65, n2 + 0.2));
           }
-          wFoam = clamp(max(max(shore, crestF * 0.8), max(hullFoam * (0.25 + 0.6 * smoothstep(0.3, 0.7, n2)), max(bow, wakeF))), 0.0, 1.0);
+          wFoam = clamp(max(max(shore, crestF * 0.8), max(hullFoam * (0.1 + 0.6 * min(uShip.w / 8.0, 1.0)) * smoothstep(0.35, 0.7, n2), max(bow, wakeF))), 0.0, 1.0);
 
           // ---- body colour: absorption with depth, seabed showing through in the shallows ----
           float vis = exp(-wDepth * 0.55);
