@@ -12,7 +12,7 @@ export const MANIFEST = {
   hdris: [{ id: 'kloofendal_48d_partly_cloudy_puresky', res: '2k' }],
   // [id, resolution, maps]  maps: Poly Haven map keys
   textures: [
-    ['leafy_grass', '2k'], ['sparse_grass', '2k'], ['gravel_floor', '2k'], ['brown_mud_02', '2k'],
+    ['aerial_grass_rock', '2k'], ['forrest_ground_01', '2k'], ['gravel_floor', '2k'], ['brown_mud_02', '2k'],
     ['coast_land_rocks_01', '2k'], ['coast_sand_rocks_02', '2k'],
     ['concrete_floor_worn_001', '2k'], ['concrete_wall_008', '2k'], ['asphalt_02', '2k'],
     ['blue_metal_plate', '2k'], ['wood_floor_deck', '2k'], ['metal_plate', '1k'],

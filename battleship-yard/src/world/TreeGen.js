@@ -118,7 +118,7 @@ function barkWind(g, height) {
 
 export function generateTree(species, seed, lod = 0) {
   const rnd = mulberry32(seed * 7919 + 13);
-  const radial = [9, 6, 4][lod];
+  const radial = [9, 6, 3][lod];
   const cardKeep = [1, 0.5, 0.22][lod];
   const cardScale = [1, 1.35, 1.9][lod];
   const bark = [];
@@ -155,9 +155,9 @@ export function generateTree(species, seed, lod = 0) {
         const L = brLen * (0.75 + rnd() * 0.5);
         const pts = curvePoints(base, dir, L, lod ? 3 : 5, rnd, { gravity: pine ? 0.02 : -0.015, wander: 0.25 });
         const br = r0 * 0.32 * Math.sqrt(conical) + 0.02;
-        if (lod < 2 || b % 2 === 0) bark.push(tube(pts, pts.map((_, i) => br * (1 - (i / pts.length) * 0.8)), lod ? 3 : 4, rnd, 0.6, 0.05));
+        if (lod < 2) bark.push(tube(pts, pts.map((_, i) => br * (1 - (i / pts.length) * 0.8)), lod ? 3 : 4, rnd, 0.6, 0.05));
         // foliage cards along the outer part of the branch, roughly horizontal, rolled a little
-        const nCards = Math.max(1, Math.round((pine ? 3 : 4) * (L / 3 + 0.5)));
+        const nCards = Math.max(2, Math.round((pine ? 4 : 5) * (L / 3 + 0.6)));
         for (let c = 0; c < nCards; c++) {
           if (rnd() > cardKeep) continue;
           const f = 0.2 + 0.8 * (c / nCards) * (0.9 + rnd() * 0.1);
@@ -167,7 +167,7 @@ export function generateTree(species, seed, lod = 0) {
           along.y -= pine ? 0 : 0.25; along.applyAxisAngle(UP, (rnd() - 0.5) * 1.2).normalize();
           const roll = (rnd() - 0.5) * 1.1;
           const side = along.clone().cross(UP).normalize().applyAxisAngle(along, roll);
-          const len = (pine ? 1.5 : 1.7) * (0.8 + rnd() * 0.4) * cardScale;
+          const len = (pine ? 2.1 : 2.3) * (0.8 + rnd() * 0.4) * cardScale;
           cards.quad(p.clone().addScaledVector(along, -0.2), along, side, len, len * 0.95, [0, 1, 1, 0], crownC, crownR, tint, f);
         }
       }
@@ -217,7 +217,7 @@ export function generateTree(species, seed, lod = 0) {
   // leafy twig clusters around branch ends and along outer limbs
   const tint = [0.95 + rnd() * 0.1, 0.95 + rnd() * 0.1, 0.9];
   for (const pts of tipsOut) {
-    const nC = Math.round((5 + rnd() * 5) * cardKeep) + 1;
+    const nC = Math.round((8 + rnd() * 6) * cardKeep) + 2;
     for (let c = 0; c < nC; c++) {
       const f = 0.4 + rnd() * 0.6;
       const p = pts[Math.min(pts.length - 1, Math.floor(f * pts.length))].clone();
@@ -225,7 +225,7 @@ export function generateTree(species, seed, lod = 0) {
       const out = p.clone().sub(crownC).normalize();
       const along = out.clone().add(new THREE.Vector3((rnd() - 0.5) * 1.2, 0.3 + rnd() * 0.4, (rnd() - 0.5) * 1.2)).normalize();
       const side = along.clone().cross(new THREE.Vector3(rnd() - 0.5, rnd() - 0.5, rnd() - 0.5).normalize()).normalize();
-      const len = (1.3 + rnd() * 0.6) * cardScale;
+      const len = (1.7 + rnd() * 0.8) * cardScale;
       cards.quad(p, along, side, len, len, [0, 1, 1, 0], crownC, crownR, tint, 1);
     }
   }

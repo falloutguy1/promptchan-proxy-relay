@@ -10,10 +10,10 @@ import { FXAAPass } from 'three/addons/postprocessing/FXAAPass.js';
 export const LAYER_NO_AO = 2; // water, foliage cards, particles: excluded from the AO normal/depth pass
 
 export const PRESETS = {
-  low: { label: 'Low', scale: 0.75, maxDPR: 1, shadow: 1024, ao: false, bloom: false, msaa: 0, fxaa: true, reflection: false, grassRadius: 28, grassDensity: 0.45, treeLod: [70, 220], treeMax: 1100, water: 96, shadowDist: 0.7 },
-  medium: { label: 'Medium', scale: 0.9, maxDPR: 1.5, shadow: 2048, ao: false, bloom: true, msaa: 2, fxaa: false, reflection: false, grassRadius: 42, grassDensity: 0.7, treeLod: [110, 320], treeMax: 1700, water: 160, shadowDist: 0.85 },
-  high: { label: 'High', scale: 1.0, maxDPR: 2, shadow: 4096, ao: true, bloom: true, msaa: 4, fxaa: false, reflection: true, grassRadius: 60, grassDensity: 1.0, treeLod: [150, 450], treeMax: 2400, water: 220, shadowDist: 1 },
-  ultra: { label: 'Ultra', scale: 1.0, maxDPR: 2.5, shadow: 4096, ao: true, bloom: true, msaa: 4, fxaa: false, reflection: true, grassRadius: 80, grassDensity: 1.3, treeLod: [200, 600], treeMax: 3000, water: 300, shadowDist: 1.2 },
+  low: { label: 'Low', scale: 0.75, maxDPR: 1, shadow: 1024, ao: false, bloom: false, msaa: 0, fxaa: true, reflection: false, grassRadius: 28, grassDensity: 0.45, treeLod: [70, 220], treeMax: 2600, water: 96, shadowDist: 0.7 },
+  medium: { label: 'Medium', scale: 0.9, maxDPR: 1.5, shadow: 2048, ao: false, bloom: true, msaa: 2, fxaa: false, reflection: false, grassRadius: 42, grassDensity: 0.7, treeLod: [110, 320], treeMax: 4200, water: 160, shadowDist: 0.85 },
+  high: { label: 'High', scale: 1.0, maxDPR: 2, shadow: 4096, ao: true, bloom: true, msaa: 4, fxaa: false, reflection: true, grassRadius: 60, grassDensity: 1.0, treeLod: [150, 450], treeMax: 6000, water: 220, shadowDist: 1 },
+  ultra: { label: 'Ultra', scale: 1.0, maxDPR: 2.5, shadow: 4096, ao: true, bloom: true, msaa: 4, fxaa: false, reflection: true, grassRadius: 80, grassDensity: 1.3, treeLod: [200, 600], treeMax: 8000, water: 300, shadowDist: 1.2 },
 };
 
 const GradeShader = {

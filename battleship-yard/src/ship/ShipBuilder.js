@@ -389,7 +389,7 @@ export class ShipBuilder {
   }
 
   buffMaterial() {
-    if (!this._buff) { this._buff = this.mats.paint.clone(); this._buff.name = 'ship-buff'; this._buff.userData = { u: { ...this.mats.paint.userData.u, uPaint: { value: new THREE.Color(0.62, 0.48, 0.28) } } }; this._buff.onBeforeCompile = this.mats.paint.onBeforeCompile; }
+    if (!this._buff) { this._buff = this.mats.paint.clone(); this._buff.name = 'ship-buff'; this._buff.userData = { u: { ...this.mats.paint.userData.u, uPaint: { value: new THREE.Color().setRGB(0.62, 0.48, 0.28, THREE.SRGBColorSpace) } } }; this._buff.onBeforeCompile = this.mats.paint.onBeforeCompile; }
     return this._buff;
   }
 

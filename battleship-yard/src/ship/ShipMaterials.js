@@ -17,7 +17,7 @@ function paintMaterial(set, name, opts) {
   if (m.normalMap) m.normalScale.set(0.6, -0.6);
   const u = {
     uPaint: { value: new THREE.Color() }, uIsHull: { value: opts.hull ? 1 : 0 }, uDazzle: { value: 0 },
-    uDeckY: { value: 8 }, uRust: { value: opts.rust ?? 1 }, uDazzleB: { value: new THREE.Color(0.16, 0.19, 0.22) },
+    uDeckY: { value: 8 }, uRust: { value: opts.rust ?? 1 }, uDazzleB: { value: new THREE.Color().setRGB(0.16, 0.19, 0.22, THREE.SRGBColorSpace) },
   };
   m.userData.u = u;
   m.onBeforeCompile = (sh) => {
@@ -64,7 +64,7 @@ function paintMaterial(set, name, opts) {
           float boot = smoothstep(-0.55, -0.45, p.y) * (1.0 - smoothstep(0.75, 0.85, p.y));
           float below = 1.0 - smoothstep(-0.55, -0.45, p.y);
           paint = mix(paint, vec3(0.025, 0.026, 0.028), boot);
-          paint = mix(paint, vec3(0.30, 0.075, 0.055) * (0.85 + 0.3 * big), below);
+          paint = mix(paint, vec3(0.16, 0.025, 0.018) * (0.85 + 0.3 * big), below);
           // waterline scum just above the boot-top
           float scum = (1.0 - smoothstep(0.8, 2.2 + big, p.y)) * smoothstep(0.6, 0.9, p.y);
           paint = mix(paint, paint * vec3(0.72, 0.74, 0.62), scum * 0.6);
@@ -74,8 +74,8 @@ function paintMaterial(set, name, opts) {
         float rust = uRust * streak(p, topY, uIsHull > 0.5 ? 0.33 : 0.2) * (uIsHull > 0.5 ? step(0.85, p.y) : 1.0);
         float edgeGrime = uRust * (0.5 + 0.5 * big) * 0.18;
         paint *= 1.0 - edgeGrime * 0.5;
-        paint = mix(paint, vec3(0.22, 0.10, 0.045), clamp(rust * 0.75, 0.0, 0.75));
-        diffuseColor.rgb *= paint * mix(1.0, detail, 0.65);`)
+        paint = mix(paint, vec3(0.09, 0.035, 0.012), clamp(rust * 0.75, 0.0, 0.75));
+        diffuseColor.rgb *= paint * mix(1.0, detail, 0.35);`)
       .replace('#include <roughnessmap_fragment>', `
         float roughnessFactor = roughP;
         #ifdef USE_ROUGHNESSMAP
@@ -147,14 +147,14 @@ export class ShipMaterials {
 
   setPaint(key, deckY) {
     const p = PAINTS[key] || PAINTS.haze;
-    this.hull.userData.u.uPaint.value.setRGB(...p.hull);
-    this.paint.userData.u.uPaint.value.setRGB(...p.upper);
-    this.turret.userData.u.uPaint.value.setRGB(...p.deck.map((v, i) => (v + p.upper[i]) / 2));
+    this.hull.userData.u.uPaint.value.setRGB(...p.hull, THREE.SRGBColorSpace); // scheme values are sRGB swatches
+    this.paint.userData.u.uPaint.value.setRGB(...p.upper, THREE.SRGBColorSpace);
+    this.turret.userData.u.uPaint.value.setRGB(...p.deck.map((v, i) => (v + p.upper[i]) / 2), THREE.SRGBColorSpace);
     for (const m of [this.hull, this.paint, this.turret]) {
       m.userData.u.uDazzle.value = p.dazzle ? 1 : 0;
       m.userData.u.uDeckY.value = deckY;
     }
-    this.railing.color.setRGB(...p.upper).multiplyScalar(0.9);
+    this.railing.color.setRGB(...p.upper, THREE.SRGBColorSpace).multiplyScalar(0.9);
     this.funnelBuff = !!p.buffFunnel;
   }
 }

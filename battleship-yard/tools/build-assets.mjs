@@ -37,7 +37,7 @@ const fresh = (out, ...inputs) => fs.existsSync(out) && inputs.every((i) => fs.s
 const COLOR = (q = 230) => ['--encode', 'etc1s', '--clevel', '2', '--qlevel', String(q), '--assign_oetf', 'srgb'];
 const DATA = (rdo = 1.5) => ['--encode', 'uastc', '--uastc_quality', '2', '--uastc_rdo_l', String(rdo), '--zcmp', '18', '--assign_oetf', 'linear'];
 
-const TERRAIN = ['leafy_grass', 'sparse_grass', 'gravel_floor', 'brown_mud_02', 'coast_land_rocks_01', 'coast_sand_rocks_02'];
+const TERRAIN = ['aerial_grass_rock', 'forrest_ground_01', 'gravel_floor', 'brown_mud_02', 'coast_land_rocks_01', 'coast_sand_rocks_02'];
 
 async function textures() {
   for (const [id, res] of MANIFEST.textures) {
@@ -120,8 +120,8 @@ async function foliageAtlases() {
 // Triangle budgets for props (LOD0). Rocks also get a coarse LOD1.
 const BUDGET = {
   coast_rocks_01: 20000, boulder_01: 6000, rock_moss_set_01: 8000, rock_moss_set_02: 8000, fire_hydrant: 3000, concrete_road_barrier: 3000,
-  modular_chainlink_fence: 3000, dead_tree_trunk: 5000, tree_stump_01: 4000, portable_welding_cart: 6000, portable_generator: 6000,
-  metal_jerrycan: 2000, street_lamp_01: 5000, shrub_02: 3000, shrub_03: 3000, shrub_04: 3000, fern_02: 2500, dry_branches_medium_01: 4000,
+  modular_chainlink_fence: 2500, dead_tree_trunk: 5000, tree_stump_01: 4000, portable_welding_cart: 6000, portable_generator: 6000,
+  metal_jerrycan: 2000, street_lamp_01: 5000, shrub_02: 1800, shrub_03: 1800, shrub_04: 1800, fern_02: 1200, dry_branches_medium_01: 4000,
   wooden_military_crate: 3000, plastic_crate_01: 3000, exterior_aircon_unit: 5000, power_box_01: 4000, small_lpg_tank: 4000,
   metal_trash_can: 5000, old_military_crate: 4000, lifebuoy: 4000, ocean_buoy: 6000, lateral_sea_marker: 6000, hand_truck: 4000,
   metal_tool_chest: 5000, wooden_crate_01: 3000, wooden_crate_02: 3000, propane_tank: 3000,

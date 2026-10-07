@@ -81,9 +81,14 @@ function signTexture(text, sub) {
   const g = c.getContext('2d');
   g.fillStyle = '#1d3346'; g.fillRect(0, 0, 1024, 192);
   g.strokeStyle = '#e8e4da'; g.lineWidth = 8; g.strokeRect(12, 12, 1000, 168);
-  g.fillStyle = '#ece8de'; g.font = 'bold 76px "Helvetica Neue", Arial, sans-serif'; g.textAlign = 'center';
-  g.fillText(text, 512, 104);
-  g.font = '36px "Helvetica Neue", Arial, sans-serif'; g.fillText(sub, 512, 158);
+  g.fillStyle = '#ece8de'; g.textAlign = 'center';
+  const fit = (str, size, weight, y) => {
+    let px = size;
+    do { g.font = `${weight} ${px}px "Helvetica Neue", Arial, sans-serif`; px -= 2; } while (g.measureText(str).width > 960 && px > 10);
+    g.fillText(str, 512, y);
+  };
+  fit(text, 76, 'bold', 104);
+  fit(sub, 36, 'normal', 158);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
   return t;
@@ -95,8 +100,8 @@ export async function buildBuildings(assets, lib, quality) {
   const L = lib;
   const mats = {
     brick: L.make('brick', 'factory_brick', { weather: { macro: 0.18, macroScale: 0.08, grimeHeight: Y0, grimeRange: 1.2, grimeAmount: 0.35 } }),
-    clad: L.make('cladding', 'corrugated_iron_02', { color: 0xaeb6b8, weather: { macro: 0.22, macroScale: 0.06, grimeHeight: Y0 + 3, grimeRange: 2.5, grimeAmount: 0.25 } }),
-    roof: L.make('roof', 'rusty_corrugated_iron', { color: 0x9a948c, weather: { macro: 0.3, macroScale: 0.05 } }),
+    clad: L.make('cladding', 'corrugated_iron_02', { color: 0xaeb6b8, metalness: 0.25, useMetalMap: false, weather: { macro: 0.22, macroScale: 0.06, grimeHeight: Y0 + 3, grimeRange: 2.5, grimeAmount: 0.25 } }),
+    roof: L.make('roof', 'rusty_corrugated_iron', { color: 0x9a948c, metalness: 0.2, useMetalMap: false, weather: { macro: 0.3, macroScale: 0.05 } }),
     block: L.make('blockwork', 'painted_concrete', { color: 0xc9c4b8, weather: { macro: 0.25, macroScale: 0.12, grimeHeight: Y0, grimeRange: 1.0, grimeAmount: 0.35 } }),
     floor: L.make('shed-floor', 'concrete_floor_worn_001', { color: 0x9a968f, envMapIntensity: 0.35, weather: { macro: 0.3, macroScale: 0.05 } }),
     lining: L.plain('lining', 0x6d6a64, 0.85, 0, { envMapIntensity: 0.3 }),
@@ -106,7 +111,7 @@ export async function buildBuildings(assets, lib, quality) {
     darkFrame: L.plain('window-frame-dark', 0x3a4046, 0.4, 0.6),
     sill: L.make('sill', 'concrete_wall_008', { color: 0xc9c6bf }),
     gutter: L.plain('gutter', 0x8c9294, 0.4, 0.8),
-    door: L.make('door-steel', 'corrugated_iron_02', { color: 0x4f6f82, weather: { macro: 0.25, macroScale: 0.2, grimeHeight: Y0 + 0.3, grimeRange: 1.5, grimeAmount: 0.3 } }),
+    door: L.make('door-steel', 'corrugated_iron_02', { color: 0x6f8fa2, metalness: 0.2, useMetalMap: false, weather: { macro: 0.25, macroScale: 0.2, grimeHeight: Y0 + 0.3, grimeRange: 1.5, grimeAmount: 0.3 } }),
     lintel: L.make('lintel', 'concrete_wall_008', { color: 0xbab6ae }),
     glass: new THREE.MeshPhysicalMaterial({ name: 'glass', color: 0x2c3a40, roughness: 0.04, metalness: 0, transparent: true, opacity: 0.5, depthWrite: false, envMapIntensity: 1.3, specularIntensity: 1 }),
     roofLight: new THREE.MeshPhysicalMaterial({ name: 'rooflight', color: 0xd8dcd6, roughness: 0.35, transparent: true, opacity: 0.6, depthWrite: false }),
@@ -169,6 +174,21 @@ export async function buildBuildings(assets, lib, quality) {
       for (const yy of [Y0 + 0.15, Y0 + 5.7, Y0 + 11.3]) b.add(mats.steel, new THREE.BoxGeometry(8.2, 0.16, 0.08), V(lx, yy, zF + 0.4 + k * 0.16));
     }
     openings.push({ x: door.c, z: zF - 0.5, w: door.w - 1, d: 3 });
+    // personnel door (recessed steel leaf, frame, canopy) and guard posts at the big door
+    const pdx = xA + 6;
+    b.add(mats.darkFrame, new THREE.BoxGeometry(1.2, 2.3, 0.08), V(pdx, Y0 + 1.15, zF - 0.06));
+    b.add(mats.door, rbox(1.0, 2.15, 0.05, 0.01), V(pdx, Y0 + 1.08, zF - 0.14));
+    b.add(mats.gutter, cyl(0.02, 0.02, 0.14, 6), V(pdx + 0.38, Y0 + 1.05, zF - 0.08), [Math.PI / 2, 0, 0]);
+    b.add(mats.steel, rbox(1.8, 0.08, 0.9, 0.02), V(pdx, Y0 + 2.55, zF + 0.45));
+    for (const sx of [-1, 1]) b.add(mats.steel, cyl(0.015, 0.015, 1.0, 4), V(pdx + sx * 0.85, Y0 + 2.95, zF + 0.45), [0.85, 0, 0]);
+    const postMat = L.plain('guard-yellow', 0xd8a419, 0.55, 0.3);
+    for (const dx of [-door.w / 2 - 0.6, door.w / 2 + 0.6]) for (const dz of [0.6, 1.6]) {
+      b.add(postMat, cyl(0.11, 0.11, 1.2, 12), V(door.c + dx, Y0 + 0.6, zF + dz));
+      b.add(mats.darkFrame, cyl(0.115, 0.115, 0.1, 12), V(door.c + dx, Y0 + 0.9, zF + dz));
+    }
+    const shopSign = new THREE.Mesh(new THREE.PlaneGeometry(9, 1.7), new THREE.MeshStandardMaterial({ map: signTexture('FABRICATION SHOP 2', 'HULL BLOCKS · WELDING · NO UNAUTHORISED ENTRY'), roughness: 0.6 }));
+    shopSign.position.set(door.c, door.y1 + 1.6, zF + 0.03);
+    group.add(shopSign);
     openings.push({ x: s.x, z: s.z, w: s.w - 1.2, d: s.d - 1.2 }); // interior is walkable once inside
     // portal frames, crane runway and an overhead travelling crane
     for (let x = xA + 4; x <= xB - 4 + 0.01; x += 8) {

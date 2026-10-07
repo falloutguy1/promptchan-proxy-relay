@@ -38,7 +38,7 @@ function truss(b, mat, p0, p1, w0, h0, w1, h1, bays, chordR, braceR) {
 export function buildCrane(lib) {
   const paint = lib.make('crane-paint', 'painted_concrete', { color: 0xc8981e, weather: { macro: 0.3, macroScale: 0.12, grimeHeight: 1.0, grimeRange: 8, grimeAmount: 0.25 } });
   const dark = lib.plain('crane-dark', 0x2a2b2c, 0.6, 0.5);
-  const cab = lib.make('crane-cab', 'corrugated_iron_02', { color: 0xd8d2c0, weather: { macro: 0.25, macroScale: 0.1 } });
+  const cab = lib.make('crane-cab', 'corrugated_iron_02', { color: 0xd8d2c0, metalness: 0.2, useMetalMap: false, weather: { macro: 0.25, macroScale: 0.1 } });
   const glass = new THREE.MeshPhysicalMaterial({ color: 0x1e2a30, roughness: 0.05, metalness: 0, envMapIntensity: 1.3 });
   const steel = lib.plain('crane-wire', 0x3a3a3a, 0.4, 0.9);
   const group = new THREE.Group();

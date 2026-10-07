@@ -156,7 +156,7 @@ export async function placeProps(assets, lib, terrain) {
   const cb = new Batch();
   const cmats = {
     cache: new Map(),
-    box(c) { if (!this.cache.has(c)) this.cache.set(c, lib.make('container-' + c, 'corrugated_iron_02', { color: c, weather: { macro: 0.3, macroScale: 0.25, grimeHeight: Y0, grimeRange: 2.6, grimeAmount: 0.2 } })); return this.cache.get(c); },
+    box(c) { if (!this.cache.has(c)) this.cache.set(c, lib.make('container-' + c, 'corrugated_iron_02', { color: c, metalness: 0.2, useMetalMap: false, weather: { macro: 0.3, macroScale: 0.25, grimeHeight: Y0, grimeRange: 2.6, grimeAmount: 0.2 } })); return this.cache.get(c); },
     frame(c) { return this.box(c); },
     dark: lib.plain('container-dark', 0x222222, 0.6, 0.6),
   };

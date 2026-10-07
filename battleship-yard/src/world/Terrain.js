@@ -6,7 +6,7 @@ import { makeTerrainFn } from './terrainGen.js';
 const CHUNK_CELLS = 128; // 256 m chunks at 2 m cells
 const LOD_STEPS = [1, 2, 4, 16];
 // real-world tile size (m) of each terrain layer: grass, dry grass, gravel, mud, rock, sand
-const LAYER_SIZE = [2.0, 2.0, 2.25, 1.3, 9.0, 7.5];
+const LAYER_SIZE = [15.0, 2.0, 2.25, 1.3, 20.0, 15.0]; // from scan metadata
 
 export class Terrain {
   constructor(assets) {

@@ -112,7 +112,7 @@ export class Vegetation {
         const leafMat = sp === 'broadleaf' ? this.mats.broadleaf[v % 2] : this.mats[sp].leaves;
         const barkMat = sp === 'broadleaf' ? this.mats.broadBark : this.mats[sp].bark;
         const meshes = lods.map((t, l) => {
-          const cap = 1200;
+          const cap = 2400;
           const b = new THREE.InstancedMesh(t.bark, barkMat, cap);
           const f = new THREE.InstancedMesh(t.leaves, leafMat, cap);
           for (const m of [b, f]) {
@@ -133,8 +133,8 @@ export class Vegetation {
     const rnd = mulberry32(seed), n = makeNoise2D(seed), n2 = makeNoise2D(seed + 5);
     const cands = [];
     const spacing = 7.5;
-    for (let z = WORLD.z0 + 40; z < 300; z += spacing) {
-      for (let x = WORLD.x0 + 40; x < WORLD.x1 - 40; x += spacing) {
+    for (let z = -1150; z < 300; z += spacing) {
+      for (let x = -1300; x < 1300; x += spacing) {
         const px = x + (rnd() - 0.5) * spacing * 0.9, pz = z + (rnd() - 0.5) * spacing * 0.9;
         const h = T.heightAt(px, pz);
         if (h < 2.2) continue;
@@ -147,7 +147,7 @@ export class Vegetation {
         // forests grow in clusters; denser in hollows (moisture), sparse on exposed tops
         const cluster = fbm(n, px / 170, pz / 170, 4);
         const moist = smoothstep(120, 10, h) * 0.3 + (fbm(n2, px / 60, pz / 60, 3) * 0.5 + 0.5) * 0.4;
-        const dens = smoothstep(-0.05, 0.35, cluster + moist * 0.4 - 0.15) * (0.35 + 0.65 * (1 - s[1] * 0.7));
+        const dens = smoothstep(-0.12, 0.25, cluster + moist * 0.4 - 0.1) * (0.45 + 0.55 * (1 - s[1] * 0.6));
         if (rnd() > dens * 0.95) continue;
         const dist = Math.hypot(px, pz + 60);
         const pri = rnd() * (0.4 + dist / 900);
@@ -240,26 +240,26 @@ export class Vegetation {
     };
     // shrubs on forest edges and road shoulders, ferns beneath trees
     const shrubT = this.shrubModels.map(() => []), fernT = [];
-    const near = (this.trees || []).filter((t) => Math.hypot(t.x, t.z + 80) < 700);
+    const near = (this.trees || []).filter((t) => Math.hypot(t.x, t.z + 80) < 420);
     for (const t of near) {
-      if (rnd() < 0.35) {
+      if (rnd() < 0.22) {
         const a = rnd() * 6.28, r = 2 + rnd() * 5;
         const x = t.x + Math.cos(a) * r, z = t.z + Math.sin(a) * r;
         if (!this.excluded(x, z) && T.splatAt(x, z)[2] < 0.3) fernT.push(m(x, z, 0.8 + rnd() * 0.7, rnd() * 6.28, 0.05, 0.5));
       }
-      if (rnd() < 0.18) {
+      if (rnd() < 0.1) {
         const a = rnd() * 6.28, r = 4 + rnd() * 6;
         const x = t.x + Math.cos(a) * r, z = t.z + Math.sin(a) * r;
         if (!this.excluded(x, z)) shrubT[Math.floor(rnd() * shrubT.length)].push(m(x, z, 0.7 + rnd() * 0.8, rnd() * 6.28, 0.08, 0.3));
       }
     }
     // shrub fringe along the yard boundary and the road
-    for (let i = 0; i < 220; i++) {
+    for (let i = 0; i < 140; i++) {
       const x = (rnd() * 2 - 1) * 260, z = QUAY.yardZ - 32 - rnd() * 60;
       if (this.excluded(x, z) || T.splatAt(x, z)[2] > 0.4) continue;
       shrubT[Math.floor(rnd() * shrubT.length)].push(m(x, z, 0.6 + rnd() * 0.9, rnd() * 6.28, 0.08, 0.3));
     }
-    this.shrubModels.forEach((mod, i) => shrubT[i].length && this.instModel(mod, shrubT[i]));
+    this.shrubModels.forEach((mod, i) => shrubT[i].length && this.instModel(mod, shrubT[i], false));
     if (this.fernModel && fernT.length) this.instModel(this.fernModel, fernT, false);
 
     // rocks: big coastal formations on the natural shore, boulders where the ground is rocky

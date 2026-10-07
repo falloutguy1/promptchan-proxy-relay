@@ -34,7 +34,7 @@ export class Harbor {
       timber: L.make('fender-timber', 'wood_floor_deck', { color: 0x5b4a3c, weather: { macro: 0.3, macroScale: 0.3, wetLine: 0.8, wetRange: 1.0, algae: 0.6 } }),
       steel: L.make('galv-steel', 'metal_plate', { color: 0x9a9c9c, normalScale: 0.4 }),
       rail: L.plain('rail-steel', 0x6d6a66, 0.35, 0.95),
-      rope: L.plain('rope', 0x8b7a5a, 0.9, 0),
+      rope: L.plain('rope', 0x5e5240, 0.9, 0),
       joint: L.plain('joint', 0x2b2a28, 0.95, 0),
     };
   }

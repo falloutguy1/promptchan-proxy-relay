@@ -57,7 +57,7 @@ export function makeTerrainFn(seed = 1337) {
     const yardX = 1 - smoothstep(QUAY.x1 + 12, QUAY.x1 + 55, ax);
     const yardZ = smoothstep(QUAY.yardZ - 45, QUAY.yardZ - 4, z) * (z <= QUAY.edgeZ + 0.01 ? 1 : 0);
     const yard = yardX * yardZ;
-    h = lerp(h, QUAY.topY, yard);
+    h = lerp(h, QUAY.topY - 0.3, yard); // sits just under the paving slabs
     return h;
   }
 
