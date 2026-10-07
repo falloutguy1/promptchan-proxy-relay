@@ -112,7 +112,7 @@ export class ShipMaterials {
     this.turret = paintMaterial(plate, 'ship-turret', { hull: false, rust: 0.6 });
     this.deck = new THREE.MeshStandardMaterial({
       name: 'ship-deck', map: deck?.map, normalMap: deck?.normalMap, roughnessMap: deck?.arm, aoMap: deck?.arm,
-      color: new THREE.Color(0.95, 0.86, 0.78), metalness: 0, roughness: 1,
+      color: new THREE.Color(1.15, 1.08, 1.0), metalness: 0, roughness: 1,
     });
     if (this.deck.normalMap) this.deck.normalScale.set(0.8, -0.8);
     // weathered teak: desaturate the scanned planks and add salt-bleached patches
@@ -122,7 +122,7 @@ export class ShipMaterials {
         .replace('#include <map_fragment>', `#include <map_fragment>
           float dl = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
           float bleach = bsy_fbm(vDL.xz * 0.12);
-          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(dl) * vec3(1.15, 1.05, 0.92), 0.45 + 0.25 * bleach);
+          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(dl) * vec3(1.1, 1.04, 0.95), 0.72 + 0.2 * bleach);
           diffuseColor.rgb *= 0.95 + 0.25 * bleach;`);
     };
     this.deck.customProgramCacheKey = () => 'shipdeck';

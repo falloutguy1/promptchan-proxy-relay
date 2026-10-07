@@ -229,7 +229,12 @@ export class ShipBuilder {
     }
     // breakwater ahead of A turret
     const bwX = 0.36 * L, bwY = hs.deckY(hs.sAtX(bwX)), bwB = hs.edge(hs.sAtX(bwX)).b * 0.8;
-    for (const side of [1, -1]) st.add(mats.paint, rbox(Math.hypot(bwB, 4), 1.4, 0.18, 0.05), V(bwX - 2, bwY + 0.7, side * bwB / 2), [0, side * Math.atan2(4, bwB) - side * Math.PI / 2, 0]);
+    // V-shaped breakwater: two plates meeting on the centreline, swept aft to the deck edges
+    for (const side of [1, -1]) {
+      const dx = -5, dz = side * bwB / 2, len = Math.hypot(dx, dz);
+      st.add(mats.paint, rbox(len, 1.4, 0.16, 0.04), V(bwX + dx / 2, bwY + 0.7, dz / 2), [0, Math.atan2(-dz, dx), 0]);
+      for (let k = 1; k < 4; k++) st.add(mats.paint, rbox(0.12, 1.2, 0.5, 0.02), V(bwX + (dx * k) / 4 - 0.25, bwY + 0.6, (dz * k) / 4), [0, Math.atan2(-dz, dx), 0]);
+    }
     // bollards (pairs) and fairleads along the deck edge
     for (const s of [0.08, 0.18, 0.5, 0.62, 0.8, 0.9]) for (const side of [1, -1]) {
       const e = hs.edge(s);

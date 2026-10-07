@@ -112,7 +112,7 @@ export class HullShape {
         const t = (k / across) * 2 - 1;
         const z = t * b, camber = (1 - t * t) * this.B * 0.012;
         dp.push(x, y + camber, z);
-        duv.push(x, z);
+        duv.push(z, x); // scanned planks run along texture v: map v to the ship's length
       }
     }
     for (let i = 0; i < ns; i++) for (let k = 0; k < across; k++) {

@@ -100,7 +100,7 @@ export async function buildBuildings(assets, lib, quality) {
   const L = lib;
   const mats = {
     brick: L.make('brick', 'factory_brick', { weather: { macro: 0.18, macroScale: 0.08, grimeHeight: Y0, grimeRange: 1.2, grimeAmount: 0.35 } }),
-    clad: L.make('cladding', 'corrugated_iron_02', { color: 0xdfe6e8, metalness: 0.25, useMetalMap: false, weather: { macro: 0.22, macroScale: 0.06, grimeHeight: Y0 + 3, grimeRange: 2.5, grimeAmount: 0.25 } }),
+    clad: L.make('cladding', 'corrugated_iron_02', { metalness: 0.1, useMetalMap: false, weather: { paint: 0x8f9a9c, macro: 0.22, macroScale: 0.06, grimeHeight: Y0 + 3, grimeRange: 2.5, grimeAmount: 0.25 } }),
     roof: L.make('roof', 'rusty_corrugated_iron', { color: 0x9a948c, metalness: 0.2, useMetalMap: false, weather: { macro: 0.3, macroScale: 0.05 } }),
     block: L.make('blockwork', 'painted_concrete', { color: 0xc9c4b8, weather: { macro: 0.25, macroScale: 0.12, grimeHeight: Y0, grimeRange: 1.0, grimeAmount: 0.35 } }),
     floor: L.make('shed-floor', 'concrete_floor_worn_001', { color: 0x9a968f, envMapIntensity: 0.35, weather: { macro: 0.3, macroScale: 0.05 } }),
@@ -111,7 +111,7 @@ export async function buildBuildings(assets, lib, quality) {
     darkFrame: L.plain('window-frame-dark', 0x3a4046, 0.4, 0.6),
     sill: L.make('sill', 'concrete_wall_008', { color: 0xc9c6bf }),
     gutter: L.plain('gutter', 0x8c9294, 0.4, 0.8),
-    door: L.make('door-steel', 'corrugated_iron_02', { color: 0x6f8fa2, metalness: 0.2, useMetalMap: false, weather: { macro: 0.25, macroScale: 0.2, grimeHeight: Y0 + 0.3, grimeRange: 1.5, grimeAmount: 0.3 } }),
+    door: L.make('door-steel', 'corrugated_iron_02', { metalness: 0.1, useMetalMap: false, weather: { paint: 0x3f6a82, macro: 0.25, macroScale: 0.2, grimeHeight: Y0 + 0.3, grimeRange: 1.5, grimeAmount: 0.3 } }),
     lintel: L.make('lintel', 'concrete_wall_008', { color: 0xbab6ae }),
     glass: new THREE.MeshPhysicalMaterial({ name: 'glass', color: 0x2c3a40, roughness: 0.04, metalness: 0, transparent: true, opacity: 0.5, depthWrite: false, envMapIntensity: 1.3, specularIntensity: 1 }),
     roofLight: new THREE.MeshPhysicalMaterial({ name: 'rooflight', color: 0xd8dcd6, roughness: 0.35, transparent: true, opacity: 0.6, depthWrite: false }),

@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 // GLSL snippets + helpers to extend MeshStandardMaterial without forking three's shaders.
 
 export const GLSL_NOISE = /* glsl */ `
@@ -18,7 +19,7 @@ float bsy_fbm(vec2 p){ float s=0.0, a=0.5; for(int i=0;i<4;i++){ s+=a*bsy_vnoise
 export function weather(mat, o = {}) {
   const opts = {
     macro: 0.18, macroScale: 0.035, grimeHeight: 0, grimeRange: 0, grimeAmount: 0,
-    wetLine: -1e4, wetRange: 1.0, algae: 0.0, ...o,
+    wetLine: -1e4, wetRange: 1.0, algae: 0.0, paint: null, ...o,
   };
   mat.userData.weather = opts;
   const prev = mat.onBeforeCompile;
@@ -28,6 +29,8 @@ export function weather(mat, o = {}) {
     shader.uniforms.uMacroScale = { value: opts.macroScale };
     shader.uniforms.uGrime = { value: new Float32Array([opts.grimeHeight, opts.grimeRange, opts.grimeAmount]) };
     shader.uniforms.uWet = { value: new Float32Array([opts.wetLine, opts.wetRange, opts.algae]) };
+    shader.uniforms.uPaintCol = { value: opts.paint ? new THREE.Color(opts.paint) : new THREE.Color(0, 0, 0) };
+    shader.uniforms.uPaintOn = { value: opts.paint ? 1 : 0 };
     if (!shader.vertexShader.includes('vBsyWorld')) {
       shader.vertexShader = shader.vertexShader
         .replace('#include <common>', '#include <common>\nvarying vec3 vBsyWorld;')
@@ -40,9 +43,17 @@ export function weather(mat, o = {}) {
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>
         varying vec3 vBsyWorld;
-        uniform float uMacro; uniform float uMacroScale; uniform vec3 uGrime; uniform vec3 uWet;
+        uniform float uMacro; uniform float uMacroScale; uniform vec3 uGrime; uniform vec3 uWet; uniform vec3 uPaintCol; uniform float uPaintOn;
         ${shader.fragmentShader.includes('bsy_hash12') ? '' : GLSL_NOISE}`)
       .replace('#include <map_fragment>', `#include <map_fragment>
+        #ifdef USE_MAP
+        if (uPaintOn > 0.5) {
+          // painted surface: the scan supplies relief and wear (luminance relative to its mean), paint supplies albedo
+          vec3 bsyAvg = textureLod(map, vMapUv, 12.0).rgb;
+          float bsyRel = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722)) / max(dot(bsyAvg * diffuse, vec3(0.2126, 0.7152, 0.0722)), 1e-3);
+          diffuseColor.rgb = uPaintCol * clamp(mix(1.0, bsyRel, 0.6), 0.4, 1.6);
+        }
+        #endif
         float bsyM = bsy_fbm(vBsyWorld.xz * uMacroScale + vBsyWorld.y * 0.02);
         float bsyM2 = bsy_fbm(vBsyWorld.xz * uMacroScale * 5.3 + 3.1);
         diffuseColor.rgb *= 1.0 + uMacro * (bsyM - 0.5) * 2.0;
