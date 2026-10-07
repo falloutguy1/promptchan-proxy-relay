@@ -84,6 +84,7 @@ export class UI {
     root.append(head);
     const body = el('div', { class: 'pbody' });
     root.append(body);
+    if (innerWidth < 760) root.classList.add('collapsed'); // phones: show the ship first, expand to edit
     const presetSel = el('select', { 'aria-label': 'Preset', onchange: (e) => { if (PRESETS[e.target.value]) g.setDesign({ ...PRESETS[e.target.value] }); e.target.value = ''; } },
       el('option', { value: '' }, 'Load a preset…'), ...Object.keys(PRESETS).map((k) => el('option', { value: k }, k)));
     body.append(el('div', { class: 'row' }, presetSel));

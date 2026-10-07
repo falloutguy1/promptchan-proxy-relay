@@ -102,7 +102,10 @@ export class CameraRig {
   /** Frame an object: centre and comfortable distance for a given radius. */
   frame(center, radius, yaw = this.goal.yaw, pitch = 0.3) {
     this.goalTarget.copy(center);
-    this.goal.dist = radius / Math.tan((this.camera.fov * Math.PI) / 360) * 1.1;
+    // fit the narrower of the two fields of view (portrait phones are width-limited)
+    const vHalf = (this.camera.fov * Math.PI) / 360;
+    const hHalf = Math.atan(Math.tan(vHalf) * Math.max(0.3, this.camera.aspect || 1));
+    this.goal.dist = (radius / Math.tan(Math.min(vHalf, hHalf))) * 1.1;
     this.goal.yaw = yaw; this.goal.pitch = pitch;
   }
 
